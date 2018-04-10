@@ -15,7 +15,7 @@ INCLUDE "lib/bbc.h.asm"
 \ ******************************************************************
 
 _DEBUG = TRUE
-_HEARTBEAT_CHAR = TRUE
+_HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
 \ *	MACROS
@@ -44,7 +44,7 @@ MAIN_scanlines_per_row = 8
 FramePeriod = 312*64-2
 
 ; Calculate here the timer value to interrupt at the desired line
-TimerValue = 40*64 - 2*64 - 2 - 10
+TimerValue = 40*64 - 2*64 - 2 - 64 - 16
 
 \\ 40 lines for vsync
 \\ interupt arrives 2 lines after vsync pulse

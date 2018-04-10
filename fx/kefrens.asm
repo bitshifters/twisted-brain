@@ -18,6 +18,7 @@ kefrens_index_offset = locals_start + 1
 	JMP kefrens_clear_line
 }
 
+\\ Design this to function to be called at visible scanline -1
 .kefrens_draw
 {
 	\\ R9=0 - character row = 1 scanline
@@ -36,7 +37,13 @@ kefrens_index_offset = locals_start + 1
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	FOR n,1,28,1
+	LDA #12: STA &FE00
+	LDA #HI(MAIN_screen_base_addr/8): STA &FE01
+
+	LDA #13: STA &FE00
+	LDA #LO(MAIN_screen_base_addr/8): STA &FE01
+
+	FOR n,1,14,1
 	NOP
 	NEXT
 
@@ -90,19 +97,19 @@ ENDIF
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
-	LDA #7:	STA &FE01
+	LDA #1-1:	STA &FE01		; 1 scanline
 
-	\\ R4=6 - CRTC cycle is 7 more rows
+	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
-	LDA #6: STA &FE01
+	LDA #56-1: STA &FE01		; 312 - 256 = 56 scanlines
 
-	\\ R7=2 - vsync is at row 34
+	\\ R7=3 - vsync is at row 35 = 280 scanlines
 	LDA #7:	STA &FE00
-	LDA #2: STA &FE01
+	LDA #24: STA &FE01			; 280 - 256 = 24 scanlines
 
 	\\ R6=0 - no more rows to display
 	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #0: STA &FE01
 	
     RTS
 }
