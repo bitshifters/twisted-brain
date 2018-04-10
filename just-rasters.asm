@@ -368,7 +368,7 @@ GUARD &C000
 \ ******************************************************************
 
 .music_data
-INCBIN "data/Prince of Persia - 03 - Hourglass.raw.exo"
+INCBIN "audio/music/BotB 23787 djmaximum - your VGM has arrived for the Tandy 1000.raw.exo"
 .music_end
 
 \ ******************************************************************
