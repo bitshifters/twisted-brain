@@ -14,17 +14,25 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
+_DEBUG = TRUE
 _HEARTBEAT_CHAR = FALSE
+
+_TWISTER = TRUE
 
 \ ******************************************************************
 \ *	MACROS
 \ ******************************************************************
 
-
+MACRO PAGE_ALIGN
+    PRINT "ALIGN LOST ", ~LO(((P% AND &FF) EOR &FF)+1), " BYTES"
+    ALIGN &100
+ENDMACRO
 
 \ ******************************************************************
 \ *	GLOBAL constants
 \ ******************************************************************
+
+SLOT_MUSIC = 4
 
 MAIN_screen_base_addr = &3000
 MAIN_screen_top_addr = &8000
@@ -41,7 +49,7 @@ MAIN_scanlines_per_row = 8
 FramePeriod = 312*64-2
 
 ; Calculate here the timer value to interrupt at the desired line
-TimerValue = 40*64 - 2*64 - 2 - 10
+TimerValue = 40*64 - 2*64 - 2 - 16
 
 \\ 40 lines for vsync
 \\ interupt arrives 2 lines after vsync pulse
@@ -101,6 +109,17 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 	STA &FE4E					; R14=Interrupt Enable (enable main_vsync and timer interrupt)
 	CLI							; enable interupts
 
+	\\ NEED TO TURN OFF INTERLACE HERE!
+
+	\\ Load SIDEWAYS RAM modules here
+
+	LDA #SLOT_MUSIC
+	JSR swr_select_slot
+	LDA #HI(bank0_start)
+	LDX #LO(bank0_filename)
+	LDY #HI(bank0_filename)
+	JSR disksys_load_file
+
 	\\ Initalise system vars
 
 	LDA #0
@@ -111,13 +130,13 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 	LDA #22:JSR oswrch
 	LDA #2:JSR oswrch
 
-	\\ NEED TO TURN OFF INTERLACE HERE!
-
-	\\ Load SIDEWAYS RAM modules here
-
 	\\ Initialise FX modules here (but will be in transition later)
 
+IF _TWISTER
+	JSR twister_init
+ELSE
 	JSR kefrens_init
+ENDIF
 
 	\\ Initialise music player
 
@@ -195,7 +214,11 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 
 	\\ FX update callback here!
 
+IF _TWISTER
+	JSR twister_update
+ELSE
 	JSR kefrens_update
+ENDIF
 
 	\\ Debug (are we alive?)
 
@@ -251,7 +274,11 @@ ENDIF
 
 	\\ FX draw callback here!
 
+IF _TWISTER
+	JSR twister_draw
+ELSE
 	JSR kefrens_draw
+ENDIF
 
 	\\ Loop as fast as possible
 
@@ -270,14 +297,15 @@ ENDIF
 
 .main_end
 
+\ ******************************************************************
+\ *	LIBRARY CODE
+\ ******************************************************************
+
 INCLUDE "lib/vgmplayer.asm"
 INCLUDE "lib/exomiser.asm"
-
-\ ******************************************************************
-\ *	FX
-\ ******************************************************************
-
-INCLUDE "fx/kefrens.asm"
+INCLUDE "lib/disksys.asm"
+INCLUDE "lib/unpack.asm"
+INCLUDE "lib/swr.asm"
 
 \ ******************************************************************
 \ *	DATA
@@ -285,8 +313,7 @@ INCLUDE "fx/kefrens.asm"
 
 .data_start
 
-.music_data
-INCBIN "data/Prince of Persia - 03 - Hourglass.raw.exo"
+.bank0_filename EQUS "Bank0  $"
 
 .data_end
 
@@ -302,18 +329,71 @@ INCBIN "data/Prince of Persia - 03 - Hourglass.raw.exo"
 
 SAVE "JustRas", start, end
 
-\\ INFO
+\ ******************************************************************
+\ *	Space reserved for runtime buffers not preinitialised
+\ ******************************************************************
 
+\\ Add BSS here
+
+\ ******************************************************************
+\ *	Memory Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "INFO"
 PRINT "------"
 PRINT "MAIN size =", ~main_end-main_start
 PRINT "VGM PLAYER size =", ~vgm_player_end-vgm_player_start
 PRINT "EXOMISER size =", ~exo_end-exo_start
-PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
-PRINT "MUSIC size =", ~data_end-music_data
+PRINT "DISKSYS size =", ~beeb_disksys_end-beeb_disksys_start
+PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
+PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
+PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~MAIN_screen_base_addr-P%
 PRINT "------"
 
 \ ******************************************************************
-\ *	Space reserved for runtime buffers not preinitialised
+\ *	Assemble SWRAM banks
 \ ******************************************************************
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank0_start
+
+\ ******************************************************************
+\ *	MUSIC
+\ ******************************************************************
+
+.music_data
+INCBIN "audio/music/BotB 23787 djmaximum - your VGM has arrived for the Tandy 1000.raw.exo"
+.music_end
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/kefrens.asm"
+INCLUDE "fx/twister.asm"
+
+.bank0_end
+
+SAVE "Bank0", bank0_start, bank0_end
+
+\ ******************************************************************
+\ *	Memory Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 0"
+PRINT "------"
+PRINT "MUSIC size =", ~music_end-music_data
+PRINT "------"
+PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"

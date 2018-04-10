@@ -5,10 +5,13 @@
 
 _USE_HAZEL_CATALOG = FALSE           ; this might not hold true for DataCentre and/or Turbo MMC etc.
 _USE_OSFILE_LOAD = TRUE
+_INCLUDE_DIRECT_LOAD = FALSE
 
 .beeb_disksys_start
 
 DISKSYS_DEBUG = FALSE
+
+IF _USE_OSFILE_LOAD = FALSE
 
 IF _USE_HAZEL_CATALOG
 DISKSYS_CATALOG_ADDR = &C000    
@@ -18,8 +21,6 @@ DISKSYS_CATALOG_ADDR = SCRATCH_RAM_ADDR
 DISKSYS_BUFFER_ADDR = DISKSYS_CATALOG_ADDR+512 ; &1000 ; must be page aligned
 ENDIF
 DISKSYS_BUFFER_SIZE = 1 ; SECTORS TO READ, MUST BE ONE (for now)
-
-IF _USE_OSFILE_LOAD = FALSE
 
 .osword_params
 .osword_params_drive
@@ -363,18 +364,18 @@ ENDIF
     jsr disksys_file_info
     ; we ignore load & exec address
     ; just need length & start sector 
-    stx beeb_readptr
-    sty beeb_readptr+1
+    stx readptr
+    sty readptr+1
 
     ; get file length in bytes
     ldy #4
-    lda (beeb_readptr),y
+    lda (readptr),y
     sta file_length+0
     iny
-    lda (beeb_readptr),y
+    lda (readptr),y
     sta file_length+1
     iny
-    lda (beeb_readptr),y
+    lda (readptr),y
     lsr a
     lsr a
     lsr a
@@ -383,11 +384,11 @@ ENDIF
     sta file_length+2
 
     ; get sector offset (10 bits)
-    lda (beeb_readptr),y
+    lda (readptr),y
     and #3
     sta file_sector+1
     iny
-    lda (beeb_readptr),y
+    lda (readptr),y
     sta file_sector+0    
 
     ; round up file length to total sector count
@@ -599,16 +600,16 @@ ENDIF
     STA osfile_loadaddr+1
 
     \ Copy filename
-    STX beeb_readptr
-    STY beeb_readptr+1
+    STX readptr
+    STY readptr+1
 
     LDY #7
-    LDA (beeb_readptr), Y
+    LDA (readptr), Y
     STA osfile_filename+3
 
     DEY
     .loop
-    LDA (beeb_readptr), Y
+    LDA (readptr), Y
     STA osfile_filename+5, Y
     DEY
     BPL loop
@@ -642,9 +643,12 @@ ENDIF
     STA write_to+1
 
     \ Wait until next vsync frame swap so we know which buffer we're using!
-    .wait_vsync
-    LDA vsync_swap_buffers
-    BNE wait_vsync
+
+; COMMENT THIS OUT FOR NOW BUT NEED TO BE AWARE IF DOING ANY FANCY DOUBLE BUFFERING
+;
+;    .wait_vsync
+;    LDA vsync_swap_buffers
+;    BNE wait_vsync
     
     \ Where to?
     LDA write_to+1
@@ -714,6 +718,8 @@ ENDIF
     LDY #HI(disksys_loadto_addr)
     JMP PUCRUNCH_UNPACK
 }
+
+IF _INCLUDE_DIRECT_LOAD
 
 IF _DEBUG
 LEVELS_SECTOR_ID=&244
@@ -893,6 +899,7 @@ INCBIN "disc/Catalog.bin"
     JMP PUCRUNCH_UNPACK
 }
 
+ENDIF
 ENDIF
 
 .beeb_disksys_end
