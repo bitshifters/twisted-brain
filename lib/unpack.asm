@@ -3,8 +3,8 @@
 ; fixed params =~	-48 bytes -> 306
 ;			223 bytes
 
-bitstr=beeb_temp
-LZPOS=beeb_readptr
+bitstr=locals_start+0
+LZPOS=readptr
 
 .pucrunch_start
 
@@ -264,5 +264,7 @@ OUTPOS = *+1		; ZP
 .s0b:	rts
 
 }
+
+.pucrunch_table SKIP 31
 
 .pucrunch_end
