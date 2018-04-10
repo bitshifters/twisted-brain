@@ -49,7 +49,7 @@ MAIN_scanlines_per_row = 8
 FramePeriod = 312*64-2
 
 ; Calculate here the timer value to interrupt at the desired line
-TimerValue = 40*64 - 2*64 - 2 - 64 - 16
+TimerValue = 40*64 - 2*64 - 2 - 16
 
 \\ 40 lines for vsync
 \\ interupt arrives 2 lines after vsync pulse

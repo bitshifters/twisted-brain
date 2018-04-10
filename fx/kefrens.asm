@@ -48,7 +48,7 @@ kefrens_index_offset = locals_start + 1
 	NOP
 	NEXT
 
-	LDX #1					; 2c
+	LDX #2					; 2c
 	LDY kefrens_index_offset
 
 	.here
@@ -102,15 +102,15 @@ ENDIF
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
-	LDA #56-1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
 	LDA #7:	STA &FE00
-	LDA #24: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
 
-	\\ R6=0 - no more rows to display
+	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
-	LDA #0: STA &FE01
+	LDA #1: STA &FE01
 	
     RTS
 }
