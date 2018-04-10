@@ -66,7 +66,10 @@ ORG &0
 GUARD &90
 
 \\ Vars used by main system routines
-.main_vsync_counter		SKIP 1		; counts up with each vsync
+.vsync_counter			SKIP 2		; counts up with each vsync
+.delta_time				SKIP 1
+.main_fx_enum			SKIP 1		; which FX are we running?
+.main_new_fx			SKIP 1		; which FX do we want?
 
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
@@ -123,20 +126,19 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 	\\ Initalise system vars
 
 	LDA #0
-	STA main_vsync_counter
+	STA vsync_counter
+	STA vsync_counter+1
+
+	LDA #0				; initial FX
+	STA main_new_fx
+
+	LDA #1
+	STA delta_time
 	
 	\\ Set initial screen mode
 
 	LDA #22:JSR oswrch
 	LDA #2:JSR oswrch
-
-	\\ Initialise FX modules here (but will be in transition later)
-
-IF _TWISTER
-	JSR twister_init
-ELSE
-	JSR kefrens_init
-ENDIF
 
 	\\ Initialise music player
 
@@ -144,11 +146,44 @@ ENDIF
 	LDY #HI(music_data)
 	JSR vgm_init_stream
 
+	\\ Initialise script
+
+	LDX #LO(sequence_script_start)
+	LDY #HI(sequence_script_start)
+	JSR script_init
+
 	\ ******************************************************************
 	\ *	DEMO START - from here on out there is no OS to help you!!
 	\ ******************************************************************
 
 	SEI
+
+	\\ Initialise FX modules here
+
+	.main_init_fx
+	{
+		LDA main_new_fx
+		STA main_fx_enum
+
+		ASL A:ASL A: ASL A:TAX	; *8
+		LDA main_fx_table+0, X
+		STA call_init+1
+		LDA main_fx_table+1, X
+		STA call_init+2
+
+		LDA main_fx_table+2, X
+		STA call_update+1
+		LDA main_fx_table+3, X
+		STA call_update+2
+
+		LDA main_fx_table+4, X
+		STA call_draw+1
+		LDA main_fx_table+5, X
+		STA call_draw+2
+	}
+
+	.call_init
+	JSR &FFFF
 
 	\\ Exact cycle VSYNC by Tom Seddon (?) and Tricky
 
@@ -157,6 +192,13 @@ ENDIF
 		.vsync1
 		bit &FE4D
 		beq vsync1 \ wait for vsync
+		sta &FE4D \ 4(stretched), ack vsync
+
+		\we might have a hanging vsync flag so wait for another one
+
+		.vsync2
+		bit &FE4D
+		beq vsync2 \ wait for vsync
 		\now we're within 10 cycles of vsync having hit
 
 
@@ -189,6 +231,7 @@ ENDIF
 
 	\\ Set up Timers
 
+	.set_timers
 	; Write T1 low now (the timer will not be written until you write the high byte)
     LDA #LO(TimerValue):STA &FE44
     ; Get high byte ready so we can write it as quickly as possible at the right moment
@@ -206,25 +249,48 @@ ENDIF
 
 	\\  Do useful work after vsync
 
-	INC main_vsync_counter
+	{
+		INC vsync_counter
+		BNE no_carry
+		INC vsync_counter+1
+		.no_carry
+	}
 
 	\\ Service music player
 
 	JSR vgm_poll_player
 
+	\\ Update the scripting system
+
+	JSR script_update
+
+	\\ Check if our FX has changed?
+
+	LDA main_new_fx
+	CMP main_fx_enum
+	BEQ continue
+
+	\\ It has so we'd better put the CRTC straight first
+
+	.call_kill
+	JSR crtc_reset
+
+	\\ Then init our new FX and resync to vsync
+
+	JMP main_init_fx
+
+	.continue
+
 	\\ FX update callback here!
 
-IF _TWISTER
-	JSR twister_update
-ELSE
-	JSR kefrens_update
-ENDIF
+	.call_update
+	JSR &FFFF
 
 	\\ Debug (are we alive?)
 
 	IF _HEARTBEAT_CHAR
 	{
-		LDA main_vsync_counter		; 3c
+		LDA vsync_counter		; 3c
 		STA &3000
 		STA &3001
 		STA &3002
@@ -250,7 +316,7 @@ ENDIF
 
 	LDA &FE44					; 4c + 1c - will be even already?
 
-	\\ Waste 4 or 5 cycles here
+	\\ NOP slide for stable raster fun
 
 IF 0
 	SEC							; 2c
@@ -274,11 +340,8 @@ ENDIF
 
 	\\ FX draw callback here!
 
-IF _TWISTER
-	JSR twister_draw
-ELSE
-	JSR kefrens_draw
-ENDIF
+	.call_draw
+	JSR &FFFF
 
 	\\ Loop as fast as possible
 
@@ -295,6 +358,42 @@ ENDIF
 	RTS
 }
 
+.main_set_fx
+{
+	STA main_new_fx
+	RTS
+}
+
+.crtc_reset
+{
+	LDX #13
+	.crtcloop
+	STX &FE00
+	LDA main_crtc_regs,X
+	STA &FE01
+	DEX
+	BPL crtcloop
+	RTS
+}
+
+.main_crtc_regs
+{
+	EQUB 127			; R0  horizontal total
+	EQUB 80				; R1  horizontal displayed
+	EQUB 98				; R2  horizontal position
+	EQUB &28			; R3  sync width 40 = &28
+	EQUB 38				; R4  vertical total
+	EQUB 0				; R5  vertical total adjust
+	EQUB 32				; R6  vertical displayed
+	EQUB 35				; R7  vertical position; 35=top of screen
+	EQUB 0				; R8  interlace
+	EQUB 7				; R9  scanlines per row
+	EQUB 32				; R10 cursor start
+	EQUB 8				; R11 cursor end
+	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+}
+
 .main_end
 
 \ ******************************************************************
@@ -306,6 +405,13 @@ INCLUDE "lib/exomiser.asm"
 INCLUDE "lib/disksys.asm"
 INCLUDE "lib/unpack.asm"
 INCLUDE "lib/swr.asm"
+INCLUDE "lib/script.asm"
+
+\ ******************************************************************
+\ *	DEMO
+\ ******************************************************************
+
+INCLUDE "fx/sequence.asm"
 
 \ ******************************************************************
 \ *	DATA
@@ -314,6 +420,14 @@ INCLUDE "lib/swr.asm"
 .data_start
 
 .bank0_filename EQUS "Bank0  $"
+
+.main_fx_table
+{
+\\ FX initialise, update, draw and kill functions
+\\ 
+	EQUW kefrens_init, kefrens_update, kefrens_draw, crtc_reset
+	EQUW twister_init, twister_update, twister_draw, crtc_reset
+}
 
 .data_end
 
@@ -348,6 +462,9 @@ PRINT "EXOMISER size =", ~exo_end-exo_start
 PRINT "DISKSYS size =", ~beeb_disksys_end-beeb_disksys_start
 PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
 PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
+PRINT "SCRIPT size =",~script_end-script_start
+PRINT "------"
+PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~MAIN_screen_base_addr-P%
