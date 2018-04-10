@@ -3,7 +3,7 @@ Maybe a demo for NOVA 2018 :)
 
 TO DO
 ~~~
-Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?)
+Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?) - DONE
 Move Kefrens module to SWRAM - leave expanded codegen to begin with
 Port another FX module into framework - Twister?
 System for switching between FX - leave music broken for now!

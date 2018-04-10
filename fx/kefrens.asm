@@ -169,7 +169,7 @@ FOR x,0,79,1
 }
 NEXT
 
-ALIGN &100
+PAGE_ALIGN
 .kefrens_code_table_LO
 FOR y,0,255,1
 x=INT(36+30*SIN(y * 2 * PI / 255))

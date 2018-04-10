@@ -21,7 +21,10 @@ _HEARTBEAT_CHAR = FALSE
 \ *	MACROS
 \ ******************************************************************
 
-
+MACRO PAGE_ALIGN
+    PRINT "ALIGN LOST ", ~LO(((P% AND &FF) EOR &FF)+1), " BYTES"
+    ALIGN &100
+ENDMACRO
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -291,12 +294,6 @@ INCLUDE "lib/unpack.asm"
 INCLUDE "lib/swr.asm"
 
 \ ******************************************************************
-\ *	FX
-\ ******************************************************************
-
-INCLUDE "fx/kefrens.asm"
-
-\ ******************************************************************
 \ *	DATA
 \ ******************************************************************
 
@@ -329,7 +326,7 @@ SAVE "JustRas", start, end
 \ ******************************************************************
 
 PRINT "------"
-PRINT "CORE"
+PRINT "INFO"
 PRINT "------"
 PRINT "MAIN size =", ~main_end-main_start
 PRINT "VGM PLAYER size =", ~vgm_player_end-vgm_player_start
@@ -337,8 +334,6 @@ PRINT "EXOMISER size =", ~exo_end-exo_start
 PRINT "DISKSYS size =", ~beeb_disksys_end-beeb_disksys_start
 PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
 PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
-PRINT "------"
-PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~MAIN_screen_base_addr-P%
@@ -354,9 +349,20 @@ GUARD &C000
 
 .bank0_start
 
+\ ******************************************************************
+\ *	MUSIC
+\ ******************************************************************
+
 .music_data
 INCBIN "data/Prince of Persia - 03 - Hourglass.raw.exo"
 .music_end
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/kefrens.asm"
 
 .bank0_end
 
@@ -370,6 +376,8 @@ PRINT "------"
 PRINT "BANK 0"
 PRINT "------"
 PRINT "MUSIC size =", ~music_end-music_data
+PRINT "------"
+PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
