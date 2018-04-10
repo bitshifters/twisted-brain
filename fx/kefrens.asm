@@ -10,6 +10,7 @@ kefrens_index_offset = locals_start + 1
 .kefrens_init
 {
     STZ kefrens_index_offset
+	RTS
 }
 
 .kefrens_update

@@ -17,6 +17,8 @@ INCLUDE "lib/bbc.h.asm"
 _DEBUG = TRUE
 _HEARTBEAT_CHAR = FALSE
 
+_TWISTER = TRUE
+
 \ ******************************************************************
 \ *	MACROS
 \ ******************************************************************
@@ -130,7 +132,11 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 
 	\\ Initialise FX modules here (but will be in transition later)
 
+IF _TWISTER
+	JSR twister_init
+ELSE
 	JSR kefrens_init
+ENDIF
 
 	\\ Initialise music player
 
@@ -208,7 +214,11 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 
 	\\ FX update callback here!
 
+IF _TWISTER
+	JSR twister_update
+ELSE
 	JSR kefrens_update
+ENDIF
 
 	\\ Debug (are we alive?)
 
@@ -264,7 +274,11 @@ ENDIF
 
 	\\ FX draw callback here!
 
+IF _TWISTER
+	JSR twister_draw
+ELSE
 	JSR kefrens_draw
+ENDIF
 
 	\\ Loop as fast as possible
 
@@ -363,6 +377,7 @@ INCBIN "data/Prince of Persia - 03 - Hourglass.raw.exo"
 
 PAGE_ALIGN
 INCLUDE "fx/kefrens.asm"
+INCLUDE "fx/twister.asm"
 
 .bank0_end
 
