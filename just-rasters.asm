@@ -29,21 +29,21 @@ MACRO PAGE_ALIGN
 ENDMACRO
 
 \ ******************************************************************
-\ *	GLOBAL constants
+\ *	DEMO defines
 \ ******************************************************************
 
 SLOT_MUSIC = 4
 
-MAIN_screen_base_addr = &3000
-MAIN_screen_top_addr = &8000
-MAIN_screen_size = MAIN_screen_top_addr - MAIN_screen_base_addr
+fx_Kefrens = 0
+fx_Twister = 1
+fx_BoxRot = 2
 
-MAIN_screen_num_cols = 40
-MAIN_screen_bytes_per_col = 16
-MAIN_screen_bytes_per_row = 640			; = MAIN_screen_bytes_per_col * MAIN_screen_num_cols
+\ ******************************************************************
+\ *	GLOBAL constants
+\ ******************************************************************
 
-MAIN_clocks_per_scanline = 64
-MAIN_scanlines_per_row = 8
+; Default screen address
+screen_base_addr = &3000
 
 ; Exact time for a 50Hz frame less latch load time
 FramePeriod = 312*64-2
@@ -85,7 +85,7 @@ INCLUDE "lib/exomiser.h.asm"
 \ ******************************************************************
 
 ORG &E00	      					; code origin (like P%=&2000)
-GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen memory
+GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .start
 
@@ -180,6 +180,11 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 		STA call_draw+1
 		LDA main_fx_table+5, X
 		STA call_draw+2
+
+		LDA main_fx_table+6, X
+		STA call_kill+1
+		LDA main_fx_table+7, X
+		STA call_kill+2
 	}
 
 	.call_init
@@ -361,6 +366,9 @@ ENDIF
 .main_set_fx
 {
 	STA main_new_fx
+}
+.do_nothing
+{
 	RTS
 }
 
@@ -390,8 +398,39 @@ ENDIF
 	EQUB 7				; R9  scanlines per row
 	EQUB 32				; R10 cursor start
 	EQUB 8				; R11 cursor end
-	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
-	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+	EQUB HI(screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(screen_base_addr/8)		; R13 screen start address, low
+}
+
+.ula_pal_reset
+{
+	LDX #15
+	.palloop
+	LDA main_default_pal, X
+	STA &FE21
+	DEX
+	BPL palloop
+	RTS	
+}
+
+.main_default_pal
+{
+	EQUB &00 + PAL_black
+	EQUB &10 + PAL_red
+	EQUB &20 + PAL_green
+	EQUB &30 + PAL_yellow
+	EQUB &40 + PAL_blue
+	EQUB &50 + PAL_magenta
+	EQUB &60 + PAL_cyan
+	EQUB &70 + PAL_white
+	EQUB &80 + PAL_black
+	EQUB &90 + PAL_red
+	EQUB &A0 + PAL_green
+	EQUB &B0 + PAL_yellow
+	EQUB &C0 + PAL_blue
+	EQUB &D0 + PAL_magenta
+	EQUB &E0 + PAL_cyan
+	EQUB &F0 + PAL_white
 }
 
 .main_end
@@ -412,6 +451,7 @@ INCLUDE "lib/script.asm"
 \ ******************************************************************
 
 INCLUDE "fx/sequence.asm"
+INCLUDE "fx/boxrot.asm"
 
 \ ******************************************************************
 \ *	DATA
@@ -425,8 +465,13 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
+\\ NEED TO INCLUDE SWRAM BANK HERE!
+\\
+\\ INIT FNS NEED TO SET CORRECT MODE!
+\\
 	EQUW kefrens_init, kefrens_update, kefrens_draw, crtc_reset
 	EQUW twister_init, twister_update, twister_draw, crtc_reset
+	EQUW boxrot_init,  boxrot_update,  boxrot_draw,  ula_pal_reset
 }
 
 .data_end
@@ -465,9 +510,10 @@ PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
+PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
-PRINT "FREE =", ~MAIN_screen_base_addr-P%
+PRINT "FREE =", ~screen_base_addr-P%
 PRINT "------"
 
 \ ******************************************************************
