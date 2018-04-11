@@ -39,10 +39,10 @@ kefrens_index_offset = locals_start + 1
 	LDA #1: STA &FE01
 
 	LDA #12: STA &FE00
-	LDA #HI(MAIN_screen_base_addr/8): STA &FE01
+	LDA #HI(screen_base_addr/8): STA &FE01
 
 	LDA #13: STA &FE00
-	LDA #LO(MAIN_screen_base_addr/8): STA &FE01
+	LDA #LO(screen_base_addr/8): STA &FE01
 
 	FOR n,1,14,1
 	NOP

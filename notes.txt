@@ -1,14 +1,107 @@
+NOVA 2018
+~~~
+
 #noteletext #justrasters
 Maybe a demo for NOVA 2018 :)
 
+Have <=10 weeks in theory until 23 June 2018
+Bound to lose some of these to work & RL etc.
+Need to commit to doing this by April 28 (2 weeks)
+Aim to complete the demo by May 9 (6 weeks)
+Giving 2 weeks buffer and chance to test etc.
+
+Obvious place to start is raster timed FX from last year
+Would like to do 3D (especially w/ co-pro) but not enough
+time to explore this properly (save to next year)
+
+Have some FX already written (many not seen on Beeb before):
+1/ Kefrens bars
+2/ Parallax bars
+3/ Horizontal bars
+4/ Twister
+
+Additional FX that could be "quickly" written in theory:
+5/ Checkboard zoom or wibble
+6/ Static text raster stretch (32x32)
+7/ Raster scrolltext?
+
+Theme could be #noteletext to riff on idea that Beeb
+can only do Teletext FX.
+
+So start with Teletext as per Teletextr then switch
+to raster FX. #justrasters
+
+As always, keep it snappy so each FX just 30 seconds
+ideally with 3x variations on the FX for 10 seconds each
+Need some quick & easy way of intro'ing each part
+
+- 20s (max) #noteletext #justrasters intro
+- 30s for each FX x4-6
+- 20s (max) outro & credits
+
+Aim for 3m30s maximum :)
+
+Assume Master only so can use SWRAM and SHADOW
+As per Teletextr, preload all FX into SWRAM first
+Don't forget we now understand ANDY & HAZEL better!
+
+TO DO to get to commitment
+~~~
+1. Need to prove enough time to run music w/out events - DONE
+    - Hack vgmplayer into Kefrens bars in our vsync
+
+2. Need to be able to switch between FX - DONE
+    - Simple framework for sequencing the parts
+      Do vsync in main loop and call render fn in FX module
+      Main loop also resets CRTC cycle to standard values?
+
+    - Initialise fn for setting up frame buffers before FX
+      Use pucrunch to decompress from SWRAM? (Size check!)
+      How to keep the music going between FX here? (Figure out later)
+
+    - Frame counter in main loop to control sequence
+      Kill previous FX module (is kill fn needed?)
+      Initialise new FX module (before first tick)
+      Switch FX params (or trigger next variation)
+
+To complete the demo
+~~~
+1. Each FX needs to look a lot nicer!
+2. Each FX needs 3x variants (ideally)
+3. Need custom music from IP
+4. Need intro (w/ Teletext?)
+5. Need outro (w/ Teletext?)
+6. Need some way of introducing the parts
+7. Timing & polish
+
+What is the most impressive FX to finish on?!?
+
+
 TO DO
 ~~~
-Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?) - DONE
-Move Kefrens module to SWRAM - leave expanded codegen to begin with
-Port another FX module into framework - Twister?
-System for switching between FX - leave music broken for now!
-Decompress screen data from SWRAM
-Decompress generated code from SWRAM?
+. Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?) - DONE
+. Move Kefrens module to SWRAM - leave expanded codegen to begin with - DONE
+. Port another FX module into framework - Twister? - DONE
+. System for switching between FX - leave music broken for now! - DONE
+. Establish what the default machine state is between FX
+  . what can be assumed and doesn't need to be initialised
+  . and what needs to be put back on FX kill
+  . fix crud left on screen by Parallax etc.
+. Come up with standard approach to hiding any CRTC glitches during FX init
+  . blank screen with CRTC registers going to be tough as part of setup!
+  . display blank SHADOW screen - what if FX needs to copy to SHADOW?
+  . use palette to blackout?
+. Fix audio glitch during long init
+. Decompress screen data from SWRAM - preconvert Twister & Parallax to 
+. Decompress generated code from SWRAM - establish guaranteed space in CORE
+. Check timing of ULA palette switch in rotbox
+  . should we move to scanline -1 start (or just hblank?)
+. Check SHADOW RAM usage in Parallax
+  . what ACCON state should be expected between FX?
+  
 
-For switching between FX it's probably OK to reenable interupts & run the vgm_player on an event
-Just need to re-vsync after initialising the next part
+For switching between FX it's probably OK to reenable interupts & run the vgm_player
+on an event. Just need to re-vsync after initialising the next part
+-> or actually, make init fn responsible for polling music player after vsyncs
+can provide standard memory move and or decompress fns with this included
+

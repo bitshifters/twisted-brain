@@ -10,7 +10,7 @@
 
 .sequence_set_fx_kefrens
 {
-    LDA #0
+    LDA #fx_Kefrens
     JMP main_set_fx
 }
 
@@ -18,7 +18,19 @@
 
 .sequence_set_fx_twister
 {
-    LDA #1
+    LDA #fx_Twister
+    JMP main_set_fx
+}
+
+.sequence_set_fx_boxrot
+{
+    LDA #fx_BoxRot
+    JMP main_set_fx
+}
+
+.sequence_set_fx_parallax
+{
+    LDA #fx_Parallax
     JMP main_set_fx
 }
 
@@ -35,6 +47,18 @@ ENDMACRO
 .sequence_script_start
 
 ; app boots into Kefrens currently
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALL sequence_set_fx_parallax
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALL sequence_set_fx_boxrot
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALL sequence_set_fx_parallax
 
 SEQUENCE_WAIT_SECS 5.0
 

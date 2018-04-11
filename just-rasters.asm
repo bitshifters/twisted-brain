@@ -29,21 +29,23 @@ MACRO PAGE_ALIGN
 ENDMACRO
 
 \ ******************************************************************
-\ *	GLOBAL constants
+\ *	DEMO defines
 \ ******************************************************************
 
 SLOT_MUSIC = 4
 
-MAIN_screen_base_addr = &3000
-MAIN_screen_top_addr = &8000
-MAIN_screen_size = MAIN_screen_top_addr - MAIN_screen_base_addr
+fx_Kefrens = 0
+fx_Twister = 1
+fx_BoxRot = 2
+fx_Parallax = 3
+fx_MAX = 4
 
-MAIN_screen_num_cols = 40
-MAIN_screen_bytes_per_col = 16
-MAIN_screen_bytes_per_row = 640			; = MAIN_screen_bytes_per_col * MAIN_screen_num_cols
+\ ******************************************************************
+\ *	GLOBAL constants
+\ ******************************************************************
 
-MAIN_clocks_per_scanline = 64
-MAIN_scanlines_per_row = 8
+; Default screen address
+screen_base_addr = &3000
 
 ; Exact time for a 50Hz frame less latch load time
 FramePeriod = 312*64-2
@@ -85,7 +87,7 @@ INCLUDE "lib/exomiser.h.asm"
 \ ******************************************************************
 
 ORG &E00	      					; code origin (like P%=&2000)
-GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen memory
+GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .start
 
@@ -116,12 +118,19 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 
 	\\ Load SIDEWAYS RAM modules here
 
-	LDA #SLOT_MUSIC
-	JSR swr_select_slot
+	LDA #4:JSR swr_select_slot
 	LDA #HI(bank0_start)
 	LDX #LO(bank0_filename)
 	LDY #HI(bank0_filename)
 	JSR disksys_load_file
+
+	LDA #5:JSR swr_select_slot
+	LDA #HI(bank1_start)
+	LDX #LO(bank1_filename)
+	LDY #HI(bank1_filename)
+	JSR disksys_load_file
+
+	LDA #SLOT_MUSIC:JSR swr_select_slot
 
 	\\ Initalise system vars
 
@@ -165,6 +174,8 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 		LDA main_new_fx
 		STA main_fx_enum
 
+	\\ Copy our callback fn addresses into code
+
 		ASL A:ASL A: ASL A:TAX	; *8
 		LDA main_fx_table+0, X
 		STA call_init+1
@@ -180,6 +191,17 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 		STA call_draw+1
 		LDA main_fx_table+5, X
 		STA call_draw+2
+
+		LDA main_fx_table+6, X
+		STA call_kill+1
+		LDA main_fx_table+7, X
+		STA call_kill+2
+
+	\\ Select correct SWRAM bank for FX
+
+		LDX main_fx_enum
+		LDA main_fx_slot, X
+		JSR swr_select_slot
 	}
 
 	.call_init
@@ -256,9 +278,16 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 		.no_carry
 	}
 
-	\\ Service music player
+	\\ Service music player (move to music module)
 
+	LDA #SLOT_MUSIC:JSR swr_select_slot
 	JSR vgm_poll_player
+
+	\\ Select SWRAM bank for our current FX
+
+	LDX main_fx_enum
+	LDA main_fx_slot, X
+	JSR swr_select_slot
 
 	\\ Update the scripting system
 
@@ -291,14 +320,8 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 	IF _HEARTBEAT_CHAR
 	{
 		LDA vsync_counter		; 3c
-		STA &3000
-		STA &3001
-		STA &3002
-		STA &3003
-		STA &3004
-		STA &3005
-		STA &3006
-		STA &3007					; 8x 4c = 32c
+		STA &3000:STA &3001:STA &3002:STA &3003
+		STA &3004:STA &3005:STA &3006:STA &3007					; 8x 4c = 32c
 	}
 	ENDIF
 
@@ -314,11 +337,11 @@ GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen mem
 
 	\\ Stablise raster!
 
+IF 0
 	LDA &FE44					; 4c + 1c - will be even already?
 
 	\\ NOP slide for stable raster fun
 
-IF 0
 	SEC							; 2c
 	LDA #&F7					; 2c largest observed
 	SBC &FE44					; 4c + 1/2c
@@ -361,8 +384,13 @@ ENDIF
 .main_set_fx
 {
 	STA main_new_fx
+}
+.do_nothing
+{
 	RTS
 }
+
+\\ Move these to FX helper module
 
 .crtc_reset
 {
@@ -390,8 +418,39 @@ ENDIF
 	EQUB 7				; R9  scanlines per row
 	EQUB 32				; R10 cursor start
 	EQUB 8				; R11 cursor end
-	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
-	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+	EQUB HI(screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(screen_base_addr/8)		; R13 screen start address, low
+}
+
+.ula_pal_reset
+{
+	LDX #15
+	.palloop
+	LDA main_default_pal, X
+	STA &FE21
+	DEX
+	BPL palloop
+	RTS	
+}
+
+.main_default_pal
+{
+	EQUB &00 + PAL_black
+	EQUB &10 + PAL_red
+	EQUB &20 + PAL_green
+	EQUB &30 + PAL_yellow
+	EQUB &40 + PAL_blue
+	EQUB &50 + PAL_magenta
+	EQUB &60 + PAL_cyan
+	EQUB &70 + PAL_white
+	EQUB &80 + PAL_black
+	EQUB &90 + PAL_red
+	EQUB &A0 + PAL_green
+	EQUB &B0 + PAL_yellow
+	EQUB &C0 + PAL_blue
+	EQUB &D0 + PAL_magenta
+	EQUB &E0 + PAL_cyan
+	EQUB &F0 + PAL_white
 }
 
 .main_end
@@ -420,13 +479,23 @@ INCLUDE "fx/sequence.asm"
 .data_start
 
 .bank0_filename EQUS "Bank0  $"
+.bank1_filename EQUS "Bank1  $"
 
 .main_fx_table
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-	EQUW kefrens_init, kefrens_update, kefrens_draw, crtc_reset
-	EQUW twister_init, twister_update, twister_draw, crtc_reset
+\\ INIT FNS NEED TO SET CORRECT MODE!
+\\
+	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
+	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
+	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
+	EQUW parallax_init, parallax_update, parallax_draw, crtc_reset
+}
+
+.main_fx_slot
+{
+	EQUB 4, 4, 5, 5		; need something better here!
 }
 
 .data_end
@@ -467,7 +536,7 @@ PRINT "------"
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
-PRINT "FREE =", ~MAIN_screen_base_addr-P%
+PRINT "FREE =", ~screen_base_addr-P%
 PRINT "------"
 
 \ ******************************************************************
@@ -501,7 +570,7 @@ INCLUDE "fx/twister.asm"
 SAVE "Bank0", bank0_start, bank0_end
 
 \ ******************************************************************
-\ *	Memory Info
+\ *	BANK 0 Info
 \ ******************************************************************
 
 PRINT "------"
@@ -510,6 +579,39 @@ PRINT "------"
 PRINT "MUSIC size =", ~music_end-music_data
 PRINT "------"
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
+PRINT "TWISTER size =", ~twister_end-twister_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank1_start
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/boxrot.asm"
+INCLUDE "fx/parallax.asm"
+
+.bank1_end
+
+SAVE "Bank1", bank1_start, bank1_end
+
+\ ******************************************************************
+\ *	BANK 1 Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 1"
+PRINT "------"
+PRINT "BOXROT size =",~boxrot_end-boxrot_start
+PRINT "PARALLAX size =", ~parallax_end-parallax_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
