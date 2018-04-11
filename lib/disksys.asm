@@ -548,14 +548,14 @@ ENDIF
 
 ELSE
 
-disksys_loadto_addr = &4000
+disksys_loadto_addr = screen_base_addr
 
 \*-------------------------------
 \*  DISKSYS OSFILE PARAMS
 \*-------------------------------
 
 .osfile_filename
-EQUS ":0.$.ABCDEFG", 13
+EQUS "$.ABCDEFG", 13
 
 .osfile_params
 .osfile_nameaddr
@@ -605,12 +605,12 @@ ENDIF
 
     LDY #7
     LDA (readptr), Y
-    STA osfile_filename+3
+    STA osfile_filename
 
     DEY
     .loop
     LDA (readptr), Y
-    STA osfile_filename+5, Y
+    STA osfile_filename+2, Y
     DEY
     BPL loop
 
