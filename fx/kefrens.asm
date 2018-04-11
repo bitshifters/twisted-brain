@@ -16,7 +16,7 @@ kefrens_index_offset = locals_start + 1
 .kefrens_update
 {
 	INC kefrens_index_offset
-	JMP kefrens_clear_line
+	JMP screen_clear_line0
 }
 
 \\ Design this to function to be called at visible scanline -1

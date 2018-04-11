@@ -46,6 +46,7 @@ fx_MAX = 4
 
 ; Default screen address
 screen_base_addr = &3000
+SCREEN_SIZE_BYTES = &8000 - screen_base_addr
 
 ; Exact time for a 50Hz frame less latch load time
 FramePeriod = 312*64-2
@@ -390,69 +391,6 @@ ENDIF
 	RTS
 }
 
-\\ Move these to FX helper module
-
-.crtc_reset
-{
-	LDX #13
-	.crtcloop
-	STX &FE00
-	LDA main_crtc_regs,X
-	STA &FE01
-	DEX
-	BPL crtcloop
-	RTS
-}
-
-.main_crtc_regs
-{
-	EQUB 127			; R0  horizontal total
-	EQUB 80				; R1  horizontal displayed
-	EQUB 98				; R2  horizontal position
-	EQUB &28			; R3  sync width 40 = &28
-	EQUB 38				; R4  vertical total
-	EQUB 0				; R5  vertical total adjust
-	EQUB 32				; R6  vertical displayed
-	EQUB 35				; R7  vertical position; 35=top of screen
-	EQUB 0				; R8  interlace
-	EQUB 7				; R9  scanlines per row
-	EQUB 32				; R10 cursor start
-	EQUB 8				; R11 cursor end
-	EQUB HI(screen_base_addr/8)		; R12 screen start address, high
-	EQUB LO(screen_base_addr/8)		; R13 screen start address, low
-}
-
-.ula_pal_reset
-{
-	LDX #15
-	.palloop
-	LDA main_default_pal, X
-	STA &FE21
-	DEX
-	BPL palloop
-	RTS	
-}
-
-.main_default_pal
-{
-	EQUB &00 + PAL_black
-	EQUB &10 + PAL_red
-	EQUB &20 + PAL_green
-	EQUB &30 + PAL_yellow
-	EQUB &40 + PAL_blue
-	EQUB &50 + PAL_magenta
-	EQUB &60 + PAL_cyan
-	EQUB &70 + PAL_white
-	EQUB &80 + PAL_black
-	EQUB &90 + PAL_red
-	EQUB &A0 + PAL_green
-	EQUB &B0 + PAL_yellow
-	EQUB &C0 + PAL_blue
-	EQUB &D0 + PAL_magenta
-	EQUB &E0 + PAL_cyan
-	EQUB &F0 + PAL_white
-}
-
 .main_end
 
 \ ******************************************************************
@@ -470,6 +408,7 @@ INCLUDE "lib/script.asm"
 \ *	DEMO
 \ ******************************************************************
 
+INCLUDE "fx/helpers.asm"
 INCLUDE "fx/sequence.asm"
 
 \ ******************************************************************

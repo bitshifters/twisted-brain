@@ -105,3 +105,10 @@ on an event. Just need to re-vsync after initialising the next part
 -> or actually, make init fn responsible for polling music player after vsyncs
 can provide standard memory move and or decompress fns with this included
 
+
+OK, propose that initialisation expectation is:
+
+- CRTC and Video ULA set to MODE 2, SHEILA = &F4 
+- ULA palette set to default (no flash) ??
+- Single buffered with main memory paged in and displayed, so ACCON | 5 = 0
+- Screen buffer may be garbage so set this up as required (most FX copying into buffer anyway)

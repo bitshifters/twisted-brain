@@ -230,6 +230,16 @@ SHEILA_System_VIA_Interrupt_Flag   = $FE4D
 SHEILA_System_VIA_Interrupt_Enable   = $FE4E
 SHEILA_System_VIA_Register_A_NH   = $FE4F
 
+ULA_Mode0 = &9C
+ULA_Mode1 = &D8
+ULA_Mode2 = &F4
+ULA_Mode3 = &9C
+ULA_Mode4 = &88
+ULA_Mode5 = &C4
+ULA_Mode6 = &88
+ULA_Mode7 = &4B
+
+
 \\ Macro to reset any mapped characters
 \\ since BeebASM doesn't have any feature for this
 \\ Actually it does :)

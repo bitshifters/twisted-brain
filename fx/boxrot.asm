@@ -19,7 +19,10 @@ boxrot_index = locals_start + 7
 	STA boxrot_counter
 	STA boxrot_angle
 	STA boxrot_index
-    RTS
+
+\\ Sadly we don't know what state our screen buffer will be in
+
+	JMP screen_clear_all
 }
 
 .boxrot_update
