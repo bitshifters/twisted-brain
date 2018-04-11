@@ -94,7 +94,7 @@ TO DO
 . Fix audio glitch during long init
 . Decompress screen data from SWRAM - preconvert Twister & Parallax to 
 . Decompress generated code from SWRAM - establish guaranteed space in CORE
-. Check timing of ULA palette switch in rotbox
+. Check timing of ULA palette switch in rotbox - DONE
   . should we move to scanline -1 start (or just hblank?)
 . Check SHADOW RAM usage in Parallax
   . what ACCON state should be expected between FX?
