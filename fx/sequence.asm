@@ -28,6 +28,12 @@
     JMP main_set_fx
 }
 
+.sequence_set_fx_parallax
+{
+    LDA #fx_Parallax
+    JMP main_set_fx
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -44,7 +50,15 @@ ENDMACRO
 
 SEQUENCE_WAIT_SECS 5.0
 
+SCRIPT_CALL sequence_set_fx_parallax
+
+SEQUENCE_WAIT_SECS 5.0
+
 SCRIPT_CALL sequence_set_fx_boxrot
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALL sequence_set_fx_parallax
 
 SEQUENCE_WAIT_SECS 5.0
 

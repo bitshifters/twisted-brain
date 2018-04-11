@@ -37,6 +37,8 @@ SLOT_MUSIC = 4
 fx_Kefrens = 0
 fx_Twister = 1
 fx_BoxRot = 2
+fx_Parallax = 3
+fx_MAX = 4
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -116,12 +118,19 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	\\ Load SIDEWAYS RAM modules here
 
-	LDA #SLOT_MUSIC
-	JSR swr_select_slot
+	LDA #4:JSR swr_select_slot
 	LDA #HI(bank0_start)
 	LDX #LO(bank0_filename)
 	LDY #HI(bank0_filename)
 	JSR disksys_load_file
+
+	LDA #5:JSR swr_select_slot
+	LDA #HI(bank1_start)
+	LDX #LO(bank1_filename)
+	LDY #HI(bank1_filename)
+	JSR disksys_load_file
+
+	LDA #SLOT_MUSIC:JSR swr_select_slot
 
 	\\ Initalise system vars
 
@@ -185,6 +194,10 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		STA call_kill+1
 		LDA main_fx_table+7, X
 		STA call_kill+2
+
+		LDX main_fx_enum
+		LDA main_fx_slot, X
+		JSR swr_select_slot
 	}
 
 	.call_init
@@ -261,9 +274,14 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		.no_carry
 	}
 
-	\\ Service music player
+	\\ Service music player (move to music module)
 
+	LDA #SLOT_MUSIC:JSR swr_select_slot
 	JSR vgm_poll_player
+
+		LDX main_fx_enum
+		LDA main_fx_slot, X
+		JSR swr_select_slot
 
 	\\ Update the scripting system
 
@@ -451,7 +469,6 @@ INCLUDE "lib/script.asm"
 \ ******************************************************************
 
 INCLUDE "fx/sequence.asm"
-INCLUDE "fx/boxrot.asm"
 
 \ ******************************************************************
 \ *	DATA
@@ -460,6 +477,7 @@ INCLUDE "fx/boxrot.asm"
 .data_start
 
 .bank0_filename EQUS "Bank0  $"
+.bank1_filename EQUS "Bank1  $"
 
 .main_fx_table
 {
@@ -469,9 +487,15 @@ INCLUDE "fx/boxrot.asm"
 \\
 \\ INIT FNS NEED TO SET CORRECT MODE!
 \\
-	EQUW kefrens_init, kefrens_update, kefrens_draw, crtc_reset
-	EQUW twister_init, twister_update, twister_draw, crtc_reset
-	EQUW boxrot_init,  boxrot_update,  boxrot_draw,  ula_pal_reset
+	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
+	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
+	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
+	EQUW parallax_init, parallax_update, parallax_draw, crtc_reset
+}
+
+.main_fx_slot
+{
+	EQUB 4, 4, 5, 5		; need something better here!
 }
 
 .data_end
@@ -510,7 +534,6 @@ PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
-PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~screen_base_addr-P%
@@ -547,7 +570,7 @@ INCLUDE "fx/twister.asm"
 SAVE "Bank0", bank0_start, bank0_end
 
 \ ******************************************************************
-\ *	Memory Info
+\ *	BANK 0 Info
 \ ******************************************************************
 
 PRINT "------"
@@ -556,6 +579,39 @@ PRINT "------"
 PRINT "MUSIC size =", ~music_end-music_data
 PRINT "------"
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
+PRINT "TWISTER size =", ~twister_end-twister_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank1_start
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/boxrot.asm"
+INCLUDE "fx/parallax.asm"
+
+.bank1_end
+
+SAVE "Bank1", bank1_start, bank1_end
+
+\ ******************************************************************
+\ *	BANK 1 Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 1"
+PRINT "------"
+PRINT "BOXROT size =",~boxrot_end-boxrot_start
+PRINT "PARALLAX size =", ~parallax_end-parallax_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
