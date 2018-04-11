@@ -1,7 +1,11 @@
 ; print.asm
 ; Printing library from Teletextr
 
+IF _DEBUG
+_MINIMAL_PRINT = FALSE
+ELSE
 _MINIMAL_PRINT = TRUE
+ENDIF
 
 .beeb_print_start
 

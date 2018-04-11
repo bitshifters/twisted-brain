@@ -124,7 +124,7 @@ twister_accum = locals_start + 4
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	FOR n,1,6,1
+	FOR n,1,9,1
 	NOP
 	NEXT
 

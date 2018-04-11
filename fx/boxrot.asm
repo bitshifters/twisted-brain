@@ -46,12 +46,12 @@ boxrot_index = locals_start + 7
 
 	.here
 
-	LDA boxrot_palette_table, X	; 4c
-	STA &FE21				; 6c?
-	
 	FOR n,1,56,1
 	NOP
 	NEXT
+	
+	LDA boxrot_palette_table, X	; 4c
+	STA &FE21				; 6c?
 	
 	BIT 0			; 3c
 	INX				; 2c
