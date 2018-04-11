@@ -174,6 +174,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		LDA main_new_fx
 		STA main_fx_enum
 
+	\\ Copy our callback fn addresses into code
+
 		ASL A:ASL A: ASL A:TAX	; *8
 		LDA main_fx_table+0, X
 		STA call_init+1
@@ -194,6 +196,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		STA call_kill+1
 		LDA main_fx_table+7, X
 		STA call_kill+2
+
+	\\ Select correct SWRAM bank for FX
 
 		LDX main_fx_enum
 		LDA main_fx_slot, X
@@ -279,9 +283,11 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #SLOT_MUSIC:JSR swr_select_slot
 	JSR vgm_poll_player
 
-		LDX main_fx_enum
-		LDA main_fx_slot, X
-		JSR swr_select_slot
+	\\ Select SWRAM bank for our current FX
+
+	LDX main_fx_enum
+	LDA main_fx_slot, X
+	JSR swr_select_slot
 
 	\\ Update the scripting system
 
@@ -314,14 +320,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	IF _HEARTBEAT_CHAR
 	{
 		LDA vsync_counter		; 3c
-		STA &3000
-		STA &3001
-		STA &3002
-		STA &3003
-		STA &3004
-		STA &3005
-		STA &3006
-		STA &3007					; 8x 4c = 32c
+		STA &3000:STA &3001:STA &3002:STA &3003
+		STA &3004:STA &3005:STA &3006:STA &3007					; 8x 4c = 32c
 	}
 	ENDIF
 
@@ -337,11 +337,11 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	\\ Stablise raster!
 
+IF 0
 	LDA &FE44					; 4c + 1c - will be even already?
 
 	\\ NOP slide for stable raster fun
 
-IF 0
 	SEC							; 2c
 	LDA #&F7					; 2c largest observed
 	SBC &FE44					; 4c + 1/2c
@@ -389,6 +389,8 @@ ENDIF
 {
 	RTS
 }
+
+\\ Move these to FX helper module
 
 .crtc_reset
 {
@@ -483,8 +485,6 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-\\ NEED TO INCLUDE SWRAM BANK HERE!
-\\
 \\ INIT FNS NEED TO SET CORRECT MODE!
 \\
 	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset

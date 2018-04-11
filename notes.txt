@@ -79,12 +79,26 @@ What is the most impressive FX to finish on?!?
 
 TO DO
 ~~~
-Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?) - DONE
-Move Kefrens module to SWRAM - leave expanded codegen to begin with - DONE
-Port another FX module into framework - Twister? - DONE
-System for switching between FX - leave music broken for now! - DONE
-Decompress screen data from SWRAM
-Decompress generated code from SWRAM?
+. Move music out of Core RAM - put in SWRAM for now (leave ANDY & HAZEL?) - DONE
+. Move Kefrens module to SWRAM - leave expanded codegen to begin with - DONE
+. Port another FX module into framework - Twister? - DONE
+. System for switching between FX - leave music broken for now! - DONE
+. Establish what the default machine state is between FX
+  . what can be assumed and doesn't need to be initialised
+  . and what needs to be put back on FX kill
+  . fix crud left on screen by Parallax etc.
+. Come up with standard approach to hiding any CRTC glitches during FX init
+  . blank screen with CRTC registers going to be tough as part of setup!
+  . display blank SHADOW screen - what if FX needs to copy to SHADOW?
+  . use palette to blackout?
+. Fix audio glitch during long init
+. Decompress screen data from SWRAM - preconvert Twister & Parallax to 
+. Decompress generated code from SWRAM - establish guaranteed space in CORE
+. Check timing of ULA palette switch in rotbox
+  . should we move to scanline -1 start (or just hblank?)
+. Check SHADOW RAM usage in Parallax
+  . what ACCON state should be expected between FX?
+  
 
 For switching between FX it's probably OK to reenable interupts & run the vgm_player
 on an event. Just need to re-vsync after initialising the next part
