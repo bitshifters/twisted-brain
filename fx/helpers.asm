@@ -4,7 +4,9 @@
 
 .helpers_start
 
-\\ Move these to FX helper module
+\\ During script update a new FX was requested so we're being killed
+\\ This took place somewhere around vsync (during flyback) so CRTC cycle
+\\ might well be malformed.  We need to let next frame complete properly
 
 .crtc_reset
 {
