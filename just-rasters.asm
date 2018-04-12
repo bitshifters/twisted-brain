@@ -32,11 +32,12 @@ ENDMACRO
 
 SLOT_MUSIC = 4
 
-fx_Kefrens = 0
-fx_Twister = 1
-fx_BoxRot = 2
-fx_Parallax = 3
-fx_MAX = 4
+fx_Null = 0
+fx_Kefrens = 1
+fx_Twister = 2
+fx_BoxRot = 3
+fx_Parallax = 4
+fx_MAX = 5
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -50,9 +51,10 @@ SCREEN_SIZE_BYTES = &8000 - screen_base_addr
 FramePeriod = 312*64-2
 
 ; Calculate here the timer value to interrupt at the desired line
-TimerValue = 40*64 - 2*64 - 2 - 16
+TimerValue = 32*64 - 2*64 - 2 - 22
 
-\\ 40 lines for vsync
+\\ 40 lines for vblank
+\\ 32 lines for vsync (vertical position = 35 / 39)
 \\ interupt arrives 2 lines after vsync pulse
 \\ 2 us for latch
 \\ XX us to fire the timer before the start of the scanline so first colour set on column -1
@@ -148,6 +150,10 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #22:JSR oswrch
 	LDA #2:JSR oswrch
 
+	\\ Hide it
+
+	JSR crtc_reset
+
 	\\ Initialise music player
 
 	LDX #LO(music_data)
@@ -165,46 +171,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	\ ******************************************************************
 
 	SEI
-
-	\\ Initialise FX modules here
-
-	.main_init_fx
-	{
-		LDA main_new_fx
-		STA main_fx_enum
-
-	\\ Copy our callback fn addresses into code
-
-		ASL A:ASL A: ASL A:TAX	; *8
-		LDA main_fx_table+0, X
-		STA call_init+1
-		LDA main_fx_table+1, X
-		STA call_init+2
-
-		LDA main_fx_table+2, X
-		STA call_update+1
-		LDA main_fx_table+3, X
-		STA call_update+2
-
-		LDA main_fx_table+4, X
-		STA call_draw+1
-		LDA main_fx_table+5, X
-		STA call_draw+2
-
-		LDA main_fx_table+6, X
-		STA call_kill+1
-		LDA main_fx_table+7, X
-		STA call_kill+2
-
-	\\ Select correct SWRAM bank for FX
-
-		LDX main_fx_enum
-		LDA main_fx_slot, X
-		JSR swr_select_slot
-	}
-
-	.call_init
-	JSR &FFFF
 
 	\\ Exact cycle VSYNC by Tom Seddon (?) and Tricky
 
@@ -262,6 +228,63 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #LO(FramePeriod):STA &FE46
 	LDA #HI(FramePeriod):STA &FE47
 
+	\\ Initialise FX modules here
+
+	.main_init_fx
+	{
+		LDA main_new_fx
+		STA main_fx_enum
+
+	\\ Copy our callback fn addresses into code
+
+		ASL A:ASL A: ASL A:TAX	; *8
+		LDA main_fx_table+0, X
+		STA call_init+1
+		LDA main_fx_table+1, X
+		STA call_init+2
+
+		LDA main_fx_table+2, X
+		STA call_update+1
+		LDA main_fx_table+3, X
+		STA call_update+2
+
+		LDA main_fx_table+4, X
+		STA call_draw+1
+		LDA main_fx_table+5, X
+		STA call_draw+2
+
+		LDA main_fx_table+6, X
+		STA call_kill+1
+		LDA main_fx_table+7, X
+		STA call_kill+2
+
+	\\ Select correct SWRAM bank for FX
+
+		LDX main_fx_enum
+		LDA main_fx_slot, X
+		JSR swr_select_slot
+	}
+
+	.call_init
+	JSR &FFFF
+
+	\\ We don't know how long the init took so resync
+
+	{
+		lda #&42
+		sta &FE4D	\ clear vsync & timer 1 flags
+
+		\\ Wait for Timer1 at scanline 0
+
+		lda #&40
+		.waitTimer1
+		bit &FE4D
+		beq waitTimer1
+		sta &FE4D
+
+		\\ Now can enter main loop with enough time to do work
+	}
+
 	\ ******************************************************************
 	\ *	MAIN LOOP
 	\ ******************************************************************
@@ -292,23 +315,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	JSR script_update
 
-	\\ Check if our FX has changed?
-
-	LDA main_new_fx
-	CMP main_fx_enum
-	BEQ continue
-
-	\\ It has so we'd better put the CRTC straight first
-
-	.call_kill
-	JSR crtc_reset
-
-	\\ Then init our new FX and resync to vsync
-
-	JMP main_init_fx
-
-	.continue
-
 	\\ FX update callback here!
 
 	.call_update
@@ -331,10 +337,15 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		.waitTimer1
 		BIT &FE4D				; 4c + 1/2c
 		BEQ waitTimer1         	; poll timer1 flag
+		STA &FE4D             		; clear timer1 flag ; 4c +1/2c
 	}
-	STA &FE4D             		; clear timer1 flag ; 4c +1/2c
 
-	\\ Stablise raster!
+	\\ We could stabilise the raster here with a NOP slide
+	\\ But it is much harder than it looks! Can't use Timer 1 to
+	\\ allow us to complete arbitrary amounts of work total cycle count
+	\\ will be different on each loop due to cycle stretching.
+	\\ To do this properly need to guarantee the cycle count for a loop
+	\\ is exactly the same each frame - a massive ball ache TBH.
 
 IF 0
 	LDA &FE44					; 4c + 1c - will be even already?
@@ -359,6 +370,23 @@ IF 0
 ENDIF
 
 	.stable
+
+	\\ Check if our FX has changed?
+
+	LDA main_new_fx
+	CMP main_fx_enum
+	BEQ continue
+
+	\\ It has so we'd better put the CRTC straight first
+
+	.call_kill
+	JSR crtc_reset
+
+	\\ Then init our new FX and resync to vsync
+
+	JMP main_init_fx
+
+	.continue
 
 	\\ FX draw callback here!
 
@@ -424,6 +452,7 @@ INCLUDE "fx/sequence.asm"
 \\ 
 \\ INIT FNS NEED TO SET CORRECT MODE!
 \\
+	EQUW do_nothing,    do_nothing,      do_nothing,    do_nothing
 	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
 	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
 	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
@@ -432,7 +461,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 4, 5, 5		; need something better here!
+	EQUB 4, 4, 4, 5, 5		; need something better here!
 }
 
 .data_end

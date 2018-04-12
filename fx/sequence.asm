@@ -46,37 +46,33 @@ ENDMACRO
 
 .sequence_script_start
 
-; app boots into Kefrens currently
+SCRIPT_CALL sequence_set_fx_kefrens
 
-SEQUENCE_WAIT_SECS 5.0
-
-SCRIPT_CALL sequence_set_fx_parallax
-
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 2.0
 
 SCRIPT_CALL sequence_set_fx_boxrot
 
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 2.0
 
 SCRIPT_CALL sequence_set_fx_parallax
 
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 2.0
 
 SCRIPT_CALL sequence_set_fx_twister
 
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 2.0
 
 SCRIPT_CALL sequence_set_fx_kefrens
 
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 2.0
 
-SCRIPT_CALL sequence_set_fx_twister
+SCRIPT_CALL sequence_set_fx_boxrot
 
-SEQUENCE_WAIT_SECS 1.0
+SEQUENCE_WAIT_SECS 2.0
 
-SCRIPT_CALL sequence_set_fx_kefrens
+SCRIPT_CALL sequence_set_fx_parallax
 
-SEQUENCE_WAIT_SECS 1.0
+SEQUENCE_WAIT_SECS 2.0
 
 SCRIPT_CALL sequence_set_fx_twister
 

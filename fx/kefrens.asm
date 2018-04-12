@@ -116,13 +116,25 @@ ENDIF
     RTS
 }
 
-.kefrens_clear_line
+.kefrens_kill
 {
-	LDA #0
-	FOR n,0,79
-	STA &3000 + n * 8
-	NEXT
-	RTS
+\\ During script update a new FX was requested so we're being killed
+\\ This took place somewhere around vsync (during flyback) so CRTC cycle
+\\ might well be malformed.  We need to let next frame complete properly
+
+	LDA #9: STA &FE00
+	LDA #8-1: STA &FE01		; get us back into character rows asap
+
+	LDA #4: STA &FE00
+	LDA #39-1: STA &FE01	; get to 39 rows asap
+
+	LDA #7: STA &FE00
+	LDA #35: STA &FE01		; insert vsync
+
+	LDA #6: STA &FE00
+	LDA #32: STA &FE01		; display all 32 rows for now
+
+	RTS	
 }
 
 NUM_NOPS=28
