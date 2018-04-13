@@ -73,6 +73,7 @@ GUARD &90
 .delta_time				SKIP 1
 .main_fx_enum			SKIP 1		; which FX are we running?
 .main_new_fx			SKIP 1		; which FX do we want?
+.first_frame			SKIP 1		; have we completed the first frame of FX?
 
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
@@ -146,13 +147,11 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	STA delta_time
 	
 	\\ Set initial screen mode
+	\\ TODO - set mode manually to hide displaying data loaded into screen memory
+	\\ (Remove ugly flicker of garbage when mode is set)
 
 	LDA #22:JSR oswrch
 	LDA #2:JSR oswrch
-
-	\\ Hide it
-
-	JSR crtc_reset
 
 	\\ Initialise music player
 
@@ -231,6 +230,12 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	\\ Initialise FX modules here
 
 	.main_init_fx
+
+	\\ Hide the screen to cover any initialisation
+
+	JSR crtc_hide_screen
+	STZ first_frame
+
 	{
 		LDA main_new_fx
 		STA main_fx_enum
@@ -267,6 +272,7 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	.call_init
 	JSR &FFFF
+
 
 	\\ We don't know how long the init took so resync
 
@@ -393,8 +399,21 @@ ENDIF
 	.call_draw
 	JSR &FFFF
 
+	\\ We now know we've completed at least one frame
+
+	LDA first_frame
+	BNE done_first_frame
+
+	\\ If this is the first frame we can show the screen
+
+	JSR crtc_show_screen
+
+	LDA #&FF
+	STA first_frame
+
 	\\ Loop as fast as possible
 
+	.done_first_frame
 	JMP main_loop				; 3c
 
 	\\ Maybe one day we'l escape the loop...

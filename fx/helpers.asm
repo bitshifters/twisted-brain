@@ -38,6 +38,20 @@
 	EQUB LO(screen_base_addr/8)		; R13 screen start address, low
 }
 
+.crtc_hide_screen
+{
+	LDA #8:STA &FE00
+	LDA #&30:STA &FE01
+	RTS
+}
+
+.crtc_show_screen
+{
+	LDA #8:STA &FE00
+	LDA #0:STA &FE01
+	RTS
+}
+
 .ula_pal_reset
 {
 	LDX #15
