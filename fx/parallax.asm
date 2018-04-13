@@ -23,10 +23,8 @@ parallax_writerowptr = locals_start + 7
 
 	\\ Expand our MODE 5 128 line parallax_screen_data into appropriate CRTC format
 
-	\\ Ensure main RAM paged in
-	LDA &FE34
-	AND #4
-	STA &FE34
+	\ Ensure MAIN RAM is writeable
+    LDA &FE34:AND #&FB:STA &FE34
 
 	LDA #LO(parallax_screen_data)
 	STA parallax_readrowptr
@@ -107,18 +105,14 @@ parallax_writerowptr = locals_start + 7
 	LDA #HI(&3000)
 	STA writeaddr+2
 
-	\\ Page in SHADOW ram
-	LDA &FE34
-	ORA #4
-	STA &FE34
+	\ Ensure SHADOW RAM is writeable
+    LDA &FE34:ORA #&4:STA &FE34
 
 	BNE screenloop
 
 	.donescreenloop
-	\\ Page main RAM back in
-	LDA &FE34
-	AND #4
-	STA &FE34
+	\ Ensure MAIN RAM is writeable
+    LDA &FE34:AND #&FB:STA &FE34
 
 	.return
 	RTS
@@ -284,6 +278,16 @@ ENDIF
 	STA &FE34					; 4c++
 
     RTS
+}
+
+.parallax_kill
+{
+	JSR crtc_reset
+
+	\\ Ensure we're displaying main memory
+
+	LDA &FE34:AND #&FE:STA &FE34
+	RTS
 }
 
 \\ For rot value N ptr to framebuffer

@@ -44,37 +44,34 @@ MACRO SEQUENCE_WAIT_SECS secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+MACRO SEQUENCE_FX_FOR_SECS fxfn, secs
+    SCRIPT_CALL fxfn
+    SCRIPT_SEGMENT_START secs
+    ; just wait
+    SCRIPT_SEGMENT_END
+ENDMACRO
+
 .sequence_script_start
 
-SCRIPT_CALL sequence_set_fx_kefrens
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
 
-SEQUENCE_WAIT_SECS 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 5.0
 
-SCRIPT_CALL sequence_set_fx_boxrot
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 1.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 1.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 1.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 1.0
 
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_parallax
-
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_twister
-
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_kefrens
-
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_boxrot
-
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_parallax
-
-SEQUENCE_WAIT_SECS 2.0
-
-SCRIPT_CALL sequence_set_fx_twister
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 10.0
 
 SCRIPT_END
 

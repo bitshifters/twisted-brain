@@ -471,7 +471,7 @@ INCLUDE "fx/sequence.asm"
 	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
 	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
 	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
-	EQUW parallax_init, parallax_update, parallax_draw, crtc_reset
+	EQUW parallax_init, parallax_update, parallax_draw, parallax_kill
 }
 
 .main_fx_slot
