@@ -7,11 +7,41 @@ kefrens_index_offset = locals_start + 1
 
 .kefrens_start
 
+\ ******************************************************************
+\ Initialise FX
+\
+\ The initialise function is used to set up all variables, tables and
+\ any precalculated screen memory etc. required for the FX.
+\
+\ This function will be called during vblank
+\ The CRTC registers & ULA will be set to default MODE 2 values
+\ The screen display will already be turned OFF with CRTC R8
+\
+\ The function can take as long as is necessary to initialise BUT:
+\ MUST BE RESPONSIBLE FOR POLLING THE MUSIC PLAYER IF A VSYNC OCCURS
+\ There are* helper functions to assit with this for decrunch etc.
+\ ******************************************************************
+
 .kefrens_init
 {
     STZ kefrens_index_offset
 	RTS
 }
+
+\ ******************************************************************
+\ Update FX
+\
+\ The update function is used to update / tick any variables used
+\ in the FX. It may also prepare part of the screen buffer before
+\ drawing commenses but note the strict timing constraints!
+\
+\ This function will be called during vblank, after the music player
+\ has been polled and after the scripting system has been updated
+\
+\ The function MUST COMPLETE BEFORE TIMER 1 REACHES 0, i.e. before
+\ scanline 0 begins. If you are late then the draw function will be
+\ late and your raster timings will be wrong!
+\ ******************************************************************
 
 .kefrens_update
 {
@@ -19,7 +49,22 @@ kefrens_index_offset = locals_start + 1
 	JMP screen_clear_line0
 }
 
-\\ Design this to function to be called at visible scanline -1
+\ ******************************************************************
+\ Draw FX
+\
+\ The draw function is the main body of the FX.
+\
+\ This function will be exactly at the start* of scanline 0 with a
+\ maximum jitter of up to +10 cycles.
+\
+\ This means that a new CRTC cycle has just started! If you didn't
+\ specify the registers from the previous frame then they will be
+\ the default MODE 2 values as per initialisation.
+\
+\ If messing with CRTC registers, THIS FUNCTION MUST ALWAYS PRODUCE
+\ A FULL AND VALID 312 line PAL signal before exiting!
+\ ******************************************************************
+
 .kefrens_draw
 {
 	\\ We're only ever going to display this one scanline

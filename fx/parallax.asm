@@ -280,6 +280,26 @@ ENDIF
     RTS
 }
 
+\ ******************************************************************
+\ Kill FX
+\
+\ The kill function is used to tidy up any craziness that your FX
+\ might have created and return the system back to the expected
+\ default state, ready to initialise the next FX.
+\
+\ This function will be exactly at the start* of scanline 0 with a
+\ maximum jitter of up to +10 cycles.
+\
+\ This means that a new CRTC cycle has just started! If you didn't
+\ specify the registers from the previous frame then they will be
+\ the default MODE 2 values as per initialisation.
+\
+\ THIS FUNCTION MUST ALWAYS ENSURE A FULL AND VALID 312 line PAL
+\ signal will take place this frame! The easiest way to do this is
+\ to simply call crtc_reset.
+\
+\ ******************************************************************
+
 .parallax_kill
 {
 	JSR crtc_reset

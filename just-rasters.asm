@@ -465,8 +465,6 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-\\ INIT FNS NEED TO SET CORRECT MODE!
-\\
 	EQUW do_nothing,    do_nothing,      do_nothing,    do_nothing
 	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
 	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
@@ -476,7 +474,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5		; need something better here!
+	EQUB 4, 4, 4, 5, 5		; need something better here?
 }
 
 .data_end
