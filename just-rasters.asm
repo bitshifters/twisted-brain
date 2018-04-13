@@ -116,8 +116,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	STA &FE4E					; R14=Interrupt Enable (enable main_vsync and timer interrupt)
 	CLI							; enable interupts
 
-	\\ NEED TO TURN OFF INTERLACE HERE!
-
 	\\ Load SIDEWAYS RAM modules here
 
 	LDA #4:JSR swr_select_slot
@@ -146,13 +144,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #1
 	STA delta_time
 	
-	\\ Set initial screen mode
-	\\ TODO - set mode manually to hide displaying data loaded into screen memory
-	\\ (Remove ugly flicker of garbage when mode is set)
-
-	LDA #22:JSR oswrch
-	LDA #2:JSR oswrch
-
 	\\ Initialise music player
 
 	LDX #LO(music_data)
@@ -164,6 +155,20 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDX #LO(sequence_script_start)
 	LDY #HI(sequence_script_start)
 	JSR script_init
+
+	\\ Set initial screen mode manually
+	\\ Stop us seeing any garbage that has been loaded into screen memory
+	\\ And hides the screen until first FX is ready to be shown
+
+	JSR wait_vsync
+	JSR crtc_reset
+	JSR ula_pal_reset
+	JSR ula_control_reset
+	JSR crtc_hide_screen
+	JSR screen_clear_all
+
+;	LDA #22:JSR oswrch
+;	LDA #2:JSR oswrch
 
 	\ ******************************************************************
 	\ *	DEMO START - from here on out there is no OS to help you!!
@@ -178,15 +183,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		.vsync1
 		bit &FE4D
 		beq vsync1 \ wait for vsync
-		sta &FE4D \ 4(stretched), ack vsync
 
-		\we might have a hanging vsync flag so wait for another one
-
-		.vsync2
-		bit &FE4D
-		beq vsync2 \ wait for vsync
 		\now we're within 10 cycles of vsync having hit
-
 
 		\delay just less than one frame
 		.syncloop
@@ -297,7 +295,7 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .main_loop
 
-	\\  Do useful work after vsync
+	\\  Do useful work during vblank (vsync will occur at some point)
 
 	{
 		INC vsync_counter
@@ -383,7 +381,7 @@ ENDIF
 	CMP main_fx_enum
 	BEQ continue
 
-	\\ It has so we'd better put the CRTC straight first
+	\\ It has so we'd better put the CRTC straight for the rest of this frame
 
 	.call_kill
 	JSR crtc_reset
@@ -406,10 +404,8 @@ ENDIF
 
 	\\ If this is the first frame we can show the screen
 
+	DEC A:STA first_frame
 	JSR crtc_show_screen
-
-	LDA #&FF
-	STA first_frame
 
 	\\ Loop as fast as possible
 

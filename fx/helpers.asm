@@ -2,6 +2,8 @@
 \ *	FX Helper functions
 \ ******************************************************************
 
+_DONT_HIDE_SCREEN = FALSE		; for debugging FX init
+
 .helpers_start
 
 \\ During script update a new FX was requested so we're being killed
@@ -40,16 +42,30 @@
 
 .crtc_hide_screen
 {
+IF _DONT_HIDE_SCREEN=FALSE
 	LDA #8:STA &FE00
 	LDA #&30:STA &FE01
+ENDIF
 	RTS
 }
 
 .crtc_show_screen
 {
+IF _DONT_HIDE_SCREEN=FALSE
 	LDA #8:STA &FE00
 	LDA #0:STA &FE01
+ENDIF
 	RTS
+}
+
+.wait_vsync
+{
+	lda #2
+	.vsync1
+	bit &FE4D
+	beq vsync1 \ wait for vsync
+	sta &FE4D \ 4(stretched), ack vsync
+	rts	
 }
 
 .ula_pal_reset
@@ -86,7 +102,8 @@
 .ula_control_reset
 {
     LDA #ULA_Mode2
-    STA &FE30
+    STA &248            ; Tell the OS or it will mess with ULA settings at vsync
+    STA &FE20
     RTS
 }
 
