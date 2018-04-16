@@ -83,7 +83,8 @@ GUARD &90
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
 
-.locals_start
+.locals_start			SKIP 16		; guarantee 16 locals
+.locals_top
 
 \ ******************************************************************
 \ *	CODE START
@@ -482,12 +483,12 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-	EQUW do_nothing,        do_nothing,          do_nothing,        do_nothing
-	EQUW kefrens_init,      kefrens_update,      kefrens_draw,      crtc_reset
-	EQUW twister_init,      twister_update,      twister_draw,      crtc_reset
-	EQUW boxrot_init,       boxrot_update,       boxrot_draw,       ula_pal_reset
-	EQUW parallax_init,     parallax_update,     parallax_draw,     parallax_kill
-	EQUW checker_zoom_init, checker_zoom_update, checker_zoom_draw, checker_zoom_kill
+	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
+	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    crtc_reset
+	EQUW twister_init,    twister_update,    twister_draw,    crtc_reset
+	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
+	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
 }
 
 .main_fx_slot
@@ -610,7 +611,7 @@ PRINT "BANK 1"
 PRINT "------"
 PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
-PRINT "CHECKER ZOOM size =", ~checker_zoom_end-checker_zoom_start
+PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
