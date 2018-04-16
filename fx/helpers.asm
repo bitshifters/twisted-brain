@@ -70,6 +70,14 @@ ENDIF
 
 .ula_pal_reset
 {
+	LDX #LO(ula_pal_defaults)
+	LDY #HI(ula_pal_defaults)
+}
+\\ Fall through!
+.ula_set_palette
+{
+	STX palloop+1
+	STY palloop+2
 	LDX #15
 	.palloop
 	LDA ula_pal_defaults, X
@@ -102,6 +110,10 @@ ENDIF
 .ula_control_reset
 {
     LDA #ULA_Mode2
+}
+\\ Fall through!
+.ula_set_mode
+{
     STA &248            ; Tell the OS or it will mess with ULA settings at vsync
     STA &FE20
     RTS

@@ -34,6 +34,12 @@
     JMP main_set_fx
 }
 
+.sequence_set_fx_checkerzoom
+{
+    LDA #fx_CheckerZoom
+    JMP main_set_fx
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -54,6 +60,9 @@ ENDMACRO
 .sequence_script_start
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 20.0
+
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0

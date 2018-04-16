@@ -37,7 +37,8 @@ fx_Kefrens = 1
 fx_Twister = 2
 fx_BoxRot = 3
 fx_Parallax = 4
-fx_MAX = 5
+fx_CheckerZoom = 5
+fx_MAX = 6
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -268,9 +269,25 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		JSR swr_select_slot
 	}
 
+IF 1
+	{
+		lda #&42
+		sta &FE4D	\ clear vsync & timer 1 flags
+
+		\\ Wait for Timer1 at scanline 0
+
+		lda #&40
+		.waitTimer1
+		bit &FE4D
+		beq waitTimer1
+		sta &FE4D
+	}
+ENDIF
+
+	\\ Call init fn exactly on scanline 0 in case we want to set new mode
+
 	.call_init
 	JSR &FFFF
-
 
 	\\ We don't know how long the init took so resync
 
@@ -465,16 +482,17 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-	EQUW do_nothing,    do_nothing,      do_nothing,    do_nothing
-	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
-	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
-	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
-	EQUW parallax_init, parallax_update, parallax_draw, parallax_kill
+	EQUW do_nothing,        do_nothing,          do_nothing,        do_nothing
+	EQUW kefrens_init,      kefrens_update,      kefrens_draw,      crtc_reset
+	EQUW twister_init,      twister_update,      twister_draw,      crtc_reset
+	EQUW boxrot_init,       boxrot_update,       boxrot_draw,       ula_pal_reset
+	EQUW parallax_init,     parallax_update,     parallax_draw,     parallax_kill
+	EQUW checker_zoom_init, checker_zoom_update, checker_zoom_draw, checker_zoom_kill
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5		; need something better here?
 }
 
 .data_end
@@ -577,6 +595,7 @@ GUARD &C000
 PAGE_ALIGN
 INCLUDE "fx/boxrot.asm"
 INCLUDE "fx/parallax.asm"
+INCLUDE "fx/checker-zoom.asm"
 
 .bank1_end
 
@@ -591,6 +610,7 @@ PRINT "BANK 1"
 PRINT "------"
 PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
+PRINT "CHECKER ZOOM size =", ~checker_zoom_end-checker_zoom_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
