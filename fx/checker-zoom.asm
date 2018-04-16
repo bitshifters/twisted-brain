@@ -2,17 +2,26 @@
 \ *	Checkerboard Zoom
 \ ******************************************************************
 
-checker_zoom_temp = locals_start + 0
-checker_zoom_yoff = locals_start + 1
-checker_zoom_xoff = locals_start + 2
-checker_zoom_c = locals_start + 3
-checker_zoom_N = locals_start + 4
-checker_zoom_count = locals_start + 5
+checker_zoom_parity = locals_start + 0
+checker_zoom_xoff = locals_start + 1
+checker_zoom_yoff = locals_start + 2
+checker_zoom_XdivN = locals_start + 3
+checker_zoom_XmodN = locals_start + 5
+checker_zoom_YdivN = locals_start + 6
+checker_zoom_YmodN = locals_start + 8
+checker_zoom_N = locals_start + 9
+checker_zoom_dir = locals_start + 10
+
+MAX_CHECK_SIZE=32
 
 .checker_zoom_start
 
 .checker_zoom_init
 {
+    LDA #1
+    STA checker_zoom_N
+    STA checker_zoom_dir
+    STX checker_zoom_xoff
     STZ checker_zoom_yoff
 
     LDA #ULA_Mode4
@@ -58,66 +67,155 @@ checker_zoom_count = locals_start + 5
 
 .checker_zoom_update
 {
-IF 0
-    FOR n,0,39,8
-    LDA #0
-    STA &3000+n*8
-    STA &3008+n*8
-    STA &3010+n*8
-    STA &3018+n*8
-    LDA #&FF
-    STA &3020+n*8
-    STA &3028+n*8
-    STA &3030+n*8
-    STA &3038+n*8
-    NEXT
-ELSE
-
-    STZ checker_zoom_c
-
-    LDA #32
-    STA checker_zoom_N
-
-    LDA #40
-    STA checker_zoom_count
-
-    LDA checker_zoom_yoff
-    AND #&1f
-    TAX
-;    LDX #0      ; p
-
-    FOR C,0,39,1
-    {
-        LDA #0
-
-        FOR b,0,7,1
-        {
-            CLC
-            ROL A
-            ORA checker_zoom_c
-            INX
-            CPX checker_zoom_N
-            BCC same_bit
-
-            \\ New bit
-            STA checker_zoom_temp
-            LDA checker_zoom_c
-            EOR #1
-            STA checker_zoom_c
-            LDA checker_zoom_temp
-            LDX #0
-
-            .same_bit
-        }
-        NEXT
-
-        STA &3000 + C*8
-    }
-    NEXT
-ENDIF
-
+    \\ Could actually keep track of DIV N and MOD N here rather than
+    \\ do long division each time...
     INC checker_zoom_yoff
+    INC checker_zoom_xoff
 
+    LDA checker_zoom_dir
+    BMI shrink
+    \\ Grow
+    CLC
+    ADC checker_zoom_N
+    CMP #MAX_CHECK_SIZE
+    BCC ok
+
+    LDX #&FF
+    STX checker_zoom_dir
+    BNE ok
+
+    .shrink
+    CLC
+    ADC checker_zoom_N
+    CMP #2
+    BCS ok
+
+    LDX #1
+    STX checker_zoom_dir
+
+    .ok
+    STA checker_zoom_N
+    
+
+    \\ Addresss is checker_table + N*16 + offset*2
+    LDA checker_zoom_N
+    ASL A
+    TAX
+    LDA checker_lookup-2, X
+    STA readptr
+    LDA checker_lookup-2+1, X
+    STA readptr+1
+
+	\\ Divide yoff by N
+	LDA checker_zoom_yoff
+	STA checker_zoom_YdivN
+    STZ checker_zoom_YdivN+1
+
+	\\ 16bit/8bit math = 16bit result
+    {
+        LDX #16
+        LDA #0
+        .div_loop
+        ASL checker_zoom_YdivN
+        ROL checker_zoom_YdivN+1
+        ROL A
+        CMP checker_zoom_N
+        BCC no_sub
+        SBC checker_zoom_N
+        INC checker_zoom_YdivN
+        .no_sub
+        DEX
+        BNE div_loop
+        
+        \\ A contains remainder (Y MOD N)
+        STA checker_zoom_YmodN
+    }
+
+	\\ Divide xoff by N
+	LDA checker_zoom_xoff
+	STA checker_zoom_XdivN
+    STZ checker_zoom_XdivN+1
+
+	\\ 16bit/8bit math = 16bit result
+    {
+        LDX #16
+        LDA #0
+        .div_loop
+        ASL checker_zoom_XdivN
+        ROL checker_zoom_XdivN+1
+        ROL A
+        CMP checker_zoom_N
+        BCC no_sub
+        SBC checker_zoom_N
+        INC checker_zoom_XdivN
+        .no_sub
+        DEX
+        BNE div_loop
+        
+        \\ A contains remainder (X MOD N)
+        STA checker_zoom_XmodN
+    }
+
+    \\ (X MOD N) MOD 8 gives which pixel offset table to use
+    AND #&7
+    ASL A
+    TAY
+
+    \\ Finally have address of our data
+    LDA (readptr),Y
+    STA smRead+1
+    INY
+    LDA (readptr),Y
+    STA smRead+2
+
+    LDA #LO(screen_base_addr)
+    STA smWrite+1
+    LDA #HI(screen_base_addr)
+    STA smWrite+2
+
+    \\ (X MOD N) DIV 8 gives byte offset to start in data
+    LDA checker_zoom_XmodN
+    LSR A:LSR A:LSR A
+    TAX
+
+    LDY #40
+    .lineloop
+
+    .smRead
+    LDA &FFFF, X
+
+    .smWrite
+    STA &FFFF
+
+    \\ Increment byte read and wrap around
+    INX
+    CPX checker_zoom_N
+    BCC no_wrap
+
+    LDX #0
+    .no_wrap
+
+    CLC
+    LDA smWrite+1
+    ADC #8
+    STA smWrite+1
+    BCC no_carry
+    INC smWrite+2
+    .no_carry
+
+    DEY
+    BNE lineloop
+
+    \\ Parity of colour flip
+    LDA checker_zoom_XdivN
+    AND #&1
+    STA checker_zoom_parity
+    LDA checker_zoom_YdivN
+    AND #&1
+    EOR checker_zoom_parity
+    STA checker_zoom_parity
+
+     .return
     RTS
 }
 
@@ -151,24 +249,34 @@ ENDIF
 	NEXT
 
 	LDX #2			; 2c
-
-    LDY checker_zoom_yoff
+    LDY checker_zoom_YmodN  ; 3c
 
     .here
 
-    FOR n,1,49,1    ; 98c
+    FOR n,1,47,1    ; 98c
     NOP
     NEXT
 
-    TYA             ; 2c
-    LSR A:LSR A:LSR A:LSR A:LSR A   ; 10c
-    AND #&1         ; 2c
-    ORA #ULA_Mode4  ; 2c
-    STA &FE20       ; 4c
-    INY             ; 2c
+    LDA checker_zoom_parity ; 3c
+    ORA #ULA_Mode4          ; 2c
+    STA &FE20               ; 4c
 
-    BIT 0           ; 3c
+    INY                     ; 2c
+    CPY checker_zoom_N      ; 3c
 
+    BCC no_wrap             ; 2c/3c
+
+    LDA checker_zoom_parity ; 3c
+    EOR #1                  ; 2c
+    STA checker_zoom_parity ; 3c
+    LDY #0                  ; 2c
+    BRA next_line           ; 3c
+    ; carry path = 15c
+
+    .no_wrap
+    NOP:NOP:NOP:NOP:NOP:NOP ; 12c + BCC taken = 15c
+
+    .next_line
 	INX				; 2c
 	BNE here		; 3c
 
@@ -197,5 +305,55 @@ ENDIF
 	JSR ula_pal_reset
 	JMP ula_control_reset
 }
+
+.checker_data
+FOR N,1,MAX_CHECK_SIZE,1
+\\ checker N offset off
+
+;FOR off,0,(N-1)MOD8,1
+FOR off,0,7,1
+PRINT "N=",N," offset=",off
+
+FOR bit,0,N*8-1,8
+
+    b7=((off+bit+0) DIV N) MOD 2
+    b6=((off+bit+1) DIV N) MOD 2
+    b5=((off+bit+2) DIV N) MOD 2
+    b4=((off+bit+3) DIV N) MOD 2
+    b3=((off+bit+4) DIV N) MOD 2
+    b2=((off+bit+5) DIV N) MOD 2
+    b1=((off+bit+6) DIV N) MOD 2
+    b0=((off+bit+7) DIV N) MOD 2
+
+;    PRINT "%",b7,b6,b5,b4,b3,b2,b1,b0
+    EQUB (b7<<7)OR(b6<<6)OR(b5<<5)OR(b4<<4)OR(b3<<3)OR(b2<<2)OR(b1<<1)OR(b0<<0)
+NEXT
+
+NEXT
+
+NEXT
+
+.checker_table
+FOR N,1,MAX_CHECK_SIZE,1
+
+\\ Each checker data size = 8*N bytes
+
+\\ 8*(1+2+3+4+5..)
+\\ 8*N*(N+1)/2
+\\ 4*N*(N+1)
+
+prev=4*(N-1)*N
+PRINT "N=",N," prev=", prev
+
+FOR off,0,7,1
+EQUW checker_data + prev + off * N
+NEXT
+
+NEXT
+
+.checker_lookup
+FOR N,1,MAX_CHECK_SIZE,1
+EQUW checker_table + (N-1)*16
+NEXT
 
 .checker_zoom_end
