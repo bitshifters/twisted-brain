@@ -10,22 +10,23 @@ checkzoom_XmodN = locals_start + 5
 checkzoom_YdivN = locals_start + 6
 checkzoom_YmodN = locals_start + 8
 checkzoom_N = locals_start + 9
-checkzoom_I = locals_start + 10
+checkzoom_data = locals_start + 10
 checkzoom_dir = locals_start + 11
 checkzoom_idx = locals_start + 12
 checkzoom_idy = locals_start + 13
 checkzoom_delay = locals_start + 14
+checkzoom_temp = locals_start + 15
 
-MAX_CHECK_SIZE = 16
-CHECKZOOM_DELAY = 2
-CHECKER_ZOOM = FALSE
+MAX_CHECK_SIZE = 255
+CHECKZOOM_DELAY = 1
+CHECKER_ZOOM = TRUE
 
 .checkzoom_start
 
 .checkzoom_init
 {
-    LDA #15
-    STA checkzoom_I
+    LDA #129
+    STA checkzoom_N
 
     LDA #CHECKZOOM_DELAY
     STA checkzoom_delay
@@ -82,11 +83,6 @@ CHECKER_ZOOM = FALSE
 
 .checkzoom_update
 {
-    \\ Could actually keep track of DIV N and MOD N here rather than
-    \\ do long division each time...
-;    INC checkzoom_yoff
-;    INC checkzoom_xoff
-
 	\\ X = 40 + sin(iy) / 4
 	LDY checkzoom_idx
 	LDA fx_particles_table, Y
@@ -110,50 +106,41 @@ CHECKER_ZOOM = FALSE
     STA checkzoom_idy
 
 IF CHECKER_ZOOM
-    DEC checkzoom_delay
-    BNE not_today
+    {
+;        DEC checkzoom_delay
+;        BNE not_today
 
-    LDA #CHECKZOOM_DELAY
-    STA checkzoom_delay
+;        LDA #CHECKZOOM_DELAY
+;        STA checkzoom_delay
 
-    \\ Update N
-    LDA checkzoom_dir
-    BMI shrink
-    \\ Grow
-    CLC
-    ADC checkzoom_I
-    CMP #MAX_CHECK_SIZE-1
-    BCC ok
+        \\ Update N
+        LDA checkzoom_dir
+        BMI shrink
+        \\ Grow
+        CLC
+        ADC checkzoom_N
+        CMP #MAX_CHECK_SIZE-1
+        BCC ok
 
-    LDX #&FF
-    STX checkzoom_dir
-    BNE ok
+        LDX #&FF
+        STX checkzoom_dir
+        BNE ok
 
-    .shrink
-    CLC
-    ADC checkzoom_I
-    BNE ok
+        .shrink
+        CLC
+        ADC checkzoom_N
+        CMP #2
+        BCS ok
 
-    LDX #1
-    STX checkzoom_dir
+        LDX #1
+        STX checkzoom_dir
 
-    .ok
-    STA checkzoom_I
+        .ok
+        STA checkzoom_N
 
-    .not_today
+        .not_today
+    }
 ENDIF
-
-    \\ Addresss is checker_table + N*16 + offset*2
-    LDA checkzoom_I
-    ASL A:ASL A
-    TAX
-    LDA checker_table, X
-    STA checkzoom_N
-
-    LDA checker_table+2, X
-    STA readptr
-    LDA checker_table+3, X
-    STA readptr+1
 
 	\\ Divide yoff by N
 	LDA checkzoom_yoff
@@ -205,7 +192,33 @@ ENDIF
         STA checkzoom_XmodN
     }
 
+    \\ Parity of colour flip
+    LDA checkzoom_XdivN
+    AND #&1
+    STA checkzoom_parity
+    LDA checkzoom_YdivN
+    AND #&1
+    EOR checkzoom_parity
+    STA checkzoom_parity
+
+    \\ Now draw the checker pattern, at least one line of it
+
+    LDA checkzoom_N
+    CMP #8
+    BCS draw_long_lines
+
+    \\ Otherwise use lookup table
+
+    ASL A:TAX
+
+    \\ Addresss is checker_table + N*16 + offset*2
+    LDA checker_table-2, X
+    STA readptr
+    LDA checker_table-2+1, X
+    STA readptr+1
+
     \\ (X MOD N) MOD 8 gives which pixel offset table to use
+    LDA checkzoom_XmodN
     AND #&7
     ASL A
     TAY
@@ -255,16 +268,70 @@ ENDIF
     DEY
     BNE lineloop
 
-    \\ Parity of colour flip
-    LDA checkzoom_XdivN
-    AND #&1
-    STA checkzoom_parity
-    LDA checkzoom_YdivN
-    AND #&1
-    EOR checkzoom_parity
-    STA checkzoom_parity
-
      .return
+    RTS
+
+    .draw_long_lines
+    LDA #LO(screen_base_addr)
+    STA writeptr
+    LDA #HI(screen_base_addr)
+    STA writeptr+1
+
+    \\ How many pixels to start with
+    SEC
+    LDA checkzoom_N
+    SBC checkzoom_XmodN
+    TAX
+
+    \\ Always start with black
+    STZ checkzoom_data
+    LDY #40
+
+    .long_line_loop
+    CPX #8
+    BCS write_whole_byte
+
+    \\ Write partial byte
+    LDA checkzoom_data
+    AND checker_left_mask, X
+    STA checkzoom_temp
+
+    \\ Flip our bits
+    LDA checkzoom_data
+    EOR #&FF
+    STA checkzoom_data
+
+    AND checker_right_mask, X
+    ORA checkzoom_temp
+    STA (writeptr)
+
+    SEC
+    LDA checkzoom_N
+    SBC checker_lazy_table, X
+    TAX
+    BRA next_column
+    
+    .write_whole_byte
+    LDA checkzoom_data
+    STA (writeptr)
+
+    SEC
+    TXA
+    SBC #8
+    TAX
+
+    .next_column
+    CLC
+    LDA writeptr
+    ADC #8
+    STA writeptr
+    BCC no_carry2
+    INC writeptr+1
+    .no_carry2
+
+    DEY
+    BNE long_line_loop
+
     RTS
 }
 
@@ -302,9 +369,10 @@ ENDIF
 
     .here
 
-    FOR n,1,47,1    ; 98c
+    FOR n,1,45,1    ; 98c
     NOP
     NEXT
+    BIT 0
 
     LDA checkzoom_parity ; 3c
     ORA #ULA_Mode4          ; 2c
@@ -390,70 +458,57 @@ ENDMACRO
 \\ Still need to figure out variable size table compilation
 
 .checker_1
-CHECKER_DATA 4
+CHECKER_DATA 1
 
 .checker_2
-CHECKER_DATA 8
+CHECKER_DATA 2
 
 .checker_3
-CHECKER_DATA 12
+CHECKER_DATA 3
 
 .checker_4
-CHECKER_DATA 16
+CHECKER_DATA 4
 
 .checker_5
-CHECKER_DATA 20
+CHECKER_DATA 5
 
 .checker_6
-CHECKER_DATA 24
+CHECKER_DATA 6
 
 .checker_7
-CHECKER_DATA 28
-
-.checker_8
-CHECKER_DATA 32
-
-.checker_9
-CHECKER_DATA 40
-
-.checker_10
-CHECKER_DATA 48
-
-.checker_11
-CHECKER_DATA 56
-
-.checker_12
-CHECKER_DATA 64
-
-.checker_13
-CHECKER_DATA 80
-
-.checker_14
-CHECKER_DATA 96
-
-.checker_15
-CHECKER_DATA 128
-
-.checker_16
-CHECKER_DATA 160
+CHECKER_DATA 7
 
 .checker_table
-EQUW 4, checker_1
-EQUW 8, checker_2
-EQUW 12, checker_3
-EQUW 16, checker_4
-EQUW 20, checker_5
-EQUW 24, checker_6
-EQUW 28, checker_7
-EQUW 32, checker_8
-EQUW 40, checker_9
-EQUW 48, checker_10
-EQUW 56, checker_11
-EQUW 64, checker_12
-EQUW 80, checker_13
-EQUW 96, checker_14
-EQUW 128, checker_15
-EQUW 160, checker_16
+EQUW checker_1
+EQUW checker_2
+EQUW checker_3
+EQUW checker_4
+EQUW checker_5
+EQUW checker_6
+EQUW checker_7
+
+.checker_left_mask
+EQUB %00000000
+EQUB %10000000
+EQUB %11000000
+EQUB %11100000
+EQUB %11110000
+EQUB %11111000
+EQUB %11111100
+EQUB %11111110
+
+.checker_right_mask
+EQUB %11111111
+EQUB %01111111
+EQUB %00111111
+EQUB %00011111
+EQUB %00001111
+EQUB %00000111
+EQUB %00000011
+EQUB %00000001
+
+.checker_lazy_table
+EQUB 8,7,6,5,4,3,2,1
 
 .fx_particles_table
 FOR n,0,&13F,1
