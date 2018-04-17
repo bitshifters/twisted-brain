@@ -25,23 +25,7 @@ CHECKER_ZOOM = TRUE
 
 .checkzoom_init
 {
-    LDA #129
-    STA checkzoom_N
-
-    LDA #CHECKZOOM_DELAY
-    STA checkzoom_delay
-
-    LDA #&FF
-    STA checkzoom_dir
-
-    STZ checkzoom_xoff
-    STZ checkzoom_yoff
-
-    STZ checkzoom_idx
-    STZ checkzoom_idy
-
-    LDA #ULA_Mode4
-    JSR ula_set_mode
+    SET_ULA_MODE ULA_Mode4
 
     \\ Set MODE 4
     LDA #0: STA &FE00
@@ -58,7 +42,24 @@ CHECKER_ZOOM = TRUE
     
     LDX #LO(checkzoom_pal)
     LDY #HI(checkzoom_pal)
-    JMP ula_set_palette
+    JSR ula_set_palette
+
+    LDA #129
+    STA checkzoom_N
+
+    LDA #CHECKZOOM_DELAY
+    STA checkzoom_delay
+
+    LDA #&FF
+    STA checkzoom_dir
+
+    STZ checkzoom_xoff
+    STZ checkzoom_yoff
+
+    STZ checkzoom_idx
+    STZ checkzoom_idy
+
+    RTS
 }
 
 .checkzoom_pal
@@ -418,9 +419,35 @@ ENDIF
 
 .checkzoom_kill
 {
-	JSR crtc_reset
-	JSR ula_pal_reset
-	JMP ula_control_reset
+    SET_ULA_MODE ULA_Mode2
+
+    \\ Unset MODE 
+    \\ Don't call crtc_reset as we need to select order of registers to beat raster
+    LDX #2: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #0: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #9: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #1: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #3: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #4: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #6: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+    LDX #7: STX &FE00
+    LDA crtc_regs_high, X: STA &FE01
+
+	JMP ula_pal_reset
 }
 
 MACRO CHECKER_DATA N

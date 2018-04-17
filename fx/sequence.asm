@@ -61,11 +61,11 @@ ENDMACRO
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 20.0
-
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 20.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 5.0

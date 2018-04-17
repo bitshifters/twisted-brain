@@ -26,6 +26,13 @@ MACRO PAGE_ALIGN
     ALIGN &100
 ENDMACRO
 
+MACRO SET_ULA_MODE ula_mode
+{
+	LDA #ula_mode
+    STA &FE20:STA &248
+}
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************

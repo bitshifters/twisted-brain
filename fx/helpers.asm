@@ -114,8 +114,8 @@ ENDIF
 \\ Fall through!
 .ula_set_mode
 {
-    STA &248            ; Tell the OS or it will mess with ULA settings at vsync
     STA &FE20
+    STA &248            ; Tell the OS or it will mess with ULA settings at vsync
     RTS
 }
 
