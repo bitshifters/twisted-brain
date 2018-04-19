@@ -538,7 +538,9 @@ PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
 PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
+PRINT "HELPERS size =",~helpers_end-helpers_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
+PRINT "DATA size =",~data_end-data_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~screen_base_addr-P%
