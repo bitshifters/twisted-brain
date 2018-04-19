@@ -202,6 +202,11 @@ ENDIF
     EOR checkzoom_parity
     STA checkzoom_parity
 
+    \\ We're in the vblank so OK to set this ready for scanline 0
+
+    ORA #ULA_Mode4          ; 2c
+    STA &FE20               ; 4c
+
     \\ Now draw the checker pattern, at least one line of it
 
     LDA checkzoom_N
@@ -413,7 +418,7 @@ ENDIF
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-	
+
     RTS        
 }
 

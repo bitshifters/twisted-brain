@@ -1,0 +1,911 @@
+\ ******************************************************************
+\ *	Vertical parallax bars implemented using vertical rupture
+\ ******************************************************************
+
+\ ******************************************************************
+\ *	Define OS entries (could be INCLUDE bbc_os.h)
+\ ******************************************************************
+
+oswrch = &FFEE
+osasci = &FFE3
+osbyte = &FFF4
+osword = &FFF1
+
+INKEY_x = 66
+INKEY_z = 97
+INKEY_q = 16
+INKEY_a = 65
+INKEY_esc = 112
+
+\ ******************************************************************
+\ *	Define debug flags (prefer DEBUG_* naming?)
+\ ******************************************************************
+
+DEBUG_RASTERS = TRUE
+
+\ ******************************************************************
+\ *	Define macros (prefer MACRO_* naming?)
+\ ******************************************************************
+
+MACRO SETCOL_MODE2 logical, actual
+{
+	LDA #(logical * 16) + actual
+	STA &FE21
+	ORA #&80
+	STA &FE21
+}
+ENDMACRO
+
+MACRO WAIT_FOR_KEYPRESS key
+{
+	.wait_for_keypress
+	LDA #key:STA &FE4F:LDA &FE4F:BPL wait_for_keypress
+}
+ENDMACRO
+
+\ ******************************************************************
+\ *	Values of palette regs for MODE 2
+\ ******************************************************************
+
+PAL_black	= (0 EOR 7)
+PAL_blue	= (4 EOR 7)
+PAL_red		= (1 EOR 7)
+PAL_magenta = (5 EOR 7)
+PAL_green	= (2 EOR 7)
+PAL_cyan	= (6 EOR 7)
+PAL_yellow	= (3 EOR 7)
+PAL_white	= (7 EOR 7)
+
+ULA_MODE0	= &9C
+ULA_MODE1	= &D8
+ULA_MODE2	= &F4
+
+\\ Could probably define these as a macro PIXEL_LEFT and PIXEL_RIGHT
+
+PIXEL_LEFT_0 = &00
+PIXEL_LEFT_1 = &02
+PIXEL_LEFT_2 = &08
+PIXEL_LEFT_3 = &0A
+PIXEL_LEFT_4 = &20
+PIXEL_LEFT_5 = &22
+PIXEL_LEFT_6 = &28
+PIXEL_LEFT_7 = &2A
+PIXEL_LEFT_8 = &80
+PIXEL_LEFT_9 = &82
+PIXEL_LEFT_A = &88
+PIXEL_LEFT_B = &8A
+PIXEL_LEFT_C = &A0
+PIXEL_LEFT_D = &A2
+PIXEL_LEFT_E = &A8
+PIXEL_LEFT_F = &AA
+
+PIXEL_RIGHT_0 = &00
+PIXEL_RIGHT_1 = &01
+PIXEL_RIGHT_2 = &04
+PIXEL_RIGHT_3 = &05
+PIXEL_RIGHT_4 = &10
+PIXEL_RIGHT_5 = &11
+PIXEL_RIGHT_6 = &14
+PIXEL_RIGHT_7 = &15
+PIXEL_RIGHT_8 = &40
+PIXEL_RIGHT_9 = &41
+PIXEL_RIGHT_A = &44
+PIXEL_RIGHT_B = &45
+PIXEL_RIGHT_C = &50
+PIXEL_RIGHT_D = &51
+PIXEL_RIGHT_E = &54
+PIXEL_RIGHT_F = &55
+
+\ ******************************************************************
+\ *	Define global constants
+\ *	Prefer MAIN_* or DEMO_* naming?
+\ ******************************************************************
+
+MAIN_screen_base_addr = &3000
+MAIN_screen_top_addr = &8000
+MAIN_screen_size = MAIN_screen_top_addr - MAIN_screen_base_addr
+
+MAIN_screen_num_cols = 40
+MAIN_screen_bytes_per_col = 16
+MAIN_screen_bytes_per_row = 640			; = MAIN_screen_bytes_per_col * MAIN_screen_num_cols
+
+MAIN_clocks_per_scanline = 64
+MAIN_scanlines_per_row = 8
+
+\\ 	scraddr = MAIN_screen_base_addr + (y MOD 8) + (y DIV 8) * MAIN_screen_bytes_per_row + (x DIV 4) * 8
+
+TIMER_initial = (40 * 64) - 2			; was 34
+TIMER_latch = (8 * 64) - 2				; we actually want palette change during lines 14 & 15 so start -2 lines
+
+LINE_BUFFER_size = 128
+LINE_BUFFER_width = 80
+LINE_BUFFER_start = 24
+
+MAIN_screen_second_addr = (MAIN_screen_base_addr + 2 * MAIN_screen_bytes_per_row)
+MAIN_screen_third_addr = (MAIN_screen_base_addr + 4 * MAIN_screen_bytes_per_row)
+									
+\ ******************************************************************
+\ *	Define fast (zero page) runtime variables
+\ *	Prefer main_* or demo_* naming
+\ * Maybe have naming convention for variables used only in specific
+\ * functions that don't need to be preserved between routines?
+\ * <system>_<varname> - preserved
+\ * t_<function name>_<varname> - not preserved (temporary)
+\ ******************************************************************
+
+ORG &70
+GUARD &90
+
+\\ Vars used by main system routines
+.main_vsync_counter		SKIP 1		; counts up with each vsync
+.main_last_vsync		SKIP 1		; vsync count last time around the loop (can calculate tick delta)
+
+.old_irqv				SKIP 2
+.pal_count				SKIP 1
+.pal_enable				SKIP 1
+.rup_count				SKIP 1
+.rup_enable				SKIP 1
+.rup_flag				SKIP 1
+.rup_index				SKIP 1
+.rup_buffer				SKIP 1		; double-buffering
+.rup_scr_addr			SKIP 2
+
+.bar_xpos				SKIP 1
+.bar_width				SKIP 1
+.bar_A_byte				SKIP 1
+.bar_B_byte				SKIP 1
+
+.odd_pixel				SKIP 1
+
+.bar_index1				SKIP 1
+.bar_index2				SKIP 1
+
+
+\ ******************************************************************
+\ *	Start address to be saved
+\ ******************************************************************
+
+ORG &E00	      					; code origin (like P%=&2000)
+GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen memory
+
+.start
+
+\ ******************************************************************
+\ *	Code entry
+\ ******************************************************************
+
+\ ******************************************************************
+\ *	Main loop sequencing tick & draw code
+\ *	Separate anything handled by the main system and the demo
+\ *	routines.
+\ *	A, X & Y are not considered preserved.  Each subroutine needs
+\ * to manage anything required internally.
+\ * 'Make' routines should do any initialisation as required before
+\ * anything can be rendered to the screen and initial tick state
+\ * 'Draw initial' routines write the initial screen buffer before
+\ * both first frame draw and first tick
+\ * 'Tick' routines update run-time state each time around the main
+\ * loop.  This could be a number of vsyncs since update.
+\ * 'Draw' routines write to the screen buffer but do not write to
+\ * any vars updated by the tick routine, these are considered RO.
+\ ******************************************************************
+
+.main
+{
+	JSR main_make
+	
+	JSR set_mode_2
+	JSR clear_screen
+
+	LDA #0
+	STA bar_index1
+	STA bar_index2
+	JSR erase_line
+	JSR draw_row
+	JSR copy_line_to_row
+	
+	WAIT_FOR_KEYPRESS INKEY_q
+	
+	\\ Enable palette timer1
+	LDA #&FF:STA rup_enable
+
+	WAIT_FOR_KEYPRESS INKEY_a
+
+	.loop
+
+	\\ Wait an amount of time
+	LDA main_vsync_counter
+	.wait
+	CMP main_vsync_counter
+	BEQ wait
+	
+	IF DEBUG_RASTERS
+	SETCOL_MODE2 0, PAL_blue
+	ENDIF
+	JSR erase_line
+	IF DEBUG_RASTERS
+	SETCOL_MODE2 0, PAL_red
+	ENDIF
+	JSR draw_row
+	IF DEBUG_RASTERS
+	SETCOL_MODE2 0, PAL_green
+	ENDIF
+	JSR copy_line_to_row
+	IF DEBUG_RASTERS
+	SETCOL_MODE2 0, PAL_black
+	ENDIF
+	
+	INC bar_index1
+;	INC bar_index1
+	
+	JMP loop
+	
+	.return
+	JSR main_kill
+
+	RTS
+}
+
+.main_make
+{
+	\\ Set up hardware state etc.
+
+	SEI							; disable interupts
+
+	LDX #&FF					; X=11111111
+	STX &FE44					; R4=T1 Low-Order Latches (write)
+	STX &FE45					; R5=T1 High-Order Counter
+	
+	LDA #LO(TIMER_latch)
+	STA &FE46
+	LDA #HI(TIMER_latch)
+	STA &FE47
+	
+	LDA #64						; A=00000000
+	STA &FE4B					; R11=Auxillary Control Register (timer 1 latched mode)
+
+	LDA #&7F					; A=01111111
+	STA &FE4E					; R14=Interrupt Enable (disable all interrupts)
+
+	LDA #&C2					; A=11000010
+	STA &FE4E					; R14=Interrupt Enable (enable main_vsync and timer interrupt)
+
+	LDA #&7F					; A=01111111
+	STA &FE43					; R3=Data Direction Register "A" (set keyboard data direction)
+
+	LDA #&0F					; A=00001111
+	STA &FE42					; R2=Data Direction Register "B" (set addressable latch for writing)
+
+	LDA #&00 + 3				; A=00000011
+	STA &FE40					; R0=Output Register "B" (write) (write 0 into bit 3 - keyboard write enable bit)
+
+	LDA #&00 + 4				; A=00000100	; B4
+	STA &FE40					; R0=Output Register "B" (write) (write 0 into bit 4 - screen address translation)
+
+	LDA #&08 + 5				; A=00001101	; B5
+	STA &FE40					; R0=Output Register "B" (write) (write 1 into bit 5 - screen address translation)
+
+	LDA &204:STA old_irqv
+	LDA &205:STA old_irqv+1
+	
+	LDA #LO(main_irq):STA &204
+	LDA #HI(main_irq):STA &205		; set interrupt handler
+	
+	LDA #0
+	STA main_vsync_counter
+	STA main_last_vsync
+	STA pal_count
+	STA pal_enable
+	STA rup_count
+	STA rup_enable
+	STA rup_flag
+	STA rup_index
+	STA rup_buffer
+
+	LDA #LO(MAIN_screen_base_addr/8) : STA rup_scr_addr
+	LDA #HI(MAIN_screen_base_addr/8) : STA rup_scr_addr+1
+	
+	CLI
+	
+	.return
+	RTS
+}
+
+
+.main_kill
+{
+	SEI							; disable interupts
+	LDX #&FF					; A=11111111
+	STX &FE4E					; R14=Interrupt Enable (enable all interrupts)
+
+	LDA #&0F					; A=00001111
+	STA &FE42					; R2=Data Direction Register "B" (set addressable latch for writing)
+
+	LDA #&80 + 3				; A=00000011
+	STA &FE40					; R0=Output Register "B" (write) (write 1 into bit 3 - keyboard write enable bit)
+
+	LDA old_irqv:STA &204
+	LDA old_irqv+1:STA &205
+	CLI
+
+	RTS
+}
+
+
+.set_mode_2
+{
+	SEI
+	\\ Set up CRTC for MODE 2
+
+	LDX #13
+	.crtcloop
+	STX &FE00
+	LDA main_crtcregs_MODE2,X
+	STA &FE01
+	DEX
+	BPL crtcloop
+
+	\\ Set up video ULA for MODE 1
+
+	LDA #ULA_MODE2
+	STA &FE20
+
+	\\ Must set palette registers or mode doesn't work!
+	\\ This order of colours is by brightness
+	
+;	SETCOL_MODE2 0, PAL_black
+;	SETCOL_MODE2 1, PAL_blue
+;	SETCOL_MODE2 2, PAL_red
+;	SETCOL_MODE2 3, PAL_magenta
+;	SETCOL_MODE2 4, PAL_green
+;	SETCOL_MODE2 5, PAL_cyan
+;	SETCOL_MODE2 6, PAL_yellow
+;	SETCOL_MODE2 7, PAL_white
+
+	\\ Palete by hue
+	SETCOL_MODE2 0, PAL_black
+	SETCOL_MODE2 1, PAL_red
+	SETCOL_MODE2 2, PAL_yellow
+	SETCOL_MODE2 3, PAL_green
+	SETCOL_MODE2 4, PAL_cyan
+	SETCOL_MODE2 5, PAL_blue
+	SETCOL_MODE2 6, PAL_magenta
+	SETCOL_MODE2 7, PAL_white
+
+	CLI				; enable interupts
+
+	.return
+	RTS
+}
+
+.clear_screen
+{
+	LDX #0
+	.clearpage
+	LDA #0
+	.clearloop
+	STA MAIN_screen_base_addr,X		; could use STZ address,X on a Master
+	INX
+	BNE clearloop
+	
+	INC clearloop+2					; increment HI byte of screen write address
+	
+	LDA clearloop+2
+	CMP #HI(MAIN_screen_top_addr)	; test against top address of screen
+	BNE clearpage
+	
+	LDA #HI(MAIN_screen_base_addr)
+	STA clearloop+2					; reset ptr
+	
+	.return
+	RTS
+}
+
+
+\ ******************************************************************
+\ *	IRQ handler
+\ ******************************************************************
+
+.main_irq
+{
+	LDA &FE4D:AND #2:BEQ irqtimer
+
+	JMP	irqvsync
+
+	.return
+	PLA:TAY:PLA:TAX
+	LDA &FC
+	RTI
+
+	.irqtimer
+	LDA #&40:STA &FE4D
+	TXA:PHA:TYA:PHA
+
+	LDA rup_enable
+	BEQ return
+
+	LDA rup_count
+	CMP #31							; 15 lots of rupture
+	BNE rup_cont
+	
+	JMP rup_done
+	.rup_cont
+
+	INC rup_count
+	
+	\\ CRTC cycle 2 rows
+	LDA #4: STA &FE00
+	LDA #0: STA &FE01				; crtc cycle lasts 1 rows - 1 = 0
+	
+	\\ Never generate vsync
+	LDA #7: STA &FE00
+	LDA #&ff: STA &FE01				; never generate vsync
+	
+	\\ Visible rows = 2
+	LDA #6: STA &FE00
+	LDA #1: STA &FE01				; 1 visible rows
+	
+	\\ Last rup set different screen address
+	
+	LDA #13: STA &FE00
+	LDA rup_scr_addr : STA &FE01
+	LDA #12: STA &FE00
+	LDA rup_scr_addr+1 : STA &FE01
+	JMP return
+
+	.rup_done
+	LDA rup_flag
+	BNE return
+	INC rup_flag
+	
+	\\ CRTC cycle remaining rows
+	LDA #4: STA &FE00
+	LDA #6: STA &FE01					; 39 rows total - 31 drawn so far - 1 = 7
+	
+	\\ Generate vsync at correct point
+	LDA #7: STA &FE00
+	LDA #2: STA &FE01					; vsync happens at row 34 - current row 31 = 3
+	
+	\\ Visible rows = 2
+	LDA #6: STA &FE00
+	LDA #1: STA &FE01					; 32 rows visible - current row 31 = 1
+	
+	JMP return
+	
+	.irqvsync
+	STA &FE4D
+	TXA:PHA:TYA:PHA
+	
+	INC main_vsync_counter
+	
+	SEI
+	LDA #LO(TIMER_initial)
+	STA &FE44					; R4=T1 Low-Order Latches (write)
+	LDA #HI(TIMER_initial)
+	STA &FE45					; R5=T1 High-Order Counter
+	
+	LDA #LO(TIMER_latch)
+	STA &FE46
+	LDA #HI(TIMER_latch)
+	STA &FE47
+
+	LDA #0
+	STA pal_count
+	STA rup_count
+	STA rup_flag
+	
+	LDA rup_enable
+	BEQ exit
+	
+	LDA rup_buffer
+	EOR #&FF
+	STA rup_buffer
+	BEQ buffer_flip
+
+	LDA #LO(MAIN_screen_second_addr/8) : STA rup_scr_addr
+	LDA #HI(MAIN_screen_second_addr/8) : STA rup_scr_addr+1
+
+	JMP set_buff
+	
+	.buffer_flip
+	LDA #LO(MAIN_screen_base_addr/8) : STA rup_scr_addr
+	LDA #HI(MAIN_screen_base_addr/8) : STA rup_scr_addr+1
+
+	.set_buff
+	\\ New screen address (for next cycle)
+	LDA #13: STA &FE00
+	LDA rup_scr_addr : STA &FE01
+	LDA #12: STA &FE00
+	LDA rup_scr_addr+1 : STA &FE01
+
+	.exit
+	CLI 
+	PLA:TAY:PLA:TAX
+	LDA &FC
+	RTI
+}
+
+
+\ ******************************************************************
+\ *	Chunky sub-routines
+\ ******************************************************************
+
+.draw_bar			; at pos bar_xpos, byte_A Y, byte_B X
+{
+	STX bar_A_byte
+	STY bar_B_byte
+
+	\\ Start at column X
+	
+	LDA bar_xpos					; 3c
+	LSR A							; 2c
+	TAX								; 2c
+
+	\\ This many pixels to draw
+	
+	LDY bar_width					; 3c
+	BEQ return						; 2c
+	
+	\\ Do we start with an odd pixel?
+	
+	LDA bar_xpos					; 3c
+	AND #1							; 2c
+	BEQ even_loop					; 3c
+
+	\\ Write right-hand pixel column into line buffer A
+	
+	LDA bar_A_byte					; 3c
+	AND #PIXEL_RIGHT_F				; 2c
+	STA odd_pixel					; 3c
+
+	LDA line_buffer_A+0,X			; 5c
+	AND #PIXEL_LEFT_F				; 2c
+	ORA odd_pixel					; 5c
+	STA line_buffer_A+0,X			; 5c
+
+	\\ Write right-hand pixel column into line buffer B
+	
+	LDA bar_B_byte
+	AND #PIXEL_RIGHT_F				; 2c
+	STA odd_pixel					; 3c
+
+	LDA line_buffer_B+0,X
+	AND #PIXEL_LEFT_F
+	ORA odd_pixel
+	STA line_buffer_B+0,X
+
+	\\ Done first column
+	
+	INX
+	
+	\\ Done first pixel
+	
+	DEY
+
+	.even_loop
+	CPY #2
+	BCC even_loop_done
+	
+	LDA bar_A_byte
+	STA line_buffer_A+0,X
+	LDA bar_B_byte
+	STA line_buffer_B+0,X
+	INX
+	DEY:DEY
+	JMP even_loop
+
+	.even_loop_done
+	\\ Just tested Y - if zero then exit
+	BEQ return
+	
+	\\ Assert Y == 1!
+	\\ Write left-hand pixel column into line buffer
+
+	LDA bar_A_byte
+	AND #PIXEL_LEFT_F				; 2c
+	STA odd_pixel					; 3c
+	
+	LDA line_buffer_A+0,X
+	AND #PIXEL_RIGHT_F				; 2c keep only right pixel
+	ORA odd_pixel					; 3c
+	STA line_buffer_A+0,X
+	
+	\\ Write left-hand pixel column into line buffer
+
+	LDA bar_B_byte
+	AND #PIXEL_LEFT_F				; 2c
+	STA odd_pixel					; 3c
+	
+	LDA line_buffer_B+0,X
+	AND #PIXEL_RIGHT_F				; 2c keep only right pixel
+	ORA odd_pixel					; 3c
+	STA line_buffer_B+0,X
+	
+	.return
+	RTS								; 6c
+}									; 54 cycle overhead + 512c (even) or 746c (odd)
+
+
+.draw_row
+{
+	LDX bar_index1
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_0
+	LDY #PIXEL_LEFT_0 + PIXEL_RIGHT_1
+	JSR draw_bar
+
+	LDX bar_index1
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_1
+	LDY #PIXEL_LEFT_1 + PIXEL_RIGHT_1
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_2
+	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_1
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_2 + PIXEL_RIGHT_2
+	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_2
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_3 + PIXEL_RIGHT_2
+	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_3
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_3 + PIXEL_RIGHT_3
+	LDY #PIXEL_LEFT_3 + PIXEL_RIGHT_3
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_4 + PIXEL_RIGHT_3
+	LDY #PIXEL_LEFT_3 + PIXEL_RIGHT_4
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_4 + PIXEL_RIGHT_4
+	LDY #PIXEL_LEFT_4 + PIXEL_RIGHT_4
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_5 + PIXEL_RIGHT_4
+	LDY #PIXEL_LEFT_4 + PIXEL_RIGHT_5
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_5 + PIXEL_RIGHT_5
+	LDY #PIXEL_LEFT_5 + PIXEL_RIGHT_5
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_6 + PIXEL_RIGHT_5
+	LDY #PIXEL_LEFT_5 + PIXEL_RIGHT_6
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_6 + PIXEL_RIGHT_6
+	LDY #PIXEL_LEFT_6 + PIXEL_RIGHT_6
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_7 + PIXEL_RIGHT_6
+	LDY #PIXEL_LEFT_6 + PIXEL_RIGHT_7
+	JSR draw_bar
+
+	LDX bar_index2
+	INX:INX:INX:INX
+	STX bar_index2
+	LDA wibble,X
+	STA bar_xpos
+	LDA wib2,X
+	STA bar_width
+	LDX #PIXEL_LEFT_7 + PIXEL_RIGHT_7
+	LDY #PIXEL_LEFT_7 + PIXEL_RIGHT_7
+	JSR draw_bar
+
+	RTS
+}
+
+
+.erase_line
+{
+	\\ Clear line buffer
+	LDA #0
+	LDY #LINE_BUFFER_start
+	
+	.loop
+	STA line_buffer_A,Y
+	STA line_buffer_B,Y
+	INY
+	CPY #LINE_BUFFER_start+LINE_BUFFER_width
+	BCC loop
+	
+	RTS
+}
+
+.copy_line_to_row
+{
+	LDA rup_buffer
+	BNE copy_row_0
+	JMP copy_row_1
+}
+
+.copy_row_0
+{
+	FOR n,0,LINE_BUFFER_width-1,1
+	LDA line_buffer_A+LINE_BUFFER_start+n
+	FOR m,0,7,2
+	STA MAIN_screen_base_addr + (n*8) + m
+	NEXT
+	LDA line_buffer_B+LINE_BUFFER_start+n
+	FOR m,1,7,2
+	STA MAIN_screen_base_addr + (n*8) + m
+	NEXT
+	NEXT
+	RTS
+}
+
+.copy_row_1			; 80 * 3b * (2 loads + 8 stores) = 2400b ~= 2.34kb
+{
+	FOR n,0,LINE_BUFFER_width-1,1
+	LDA line_buffer_A+LINE_BUFFER_start+n
+	FOR m,0,7,2
+	STA MAIN_screen_second_addr + (n*8) + m
+	NEXT
+	LDA line_buffer_B+LINE_BUFFER_start+n
+	FOR m,1,7,2
+	STA MAIN_screen_second_addr + (n*8) + m
+	NEXT
+	NEXT
+	RTS
+}
+
+\ ******************************************************************
+\ *	Data blocks
+\ ******************************************************************
+
+
+\ ******************************************************************
+\ *	Values of CRTC regs for MODE 1
+\ ******************************************************************
+
+.main_crtcregs_MODE2
+{
+	EQUB 127			; R0  horizontal total
+	EQUB 80				; R1  horizontal displayed
+	EQUB 98				; R2  horizontal position
+	EQUB 40				; R3  sync width 40 = &28
+	EQUB 38				; R4  vertical total
+	EQUB 0				; R5  vertical total adjust
+	EQUB 32				; R6  vertical displayed
+	EQUB 34				; R7  vertical position; 35=top of screen
+	EQUB 0				; R8  interlace
+	EQUB 7				; R9  scanlines per row
+	EQUB 32				; R10 cursor start
+	EQUB 8				; R11 cursor end
+	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+}
+
+
+\ ******************************************************************
+\ *	Look up tables
+\ ******************************************************************
+
+
+ALIGN &100
+
+.wibble
+FOR n, 0, 255, 1
+;EQUB n MOD 144
+EQUB 128 + 80 * SIN(2 * PI * n / 256)
+NEXT
+
+.wib2
+FOR n, 0, 255, 1
+EQUB 20 + 19 * SIN(2 * PI * n / 64)
+NEXT
+
+
+\ ******************************************************************
+\ *	End address to be saved
+\ ******************************************************************
+
+.end
+
+
+\ ******************************************************************
+\ *	Space reserved for runtime buffers not preinitialised
+\ ******************************************************************
+
+ALIGN &100
+
+.line_buffer_A
+SKIP LINE_BUFFER_size
+
+.line_buffer_B
+SKIP LINE_BUFFER_size
+
+
+\ ******************************************************************
+\ *	Save the code
+\ ******************************************************************
+
+SAVE "MyCode", start, end

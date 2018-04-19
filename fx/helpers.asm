@@ -146,4 +146,12 @@ ENDIF
 	RTS
 }
 
+.cycles_wait_128		; JSR to get here takes 6c
+{
+	FOR n,1,58,1		; 58x
+	NOP					; 2c
+	NEXT				; = 116c
+	RTS					; 6c
+}						; = 128c
+
 .helpers_end

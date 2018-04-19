@@ -138,3 +138,17 @@ For long lines
 Always start with byte 0 so pixel offset of 0
 Drawing >= 8 pixels
 N - (X MOD N) is number of pixels to start with
+
+18/4/2018
+~~~
+General raster ideas:
+Logo with static: https://youtu.be/XJKDb4ByZ7Y?t=21s
+Scrolltext per character row all at different speeds: https://youtu.be/XJKDb4ByZ7Y?t=41s
+Interference by displaying circle pattern on alternate scanlines in different colours?
+Bring logo/screens on horizontal slices
+VRUP screen into four & pulse on channel beats
+Copper colour hue with ordered dither
+
+Twist:
+Old venetian blind effect (vbars v8)
+Silents bars: https://www.youtube.com/watch?v=l23miRWH5_Y&feature=youtu.be&t=7m2s
