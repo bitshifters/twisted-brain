@@ -145,10 +145,18 @@ General raster ideas:
 Logo with static: https://youtu.be/XJKDb4ByZ7Y?t=21s
 Scrolltext per character row all at different speeds: https://youtu.be/XJKDb4ByZ7Y?t=41s
 Interference by displaying circle pattern on alternate scanlines in different colours?
-Bring logo/screens on horizontal slices
+Bring logo/screens on in horizontal slices
 VRUP screen into four & pulse on channel beats
 Copper colour hue with ordered dither
 
 Twist:
 Old venetian blind effect (vbars v8)
 Silents bars: https://www.youtube.com/watch?v=l23miRWH5_Y&feature=youtu.be&t=7m2s
+
+Vertical blinds
+Start with 11 scanlines gone :S
+Erase lines = 5 scanlines
+Draw bars = 48 scanlines!!
+Copy linear buffers to screen = 10 scanlines
+= 63 scanlines total not including music
+vblank = 56 scanlines all in

@@ -45,7 +45,8 @@ fx_Twister = 2
 fx_BoxRot = 3
 fx_Parallax = 4
 fx_CheckerZoom = 5
-fx_MAX = 6
+fx_VBlinds = 6
+fx_MAX = 7
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -496,11 +497,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
-}
+}	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
+
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5		; need something better here?
 }
 
 .data_end
@@ -606,6 +608,7 @@ PAGE_ALIGN
 INCLUDE "fx/boxrot.asm"
 INCLUDE "fx/parallax.asm"
 INCLUDE "fx/checker-zoom.asm"
+INCLUDE "fx/vblinds.asm"
 
 .bank1_end
 
