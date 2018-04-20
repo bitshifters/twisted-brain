@@ -12,13 +12,11 @@ LINEAR_BUFFER_start = 48
 
 vblinds_bar_xpos = locals_start + 0
 vblinds_bar_width = locals_start + 1
-vblinds_bar_A_byte = locals_start + 2
-vblinds_bar_B_byte = locals_start + 3
-vblinds_odd_pixel = locals_start + 4
-vblinds_bar_index1 = locals_start + 5
-vblinds_bar_index2 = locals_start + 6
-vblinds_scr_ptr = locals_start+7
-vblinds_buffer = locals_start+9
+vblinds_bar_max = locals_start + 2
+vblinds_bar_index1 = locals_start + 3
+vblinds_bar_index2 = locals_start + 4
+vblinds_scr_ptr = locals_start+5
+vblinds_buffer = locals_start+7
 
 .vblinds_start
 
@@ -44,6 +42,9 @@ vblinds_buffer = locals_start+9
 	STA vblinds_bar_index2
 	STA vblinds_buffer
 
+	LDA #40
+	STA vblinds_bar_max
+
 	JSR vblinds_erase_line
 	RTS
 }
@@ -68,9 +69,6 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 .vblinds_update
 {
-	JSR vblinds_draw_row
-;	JSR vblinds_copy_row		/ do this in draw
-
 	LDA vblinds_buffer
 	BEQ set_second
 
@@ -237,9 +235,11 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 	\\ Total 10640c = 83 scanlines + 16c
 
+	JSR vblinds_draw_row		; 78 scanlies
+
 	\\ How much time left?
 
-	LDX #82					; 2c
+	LDX #161					; 2c
 
 	.here
 
@@ -273,32 +273,45 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
     RTS
 }
 
+.vblinds_temp EQUB 0
+
 .vblinds_draw_bar			; A=colour#;X=xpos;Y=width
 {
-	CPY #0
-	BEQ return						; 2c
+	STY vblinds_bar_width				; 3c
 	
 	\\ Start at column X
-	
-	.loop
-	STA vblinds_linear_buffer, X
-	INX
-	DEY
-	BNE loop
-	
+
+	LDY #0								; 2c
+	.loop1
+	CPY vblinds_bar_width				; 3c
+	BEQ loop2							; 2/3c
+	STA vblinds_linear_buffer, X		; 4c
+	INX									; 2c
+	INY									; 2c
+	BNE loop1							; 3c
+
+	\\ Must be constant time fn
+	.loop2
+	CPY vblinds_bar_max					; 3c
+	BEQ return							; 2/3c
+	STA vblinds_temp					; 4c
+	INX									; 2c
+	INY									; 2c
+	BNE loop2 							; 3c
+
 	.return
-	RTS
-}
+	RTS								    ; 6c
+}	\\ total time = 16c per loop = 16 * 40c + 3c + 6c + 6c +2c (branches) = 657c inc JSR
 
 .vblinds_draw_row
 {
-	LDX vblinds_bar_index1
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #1
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index1				; 3c
+	LDA vblinds_wib2,X					; 4c
+	TAY									; 2c
+	LDA vblinds_wibble,X				; 4c
+	TAX									; 2c
+	LDA #1								; 2c
+	JSR vblinds_draw_bar				; 657c = 674c
 
 	LDX vblinds_bar_index1
 	INX:INX:INX:INX
@@ -360,7 +373,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	LDA #7
 	JSR vblinds_draw_bar
 
-IF 0
+IF 1
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
