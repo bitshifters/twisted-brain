@@ -67,25 +67,29 @@ ENDMACRO
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 20.0
-
+SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 20.0
-
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 5.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 1.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 1.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 1.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 10.0

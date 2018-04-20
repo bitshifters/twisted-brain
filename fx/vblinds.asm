@@ -152,7 +152,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	FOR n,1,28,1
+	FOR n,1,20,1
 	NOP
 	NEXT
 	BIT 0
