@@ -260,6 +260,7 @@ vblinds_bar_index2 = locals_start + 6
 	LDY #PIXEL_LEFT_1 + PIXEL_RIGHT_1
 	JSR vblinds_draw_bar
 
+IF 0
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
@@ -282,7 +283,6 @@ vblinds_bar_index2 = locals_start + 6
 	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_2
 	JSR vblinds_draw_bar
 
-IF 0
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2

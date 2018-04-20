@@ -155,8 +155,25 @@ Silents bars: https://www.youtube.com/watch?v=l23miRWH5_Y&feature=youtu.be&t=7m2
 
 Vertical blinds
 Start with 11 scanlines gone :S
+Can go as high as 28 lines!  Music player registered 24 lines whilst script system 4 lines
+
 Erase lines = 5 scanlines
 Draw bars = 48 scanlines!!
 Copy linear buffers to screen = 10 scanlines
 = 63 scanlines total not including music
 vblank = 56 scanlines all in
+
+287 = VC=0 SC=1
+288 = VC=1 SC=0
+
+So effectively all FX update must be in 28 scanlines!
+
+Options for vblinds
+- Draw directly to screen buffer line - removes 10 scanline copy
+  - Still need 5 scanlines to erase 2x lines of screen buffer
+  - Optimise line drawing to take half the amount of time?! (Seems unlikely?)
+
+- Or find a way to use the dead time inside the screen loop
+  - Can draw to a different screen buffer and double buffer 1x row
+  - How to make the bar drawing constant time inside the frame loop?
+
