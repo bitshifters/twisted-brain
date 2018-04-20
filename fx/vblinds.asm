@@ -6,6 +6,10 @@ LINE_BUFFER_size = 128
 LINE_BUFFER_width = 80
 LINE_BUFFER_start = 24
 
+LINEAR_BUFFER_size = 256
+LINEAR_BUFFER_width = 160
+LINEAR_BUFFER_start = 48
+
 vblinds_bar_xpos = locals_start + 0
 vblinds_bar_width = locals_start + 1
 vblinds_bar_A_byte = locals_start + 2
@@ -13,6 +17,8 @@ vblinds_bar_B_byte = locals_start + 3
 vblinds_odd_pixel = locals_start + 4
 vblinds_bar_index1 = locals_start + 5
 vblinds_bar_index2 = locals_start + 6
+vblinds_scr_ptr = locals_start+7
+vblinds_buffer = locals_start+9
 
 .vblinds_start
 
@@ -36,6 +42,9 @@ vblinds_bar_index2 = locals_start + 6
 	LDA #0
 	STA vblinds_bar_index1
 	STA vblinds_bar_index2
+	STA vblinds_buffer
+
+	JSR vblinds_erase_line
 	RTS
 }
 
@@ -54,11 +63,58 @@ vblinds_bar_index2 = locals_start + 6
 \ late and your raster timings will be wrong!
 \ ******************************************************************
 
+VBLINDS_ROW0_ADDR = screen_base_addr
+VBLINDS_ROW1_ADDR = screen_base_addr + 640
+
 .vblinds_update
 {
-	JSR vblinds_erase_line
 	JSR vblinds_draw_row
-	JSR vblinds_copy_row
+;	JSR vblinds_copy_row		/ do this in draw
+
+	LDA vblinds_buffer
+	BEQ set_second
+
+	\\ Set first
+	LDA #LO(screen_base_addr)
+	STA vblinds_scr_ptr
+	LDA #HI(screen_base_addr)
+	STA vblinds_scr_ptr+1
+
+	\\ Display row 1 when new frame starts
+	LDA #12: STA &FE00
+	LDA #HI(VBLINDS_ROW1_ADDR/8): STA &FE01
+
+	LDA #13: STA &FE00
+	LDA #LO(VBLINDS_ROW1_ADDR/8): STA &FE01
+
+	\\ But write into row 1	
+	LDA #LO(VBLINDS_ROW0_ADDR)
+	STA vblinds_scr_ptr
+	LDA #HI(VBLINDS_ROW0_ADDR)
+	STA vblinds_scr_ptr+1
+
+	BRA done
+
+	\\ Set second
+	.set_second
+
+	\\ Display row 0 when new frame starts
+	LDA #12: STA &FE00
+	LDA #HI(VBLINDS_ROW0_ADDR/8): STA &FE01
+
+	LDA #13: STA &FE00
+	LDA #LO(VBLINDS_ROW0_ADDR/8): STA &FE01
+
+	\\ But write into row 1	
+	LDA #LO(VBLINDS_ROW1_ADDR)
+	STA vblinds_scr_ptr
+	LDA #HI(VBLINDS_ROW1_ADDR)
+	STA vblinds_scr_ptr+1
+
+	.done
+	LDA vblinds_buffer
+	EOR #&FF
+	STA vblinds_buffer
 
 	INC vblinds_bar_index1
 	RTS
@@ -82,13 +138,6 @@ vblinds_bar_index2 = locals_start + 6
 
 .vblinds_draw
 {
-	\\ We're only ever going to display this one scanline
-	LDA #12: STA &FE00
-	LDA #HI(screen_base_addr/8): STA &FE01
-
-	LDA #13: STA &FE00
-	LDA #LO(screen_base_addr/8): STA &FE01
-
 	\\ R9=1 - character row = 2 scanlines
 	LDA #9: STA &FE00
 	LDA #1:	STA &FE01
@@ -105,12 +154,92 @@ vblinds_bar_index2 = locals_start + 6
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	FOR n,1,14,1
+	FOR n,1,28,1
 	NOP
 	NEXT
 	BIT 0
 
-	LDX #2					; 2c
+	.start_of_scanline1
+
+	LDX #LINEAR_BUFFER_start		
+
+	.linear_to_screen_loop
+	STX vblinds_bar_xpos					; 3c
+
+	\\ Load colour from our linear buffer
+	LDA vblinds_linear_buffer, X			; 4c
+	TAX										; 2c
+
+	\\ Look up pixel pair for even line
+	LDA vblinds_colour_lookup_A, X			; 4c
+	AND #MODE2_LEFT_MASK					; 2c
+
+	\\ Write it to screen buffer
+	LDY #0									; 2c
+	STA (vblinds_scr_ptr), Y				; 6c
+
+	\\ Look up pixel pair for odd line
+	LDA vblinds_colour_lookup_B, X			; 4c
+	AND #MODE2_LEFT_MASK					; 2c
+	
+	\\ Write it to screen buffer
+	INY										; 2c
+	STA (vblinds_scr_ptr), Y				; 6c
+
+	\\ Reset colour to black in linear buffer
+	LDX vblinds_bar_xpos					; 3c
+	LDA #0									; 2c
+	STA vblinds_linear_buffer, X			; 5c
+
+	\\ Get next colour from linear buffer (same screen byte)
+	INX										; 2c
+	STX vblinds_bar_xpos					; 3c
+
+	\\ Look up pixel pair for even line
+	LDA vblinds_linear_buffer, X			; 4c
+	TAX										; 2c
+	
+	LDA vblinds_colour_lookup_A, X			; 4c
+
+	\\ This time mask in right pixel
+	AND #MODE2_RIGHT_MASK					; 2c
+	LDY #0									; 2c
+	ORA (vblinds_scr_ptr), Y				; 6c
+	STA (vblinds_scr_ptr), Y				; 6c
+
+	\\ Look up pixel pair for odd line
+	LDA vblinds_colour_lookup_B, X			; 4c
+
+	\\ This time mask in right pixel
+	AND #MODE2_RIGHT_MASK					; 2c
+	INY										; 2c
+	ORA (vblinds_scr_ptr), Y				; 6c
+	STA (vblinds_scr_ptr), Y				; 6c
+
+	\\ Increment screen point in constant time
+	CLC										; 2c
+	LDA vblinds_scr_ptr						; 3c
+	ADC #8									; 2c
+	STA vblinds_scr_ptr						; 3c
+	LDA vblinds_scr_ptr+1					; 3c
+	ADC #0									; 2c
+	STA vblinds_scr_ptr+1					; 3c
+
+	\\ Reset colour to black in linear buffer
+	LDX vblinds_bar_xpos					; 3c
+	LDA #0									; 2c
+	STA vblinds_linear_buffer, X			; 5c
+
+	\\ Have we completed all pixel?
+	INX										; 2c
+	CPX #LINEAR_BUFFER_start + LINEAR_BUFFER_width	; 2c
+	BCC linear_to_screen_loop				; 3c
+
+	\\ Total 10640c = 83 scanlines + 16c
+
+	\\ How much time left?
+
+	LDX #82					; 2c
 
 	.here
 
@@ -123,6 +252,7 @@ vblinds_bar_index2 = locals_start + 6
 	BNE here		; 3c
 
 	\\ Should arrive here on scanline 255 = last row but scanline 1
+	.start_of_scanline_255
 
 	\\ R9=0 - character row = 2 scanlines
 	LDA #9: STA &FE00
@@ -143,279 +273,172 @@ vblinds_bar_index2 = locals_start + 6
     RTS
 }
 
-.vblinds_draw_bar			; at pos vblinds_bar_xpos, byte_A Y, byte_B X
+.vblinds_draw_bar			; A=colour#;X=xpos;Y=width
 {
-	STX vblinds_bar_A_byte
-	STY vblinds_bar_B_byte
-
-	\\ Start at column X
-	
-	LDA vblinds_bar_xpos					; 3c
-	LSR A							; 2c
-	TAX								; 2c
-
-	\\ This many pixels to draw
-	
-	LDY vblinds_bar_width					; 3c
+	CPY #0
 	BEQ return						; 2c
 	
-	\\ Do we start with an odd pixel?
+	\\ Start at column X
 	
-	LDA vblinds_bar_xpos					; 3c
-	AND #1							; 2c
-	BEQ even_loop					; 3c
-
-	\\ Write right-hand pixel column into line buffer A
-	
-	LDA vblinds_bar_A_byte					; 3c
-	AND #PIXEL_RIGHT_F				; 2c
-	STA vblinds_odd_pixel					; 3c
-
-	LDA line_buffer_A+0,X			; 5c
-	AND #PIXEL_LEFT_F				; 2c
-	ORA vblinds_odd_pixel					; 5c
-	STA line_buffer_A+0,X			; 5c
-
-	\\ Write right-hand pixel column into line buffer B
-	
-	LDA vblinds_bar_B_byte
-	AND #PIXEL_RIGHT_F				; 2c
-	STA vblinds_odd_pixel					; 3c
-
-	LDA line_buffer_B+0,X
-	AND #PIXEL_LEFT_F
-	ORA vblinds_odd_pixel
-	STA line_buffer_B+0,X
-
-	\\ Done first column
-	
+	.loop
+	STA vblinds_linear_buffer, X
 	INX
-	
-	\\ Done first pixel
-	
 	DEY
-
-	.even_loop
-	CPY #2
-	BCC even_loop_done
-	
-	LDA vblinds_bar_A_byte
-	STA line_buffer_A+0,X
-	LDA vblinds_bar_B_byte
-	STA line_buffer_B+0,X
-	INX
-	DEY:DEY
-	JMP even_loop
-
-	.even_loop_done
-	\\ Just tested Y - if zero then exit
-	BEQ return
-	
-	\\ Assert Y == 1!
-	\\ Write left-hand pixel column into line buffer
-
-	LDA vblinds_bar_A_byte
-	AND #PIXEL_LEFT_F				; 2c
-	STA vblinds_odd_pixel					; 3c
-	
-	LDA line_buffer_A+0,X
-	AND #PIXEL_RIGHT_F				; 2c keep only right pixel
-	ORA vblinds_odd_pixel					; 3c
-	STA line_buffer_A+0,X
-	
-	\\ Write left-hand pixel column into line buffer
-
-	LDA vblinds_bar_B_byte
-	AND #PIXEL_LEFT_F				; 2c
-	STA vblinds_odd_pixel					; 3c
-	
-	LDA line_buffer_B+0,X
-	AND #PIXEL_RIGHT_F				; 2c keep only right pixel
-	ORA vblinds_odd_pixel					; 3c
-	STA line_buffer_B+0,X
+	BNE loop
 	
 	.return
-	RTS								; 6c
-}									; 54 cycle overhead + 512c (even) or 746c (odd)
+	RTS
+}
 
 .vblinds_draw_row
 {
 	LDX vblinds_bar_index1
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_0
-	LDY #PIXEL_LEFT_0 + PIXEL_RIGHT_1
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #1
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index1
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_1
-	LDY #PIXEL_LEFT_1 + PIXEL_RIGHT_1
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #2
+	JSR vblinds_draw_bar
+
+	LDX vblinds_bar_index2
+	INX:INX:INX:INX
+	STX vblinds_bar_index2
+	LDA vblinds_wib2,X
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #3
+	JSR vblinds_draw_bar
+
+	LDX vblinds_bar_index2
+	INX:INX:INX:INX
+	STX vblinds_bar_index2
+	LDA vblinds_wib2,X
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #4
+	JSR vblinds_draw_bar
+
+	LDX vblinds_bar_index2
+	INX:INX:INX:INX
+	STX vblinds_bar_index2
+	LDA vblinds_wib2,X
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #5
+	JSR vblinds_draw_bar
+
+	LDX vblinds_bar_index2
+	INX:INX:INX:INX
+	STX vblinds_bar_index2
+	LDA vblinds_wib2,X
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #6
+	JSR vblinds_draw_bar
+
+	LDX vblinds_bar_index2
+	INX:INX:INX:INX
+	STX vblinds_bar_index2
+	LDA vblinds_wib2,X
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #7
 	JSR vblinds_draw_bar
 
 IF 0
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_1 + PIXEL_RIGHT_2
-	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_1
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #8
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_2 + PIXEL_RIGHT_2
-	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_2
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #9
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_3 + PIXEL_RIGHT_2
-	LDY #PIXEL_LEFT_2 + PIXEL_RIGHT_3
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #10
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_3 + PIXEL_RIGHT_3
-	LDY #PIXEL_LEFT_3 + PIXEL_RIGHT_3
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #11
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_4 + PIXEL_RIGHT_3
-	LDY #PIXEL_LEFT_3 + PIXEL_RIGHT_4
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #12
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_4 + PIXEL_RIGHT_4
-	LDY #PIXEL_LEFT_4 + PIXEL_RIGHT_4
+	TAY
+	LDA vblinds_wibble,X
+	TAX
+	LDA #13
 	JSR vblinds_draw_bar
 
 	LDX vblinds_bar_index2
 	INX:INX:INX:INX
 	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
 	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_5 + PIXEL_RIGHT_4
-	LDY #PIXEL_LEFT_4 + PIXEL_RIGHT_5
-	JSR vblinds_draw_bar
-
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
+	TAY
 	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
-	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_5 + PIXEL_RIGHT_5
-	LDY #PIXEL_LEFT_5 + PIXEL_RIGHT_5
-	JSR vblinds_draw_bar
-
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
-	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_6 + PIXEL_RIGHT_5
-	LDY #PIXEL_LEFT_5 + PIXEL_RIGHT_6
-	JSR vblinds_draw_bar
-
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
-	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_6 + PIXEL_RIGHT_6
-	LDY #PIXEL_LEFT_6 + PIXEL_RIGHT_6
-	JSR vblinds_draw_bar
-
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
-	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_7 + PIXEL_RIGHT_6
-	LDY #PIXEL_LEFT_6 + PIXEL_RIGHT_7
-	JSR vblinds_draw_bar
-
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wibble,X
-	STA vblinds_bar_xpos
-	LDA vblinds_wib2,X
-	STA vblinds_bar_width
-	LDX #PIXEL_LEFT_7 + PIXEL_RIGHT_7
-	LDY #PIXEL_LEFT_7 + PIXEL_RIGHT_7
+	TAX
+	LDA #14
 	JSR vblinds_draw_bar
 ENDIF
-
 	RTS
 }
 
 .vblinds_erase_line
 {
-	\\ Clear line buffer
 	LDA #0
-	FOR n,0,LINE_BUFFER_width-1,1
-	STA line_buffer_A + LINE_BUFFER_start + n
-	STA line_buffer_B + LINE_BUFFER_start + n
-	NEXT
-	
-	RTS
-}
-
-.vblinds_copy_row
-{
-	FOR n,0,LINE_BUFFER_width-1,1
-	LDA line_buffer_A + LINE_BUFFER_start + n
-	STA screen_base_addr + (n*8) + 0
-	LDA line_buffer_B + LINE_BUFFER_start + n
-	STA screen_base_addr + (n*8) + 1
+	FOR n,LINEAR_BUFFER_start,LINEAR_BUFFER_start+LINEAR_BUFFER_width-1,1
+	STA vblinds_linear_buffer + n
 	NEXT
 	RTS
 }
@@ -433,10 +456,49 @@ EQUB 20 + 19 * SIN(2 * PI * n / 64)
 NEXT
 
 PAGE_ALIGN
-.line_buffer_A
-SKIP LINE_BUFFER_size
+.vblinds_linear_buffer
+SKIP LINEAR_BUFFER_size
 
-.line_buffer_B
-SKIP LINE_BUFFER_size
+VBLINDS_MAX_COLOURS=15
+
+.vblinds_colour_lookup_A
+{
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_0			; 0 = black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_0			; 1 = red/black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; 2 = red/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_1			; 3 = yellow/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_3			; 4 = yellow/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_3			; 5 = green/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_2			; 6 = green/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_2			; 7 = cyan/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_6			; 8 = cyan/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_6			; 9 = blue/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_4			;10 = blue/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_4			;11 = magenta/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			;12 = magenta/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_5			;13 = white/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_7			;14 = white/white
+	\\ Or can wrap around to red again
+}
+
+.vblinds_colour_lookup_B
+{
+	EQUB PIXEL_RIGHT_0 OR PIXEL_LEFT_0			; 0 = black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_0			; 1 = red/black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_1			; 2 = red/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_1			; 3 = yellow/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_3			; 4 = yellow/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_3			; 5 = green/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_2			; 6 = green/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_2			; 7 = cyan/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_6			; 8 = cyan/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_6			; 9 = blue/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_4			;10 = blue/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_4			;11 = magenta/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_5			;12 = magenta/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_5			;13 = white/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_7			;14 = white/white
+	\\ Or can wrap around to red again
+}
 
 .vblinds_end
