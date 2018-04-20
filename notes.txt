@@ -185,3 +185,14 @@ LOOKS LIKE WE LOSE SYNC WHEN SWITCHING BETWEEN HIGH & LOW FREQUENCY UL
 (understandably) - MEANS WE'LL HAVE TO STAY IN HIGH FREQUENCY MODE
 
 Might make some FX harder, e.g. checkerboard (or use sparingly...?!)
+Ideally would use MODE 1 and dither checks in different colours then 
+switch between odd/even frame buffers on raster
+
+Would need to draw 4x screen buffer lines in vblank as can't do work
+in raster period since need to swap buffers often when N is small :\
+
+In MODE 1, 80 cols x 4 = 320 bytes
+Or do this in MODE 2 as simpler masking? Or even just do byte alignment
+as vertical is going to be two row aligned? Might be able to blit these
+out in different colours and set colours at raster time to isolate
+individual boxes? - Put on the backlog!
