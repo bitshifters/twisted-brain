@@ -177,6 +177,11 @@ Options for vblinds
   - Can draw to a different screen buffer and double buffer 1x row
   - How to make the bar drawing constant time inside the frame loop?
 
-Proposal
+Proposal - DONE
 - Draw bars to linear 8bpp frame buffer line during update (variable)
 - Double buffer copy to screen during draw fn at constant time
+
+LOOKS LIKE WE LOSE SYNC WHEN SWITCHING BETWEEN HIGH & LOW FREQUENCY UL
+(understandably) - MEANS WE'LL HAVE TO STAY IN HIGH FREQUENCY MODE
+
+Might make some FX harder, e.g. checkerboard (or use sparingly...?!)
