@@ -26,6 +26,13 @@ MACRO PAGE_ALIGN
     ALIGN &100
 ENDMACRO
 
+MACRO SET_ULA_MODE ula_mode
+{
+	LDA #ula_mode
+    STA &FE20:STA &248
+}
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************
@@ -37,7 +44,9 @@ fx_Kefrens = 1
 fx_Twister = 2
 fx_BoxRot = 3
 fx_Parallax = 4
-fx_MAX = 5
+fx_CheckerZoom = 5
+fx_VBlinds = 6
+fx_MAX = 7
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -82,7 +91,8 @@ GUARD &90
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
 
-.locals_start
+.locals_start			SKIP 16		; guarantee 16 locals
+.locals_top
 
 \ ******************************************************************
 \ *	CODE START
@@ -268,9 +278,25 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 		JSR swr_select_slot
 	}
 
+IF 1
+	{
+		lda #&42
+		sta &FE4D	\ clear vsync & timer 1 flags
+
+		\\ Wait for Timer1 at scanline 0
+
+		lda #&40
+		.waitTimer1
+		bit &FE4D
+		beq waitTimer1
+		sta &FE4D
+	}
+ENDIF
+
+	\\ Call init fn exactly on scanline 0 in case we want to set new mode
+
 	.call_init
 	JSR &FFFF
-
 
 	\\ We don't know how long the init took so resync
 
@@ -465,16 +491,18 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-	EQUW do_nothing,    do_nothing,      do_nothing,    do_nothing
-	EQUW kefrens_init,  kefrens_update,  kefrens_draw,  crtc_reset
-	EQUW twister_init,  twister_update,  twister_draw,  crtc_reset
-	EQUW boxrot_init,   boxrot_update,   boxrot_draw,   ula_pal_reset
-	EQUW parallax_init, parallax_update, parallax_draw, parallax_kill
-}
+	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
+	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    crtc_reset
+	EQUW twister_init,    twister_update,    twister_draw,    crtc_reset
+	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
+	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
+}	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
+
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5		; need something better here?
 }
 
 .data_end
@@ -512,7 +540,9 @@ PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
 PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
+PRINT "HELPERS size =",~helpers_end-helpers_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
+PRINT "DATA size =",~data_end-data_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~screen_base_addr-P%
@@ -577,6 +607,8 @@ GUARD &C000
 PAGE_ALIGN
 INCLUDE "fx/boxrot.asm"
 INCLUDE "fx/parallax.asm"
+INCLUDE "fx/checker-zoom.asm"
+INCLUDE "fx/vblinds.asm"
 
 .bank1_end
 
@@ -591,6 +623,7 @@ PRINT "BANK 1"
 PRINT "------"
 PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
+PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%

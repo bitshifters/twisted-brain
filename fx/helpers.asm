@@ -70,6 +70,14 @@ ENDIF
 
 .ula_pal_reset
 {
+	LDX #LO(ula_pal_defaults)
+	LDY #HI(ula_pal_defaults)
+}
+\\ Fall through!
+.ula_set_palette
+{
+	STX palloop+1
+	STY palloop+2
 	LDX #15
 	.palloop
 	LDA ula_pal_defaults, X
@@ -102,8 +110,12 @@ ENDIF
 .ula_control_reset
 {
     LDA #ULA_Mode2
-    STA &248            ; Tell the OS or it will mess with ULA settings at vsync
+}
+\\ Fall through!
+.ula_set_mode
+{
     STA &FE20
+    STA &248            ; Tell the OS or it will mess with ULA settings at vsync
     RTS
 }
 
@@ -133,5 +145,13 @@ ENDIF
 	NEXT
 	RTS
 }
+
+.cycles_wait_128		; JSR to get here takes 6c
+{
+	FOR n,1,58,1		; 58x
+	NOP					; 2c
+	NEXT				; = 116c
+	RTS					; 6c
+}						; = 128c
 
 .helpers_end

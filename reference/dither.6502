@@ -1,0 +1,1697 @@
+\ ******************************************************************
+\ *	Dither investigations
+\ ******************************************************************
+
+\ ******************************************************************
+\ *	Define OS entries (could be INCLUDE bbc_os.h)
+\ ******************************************************************
+
+oswrch = &FFEE
+osasci = &FFE3
+osbyte = &FFF4
+osword = &FFF1
+
+INKEY_x = 66
+INKEY_z = 97
+INKEY_q = 16
+INKEY_a = 65
+INKEY_esc = 112
+
+\ ******************************************************************
+\ *	Define debug flags (prefer DEBUG_* naming?)
+\ ******************************************************************
+
+DEBUG_RASTERS = FALSE
+
+\ ******************************************************************
+\ *	Define macros (prefer MACRO_* naming?)
+\ ******************************************************************
+
+MACRO SETCOL_MODE2 logical, actual
+{
+	LDA #(logical * 16) + actual
+	STA &FE21
+	ORA #&80
+	STA &FE21
+}
+ENDMACRO
+
+MACRO SETCOL_MODE0 logical, actual
+{
+	LDA #(&80 * logical) + &00 + actual:STA &FE21
+	LDA #(&80 * logical) + &10 + actual:STA &FE21
+	LDA #(&80 * logical) + &20 + actual:STA &FE21
+	LDA #(&80 * logical) + &30 + actual:STA &FE21
+	LDA #(&80 * logical) + &40 + actual:STA &FE21
+	LDA #(&80 * logical) + &50 + actual:STA &FE21
+	LDA #(&80 * logical) + &60 + actual:STA &FE21
+	LDA #(&80 * logical) + &70 + actual:STA &FE21
+}
+ENDMACRO
+
+MACRO MODE0_PAL_TABLE logical, actual
+{
+	EQUB (&80 * logical) + &00 + actual
+	EQUB (&80 * logical) + &10 + actual
+	EQUB (&80 * logical) + &20 + actual
+	EQUB (&80 * logical) + &30 + actual
+	EQUB (&80 * logical) + &40 + actual
+	EQUB (&80 * logical) + &50 + actual
+	EQUB (&80 * logical) + &60 + actual
+	EQUB (&80 * logical) + &70 + actual
+}
+ENDMACRO
+
+MACRO SETCOL_MODE1 logical, actual
+{
+	LDA #(logical & 2) << 5 + (logical & 1) << 4 + &00: STA &FE21
+	LDA #(logical & 2) << 5 + (logical & 1) << 4 + &10: STA &FE21
+	LDA #(logical & 2) << 5 + (logical & 1) << 4 + &40: STA &FE21
+	LDA #(logical & 2) << 5 + (logical & 1) << 4 + &50: STA &FE21
+}
+ENDMACRO
+
+MACRO SETBGCOL_MODE1 col
+	LDA #&00 + col:STA &FE21
+	LDA #&10 + col:STA &FE21
+	LDA #&40 + col:STA &FE21
+	LDA #&50 + col:STA &FE21
+ENDMACRO
+
+MACRO SETFGCOL1_MODE1 col
+	LDA #&20 + col:STA &FE21
+	LDA #&30 + col:STA &FE21
+	LDA #&60 + col:STA &FE21
+	LDA #&70 + col:STA &FE21
+ENDMACRO
+
+MACRO SETFGCOL2_MODE1 col
+	LDA #&80 + col:STA &FE21
+	LDA #&90 + col:STA &FE21
+	LDA #&C0 + col:STA &FE21
+	LDA #&D0 + col:STA &FE21
+ENDMACRO
+
+MACRO SETFGCOL3_MODE1 col
+	LDA #&A0 + col:STA &FE21
+	LDA #&B0 + col:STA &FE21
+	LDA #&E0 + col:STA &FE21
+	LDA #&F0 + col:STA &FE21
+ENDMACRO
+
+MACRO WAIT_FOR_KEYPRESS key
+{
+	.wait_for_keypress
+	LDA #key:STA &FE4F:LDA &FE4F:BPL wait_for_keypress
+}
+ENDMACRO
+
+\ ******************************************************************
+\ *	Values of palette regs for MODE 2
+\ ******************************************************************
+
+PAL_black	= (0 EOR 7)
+PAL_blue	= (4 EOR 7)
+PAL_red		= (1 EOR 7)
+PAL_magenta = (5 EOR 7)
+PAL_green	= (2 EOR 7)
+PAL_cyan	= (6 EOR 7)
+PAL_yellow	= (3 EOR 7)
+PAL_white	= (7 EOR 7)
+
+ULA_MODE0	= &9C
+ULA_MODE1	= &D8
+ULA_MODE2	= &F4
+
+\ ******************************************************************
+\ *	Define global constants
+\ *	Prefer MAIN_* or DEMO_* naming?
+\ ******************************************************************
+
+MAIN_screen_base_addr = &3000
+MAIN_screen_top_addr = &8000
+MAIN_screen_size = MAIN_screen_top_addr - MAIN_screen_base_addr
+
+MAIN_screen_num_cols = 40
+MAIN_screen_bytes_per_col = 16
+MAIN_screen_bytes_per_row = 640			; = MAIN_screen_bytes_per_col * MAIN_screen_num_cols
+
+MAIN_clocks_per_scanline = 64
+MAIN_scanlines_per_row = 8
+
+\\ 	scraddr = MAIN_screen_base_addr + (y MOD 8) + (y DIV 8) * MAIN_screen_bytes_per_row + (x DIV 4) * 8
+
+MODE0_num_cols = 64		; or 68 or 80
+MODE0_bytes_per_row = MODE0_num_cols * 8
+
+TIMER_initial = (40 * 64) - 32
+TIMER_latch = (32 * 64) - 2
+
+\ ******************************************************************
+\ *	Define fast (zero page) runtime variables
+\ *	Prefer main_* or demo_* naming
+\ * Maybe have naming convention for variables used only in specific
+\ * functions that don't need to be preserved between routines?
+\ * <system>_<varname> - preserved
+\ * t_<function name>_<varname> - not preserved (temporary)
+\ ******************************************************************
+
+ORG &70
+GUARD &90
+
+\\ Vars used by main system routines
+.main_vsync_counter		SKIP 1		; counts up with each vsync
+.main_last_vsync		SKIP 1		; vsync count last time around the loop (can calculate tick delta)
+
+.old_irqv				SKIP 2
+.pal_count				SKIP 1
+.pal_enable				SKIP 1
+
+\\ Vars used by demo subroutine to keep track
+
+\\ Generic vars that can be shared (volatile)
+.writeptr				SKIP 2		; generic write ptr
+
+.draw_X_col				SKIP 1
+.draw_Y_col				SKIP 1
+.draw_byte				SKIP 1
+.draw_blend				SKIP 1
+.draw_dither			SKIP 1
+
+
+\ ******************************************************************
+\ *	Start address to be saved
+\ ******************************************************************
+
+ORG &1900	      					; code origin (like P%=&2000)
+GUARD MAIN_screen_base_addr			; ensure code size doesn't hit start of screen memory
+
+.start
+
+\ ******************************************************************
+\ *	Code entry
+\ ******************************************************************
+
+\ ******************************************************************
+\ *	Main loop sequencing tick & draw code
+\ *	Separate anything handled by the main system and the demo
+\ *	routines.
+\ *	A, X & Y are not considered preserved.  Each subroutine needs
+\ * to manage anything required internally.
+\ * 'Make' routines should do any initialisation as required before
+\ * anything can be rendered to the screen and initial tick state
+\ * 'Draw initial' routines write the initial screen buffer before
+\ * both first frame draw and first tick
+\ * 'Tick' routines update run-time state each time around the main
+\ * loop.  This could be a number of vsyncs since update.
+\ * 'Draw' routines write to the screen buffer but do not write to
+\ * any vars updated by the tick routine, these are considered RO.
+\ ******************************************************************
+
+.main
+{
+	JSR main_make
+	
+	JSR set_mode_0
+	JSR clear_screen
+	
+	JSR dither_draw_9
+	WAIT_FOR_KEYPRESS INKEY_a
+	
+	LDA #&FF:STA pal_enable
+
+	WAIT_FOR_KEYPRESS INKEY_esc
+
+	LDA #&0:STA pal_enable
+	SETCOL_MODE0 0, PAL_black
+	SETCOL_MODE0 1, PAL_white
+	
+	JSR clear_screen
+	JSR dither_draw_8
+
+	WAIT_FOR_KEYPRESS INKEY_a
+	SETCOL_MODE0 0, PAL_black
+	SETCOL_MODE0 1, PAL_blue
+
+	WAIT_FOR_KEYPRESS INKEY_q
+	SETCOL_MODE0 0, PAL_red
+	SETCOL_MODE0 1, PAL_magenta
+
+	WAIT_FOR_KEYPRESS INKEY_a
+	SETCOL_MODE0 0, PAL_green
+	SETCOL_MODE0 1, PAL_cyan
+
+	WAIT_FOR_KEYPRESS INKEY_q
+	SETCOL_MODE0 0, PAL_yellow
+	SETCOL_MODE0 1, PAL_white
+	
+	WAIT_FOR_KEYPRESS INKEY_esc
+	
+	JSR set_mode_2
+
+	JSR clear_screen
+	JSR dither_draw_6
+	
+	WAIT_FOR_KEYPRESS INKEY_esc
+
+	JSR clear_screen
+	JSR dither_draw_1
+
+	WAIT_FOR_KEYPRESS INKEY_esc
+	
+\\	JSR clear_screen
+\\	LDA #8
+\\	JSR dither_draw_2
+\\	WAIT_FOR_KEYPRESS INKEY_esc
+
+\\	JSR clear_screen
+\\	JSR dither_draw_3
+\\	WAIT_FOR_KEYPRESS INKEY_esc
+
+	JSR clear_screen
+	JSR dither_draw_4
+	
+	WAIT_FOR_KEYPRESS INKEY_esc
+
+	JSR clear_screen
+
+	\\ Reorder colours by hue
+	SEI
+	SETCOL_MODE2 0, PAL_black
+	SETCOL_MODE2 1, PAL_red
+	SETCOL_MODE2 2, PAL_yellow
+	SETCOL_MODE2 3, PAL_green
+	SETCOL_MODE2 4, PAL_cyan
+	SETCOL_MODE2 5, PAL_blue
+	SETCOL_MODE2 6, PAL_magenta
+	SETCOL_MODE2 7, PAL_white
+	CLI
+
+	JSR dither_draw_5
+	
+	WAIT_FOR_KEYPRESS INKEY_esc
+	.return
+	JSR main_kill
+	
+	LDA #22
+	JSR oswrch
+	LDA #7
+	JSR oswrch
+	RTS
+}
+
+.main_make
+{
+	\\ Set up hardware state etc.
+
+	SEI							; disable interupts
+
+	LDX #&FF					; X=11111111
+	STX &FE44					; R4=T1 Low-Order Latches (write)
+	STX &FE45					; R5=T1 High-Order Counter
+	
+	LDA #LO(TIMER_latch)
+	STA &FE46
+	LDA #HI(TIMER_latch)
+	STA &FE47
+	
+	LDA #64						; A=00000000
+	STA &FE4B					; R11=Auxillary Control Register (timer 1 latched mode)
+
+	LDA #&7F					; A=01111111
+	STA &FE4E					; R14=Interrupt Enable (disable all interrupts)
+
+	LDA #&C2					; A=11000010
+	STA &FE4E					; R14=Interrupt Enable (enable main_vsync and timer interrupt)
+
+	LDA #&7F					; A=01111111
+	STA &FE43					; R3=Data Direction Register "A" (set keyboard data direction)
+
+	LDA #&0F					; A=00001111
+	STA &FE42					; R2=Data Direction Register "B" (set addressable latch for writing)
+
+	LDA #&00 + 3				; A=00000011
+	STA &FE40					; R0=Output Register "B" (write) (write 0 into bit 3 - keyboard write enable bit)
+
+	LDA #&00 + 4				; A=00000100	; B4
+	STA &FE40					; R0=Output Register "B" (write) (write 0 into bit 4 - screen address translation)
+
+	LDA #&08 + 5				; A=00001101	; B5
+	STA &FE40					; R0=Output Register "B" (write) (write 1 into bit 5 - screen address translation)
+
+	LDA &204:STA old_irqv
+	LDA &205:STA old_irqv+1
+	
+	LDA #LO(main_irq):STA &204
+	LDA #HI(main_irq):STA &205		; set interrupt handler
+	
+	LDA #0
+	STA main_vsync_counter
+	STA main_last_vsync
+	STA pal_count
+	STA pal_enable
+
+	CLI
+	
+	.return
+	RTS
+}
+
+
+.main_kill
+{
+	SEI							; disable interupts
+	LDX #&FF					; A=11111111
+	STX &FE4E					; R14=Interrupt Enable (enable all interrupts)
+
+	LDA #&0F					; A=00001111
+	STA &FE42					; R2=Data Direction Register "B" (set addressable latch for writing)
+
+	LDA #&80 + 3				; A=00000011
+	STA &FE40					; R0=Output Register "B" (write) (write 1 into bit 3 - keyboard write enable bit)
+
+	LDA old_irqv:STA &204
+	LDA old_irqv+1:STA &205
+	CLI
+
+	RTS
+}
+
+
+.set_mode_2
+{
+	SEI
+	\\ Set up CRTC for MODE 2
+
+	LDX #13
+	.crtcloop
+	STX &FE00
+	LDA main_crtcregs_MODE2,X
+	STA &FE01
+	DEX
+	BPL crtcloop
+
+	\\ Set up video ULA for MODE 1
+
+	LDA #ULA_MODE2
+	STA &FE20
+
+	\\ Must set palette registers or mode doesn't work!
+	\\ This order of colours is by brightness
+	
+	SETCOL_MODE2 0, PAL_black
+	SETCOL_MODE2 1, PAL_blue
+	SETCOL_MODE2 2, PAL_red
+	SETCOL_MODE2 3, PAL_magenta
+	SETCOL_MODE2 4, PAL_green
+	SETCOL_MODE2 5, PAL_cyan
+	SETCOL_MODE2 6, PAL_yellow
+	SETCOL_MODE2 7, PAL_white
+
+	CLI				; enable interupts
+
+	.return
+	RTS
+}
+
+.set_mode_0
+{
+	SEI
+	\\ Set up CRTC for MODE 0
+
+	LDX #13
+	.crtcloop
+	STX &FE00
+	LDA main_crtcregs_MODE0,X
+	STA &FE01
+	DEX
+	BPL crtcloop
+
+	\\ Set up video ULA for MODE 1
+
+	LDA #ULA_MODE0
+	STA &FE20
+
+	\\ Must set palette registers or mode doesn't work!
+	\\ This order of colours is by brightness
+	
+	SETCOL_MODE0 0, PAL_black
+	SETCOL_MODE0 1, PAL_white
+
+	CLI				; enable interupts
+
+	.return
+	RTS
+}
+
+
+.clear_screen
+{
+	LDX #0
+	.clearpage
+	LDA #0
+	.clearloop
+	STA MAIN_screen_base_addr,X		; could use STZ address,X on a Master
+	INX
+	BNE clearloop
+	
+	INC clearloop+2					; increment HI byte of screen write address
+	
+	LDA clearloop+2
+	CMP #HI(MAIN_screen_top_addr)	; test against top address of screen
+	BNE clearpage
+	
+	LDA #HI(MAIN_screen_base_addr)
+	STA clearloop+2					; reset ptr
+	
+	.return
+	RTS
+}
+
+
+\ ******************************************************************
+\ *	IRQ handler
+\ ******************************************************************
+
+.main_irq
+{
+	LDA &FE4D:AND #2:BNE irqvsync
+
+	.irqtimer
+	LDA #&40:STA &FE4D
+	
+	TXA:PHA:TYA:PHA
+	
+	LDA pal_enable
+	BEQ return
+	
+	LDA pal_count
+	CMP #6
+	BEQ return
+	
+	ASL A: ASL A: ASL A
+	TAX
+	
+	LDY #7
+	.loop
+	LDA mode0_hue_table,X
+	STA &FE21
+	INX:DEY
+	BPL loop
+	
+	INC pal_count
+	
+	.return
+	PLA:TAY:PLA:TAX
+	LDA &FC
+	RTI
+
+	.irqvsync
+	STA &FE4D
+	INC main_vsync_counter
+	
+	SEI
+	LDA #LO(TIMER_initial)
+	STA &FE44					; R4=T1 Low-Order Latches (write)
+	LDA #HI(TIMER_initial)
+	STA &FE45					; R5=T1 High-Order Counter
+	
+	LDA #LO(TIMER_latch)
+	STA &FE46
+	LDA #HI(TIMER_latch)
+	STA &FE47
+
+	LDA #0
+	STA pal_count
+	CLI 
+	
+\\	SETCOL_MODE0 0, PAL_red
+\\	SETCOL_MODE0 1, PAL_yellow
+	
+	LDA &FC
+	RTI
+}
+
+
+\ ******************************************************************
+\ *	Dither sub-routines
+\ ******************************************************************
+
+MACRO DRAW_8_COLUMNS_DITHER
+{
+	LDX #0
+	LDY #(8*8)-1				; 8 columns
+	.loop
+	LDA draw_byte
+	.dither						
+	AND bayer_8,X				; +6 instructions from start
+	STA (writeptr),Y
+	LDA bayer_8,X				; +11 instructions from start
+	EOR #&FF
+	AND draw_blend
+	ORA (writeptr),Y
+	STA (writeptr),Y
+	INX
+	TXA:AND #&F:TAX
+	DEY
+	BPL loop
+}
+ENDMACRO
+
+MACRO WRITEPTR_NEXTROW
+{
+	CLC
+	LDA writeptr
+	ADC #LO(MAIN_screen_bytes_per_row)
+	STA writeptr
+	LDA writeptr+1
+	ADC #HI(MAIN_screen_bytes_per_row)
+	STA writeptr+1
+}
+ENDMACRO
+
+MACRO WRITEPTR_ADD value
+{
+	CLC
+	LDA writeptr
+	ADC #LO(value)
+	STA writeptr
+	LDA writeptr+1
+	ADC #HI(value)
+	STA writeptr+1
+}
+ENDMACRO
+
+MACRO CALC_WRITEPTR
+{
+	LDX draw_X_col
+	LDY draw_Y_col
+	
+	CLC
+	LDA #LO(MAIN_screen_base_addr)
+	ADC multby640_LO,Y
+	ADC multby16_LO,X
+	STA writeptr
+	
+	LDA #HI(MAIN_screen_base_addr)
+	ADC multby640_HI,Y
+	ADC multby16_HI,X
+	STA writeptr+1
+}
+ENDMACRO
+
+MACRO CALC_WRITEPTR_MODE0
+{
+	LDX draw_X_col
+	LDY draw_Y_col
+	
+	CLC
+	LDA #LO(MAIN_screen_base_addr)
+	ADC multbyMODE0_LO,Y
+	ADC multby8_LO,X
+	STA writeptr
+	
+	LDA #HI(MAIN_screen_base_addr)
+	ADC multbyMODE0_HI,Y
+	ADC multby8_HI,X
+	STA writeptr+1
+}
+ENDMACRO
+
+.draw_square_dither
+{
+	CALC_WRITEPTR
+
+	\\ Load dither table
+	LDX draw_dither
+	LDA bayer_table_LO,X
+	STA dither1+7
+	STA dither1+12
+	STA dither2+7
+	STA dither2+12
+	STA dither3+7
+	STA dither3+12
+	STA dither4+7
+	STA dither4+12
+	LDA bayer_table_HI,X
+	STA dither1+8
+	STA dither1+13
+	STA dither2+8
+	STA dither2+13
+	STA dither3+8
+	STA dither3+13
+	STA dither4+8
+	STA dither4+13
+	
+	\\ Row 1
+	.dither1
+	DRAW_8_COLUMNS_DITHER
+	
+	\\ Next row
+	WRITEPTR_NEXTROW
+
+	\\ Row 2
+	.dither2
+	DRAW_8_COLUMNS_DITHER
+	
+	\\ Next row
+	WRITEPTR_NEXTROW
+
+	\\ Row 3
+	.dither3
+	DRAW_8_COLUMNS_DITHER
+
+	\\ Next row
+	WRITEPTR_NEXTROW
+
+	\\ Row 4
+	.dither4
+	DRAW_8_COLUMNS_DITHER
+
+	.return
+	RTS
+}
+
+.draw_rectangle_dither					; X,Y character positions
+{
+	CALC_WRITEPTR
+	
+	\\ Load dither table
+	LDX draw_dither
+	LDA bayer_table_LO,X
+	STA dither1+1
+	STA dither2+1
+	LDA bayer_table_HI,X
+	STA dither1+2
+	STA dither2+2
+		
+	\\ Row 1
+	LDX #0
+	LDY #(8*8)-1				; 8 columns
+	.loop1
+	LDA draw_byte
+	.dither1
+	AND bayer_8,X
+	STA (writeptr),Y
+	INX
+	TXA:AND #&F:TAX
+	DEY
+	BPL loop1
+
+	\\ Next row
+	WRITEPTR_NEXTROW
+
+	\\ Row 2
+	LDX #0
+	LDY #(8*8)-1
+	.loop2
+	LDA draw_byte
+	.dither2
+	AND bayer_4,X
+	STA (writeptr),Y
+	INX
+	TXA:AND #&F:TAX
+	DEY
+	BPL loop2
+	
+	.return
+	RTS
+}
+
+MACRO DRAW_4_COLUMNS_DITHER bayer
+{
+	LDX #0
+	LDY #(4*8)-1				; 4 columns
+	.loop
+	LDA draw_byte
+	AND bayer,X
+	STA (writeptr),Y
+	LDA bayer,X
+	EOR #&FF
+	AND draw_blend
+	ORA (writeptr),Y
+	STA (writeptr),Y
+	INX
+	TXA:AND #&F:TAX
+	DEY
+	BPL loop
+}
+ENDMACRO
+
+.draw_strip_dither
+{
+	CALC_WRITEPTR
+	
+	LDY #0
+	.loop
+	TYA:PHA
+	
+	DRAW_4_COLUMNS_DITHER bayer_0
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_1
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_2
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_3
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_4
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_5
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_6
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_7
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_8
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_9
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_10
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_11
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_12
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_13
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_14
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_15
+	WRITEPTR_ADD 32
+	DRAW_4_COLUMNS_DITHER bayer_16
+	
+	PLA:TAY
+	INY
+	CPY #4
+	BEQ return
+
+	WRITEPTR_ADD 128
+	JMP loop
+	
+	.return
+	RTS
+}
+
+.dither_draw_1
+{
+	\\ Draw all colours dithered to zero
+
+	LDY #1
+	.outer
+	STY draw_dither
+	
+	LDX #0			; colour
+	.loop
+	
+	LDA colour_to_both_pixels,X
+	STA draw_byte
+	
+	TXA
+	ASL A:ASL A
+	STA draw_X_col
+	
+	TYA
+	SBC #1
+	ASL A
+	STA draw_Y_col
+
+	TXA:PHA:TYA:PHA
+	JSR draw_rectangle_dither
+	PLA:TAY:PLA:TAX
+
+	INX
+	CPX #8
+	BNE loop
+	
+	INY
+	CPY #17
+	BNE outer
+	
+	.return
+	RTS
+}
+
+
+.dither_draw_2
+{
+	STA draw_dither
+	
+	\\ Draw all colours 50:50 dithered against each other
+	
+	LDY #0
+	.outer
+	TYA:ASL A:ASL A
+	STA draw_Y_col
+	
+	LDX #0
+	.loop
+	TXA: ADC #1: ASL A: ASL A
+	STA draw_X_col
+	
+	LDA colour_to_both_pixels,X
+	STA draw_byte
+	LDA colour_to_both_pixels,Y
+	STA draw_blend
+	
+	TXA:PHA:TYA:PHA
+	JSR draw_square_dither
+	PLA:TAY:PLA:TAX
+	
+	INX
+	CPX #8
+	BNE loop
+	
+	INY
+	CPY #8
+	BNE outer
+		
+	.return
+	RTS
+}
+
+.dither_draw_3
+{
+	\\ Draw all colours dither blended to each other
+	LDX #0	
+	.outer
+
+	LDA colour_to_both_pixels,X
+	STA draw_byte
+
+	TXA:PHA
+	JSR clear_screen
+
+	LDY #0
+	.loop
+	TYA:ASL A:ASL A
+	STA draw_Y_col
+
+	LDA #0
+	STA draw_X_col
+
+	LDA colour_to_both_pixels,Y
+	STA draw_blend
+	
+	TYA:PHA
+	JSR draw_strip_dither
+	PLA:TAY
+	
+	INY
+	CPY #8
+	BNE loop
+	
+\\	WAIT_FOR_KEYPRESS INKEY_esc
+	
+	PLA:TAX
+	INX
+	CPX #8
+	BNE outer
+	
+	.return
+	RTS
+}
+
+.dither_draw_6
+{
+	LDA #0
+	STA draw_X_col
+	LDA #0
+	STA draw_Y_col
+	
+	LDX #0
+	.loop
+	LDA colour_to_both_pixels,X
+	STA draw_blend
+	INX
+	LDA colour_to_both_pixels,X
+	STA draw_byte
+
+	TXA:PHA
+	JSR draw_strip_dither
+
+	LDX draw_byte
+	LDY draw_blend
+	STX draw_blend
+	STY draw_byte
+	
+	CLC
+	LDA draw_Y_col
+	ADC #4
+	STA draw_Y_col
+	
+	JSR draw_strip_dither
+
+	CLC
+	LDA draw_Y_col
+	ADC #4
+	STA draw_Y_col
+
+	PLA:TAX
+	INX
+	CPX #8
+	BNE loop
+	
+	.return
+	RTS
+}
+
+
+
+.dither_draw_4
+{
+	\\ Draw all colours blended to each other increasing dither
+	LDX #0	
+	.outer
+
+	TXA:PHA
+	JSR dither_draw_2
+	
+\\	WAIT_FOR_KEYPRESS INKEY_esc
+	
+	PLA:TAX
+	INX
+	CPX #17
+	BNE outer
+	
+	.return
+	RTS
+}
+
+
+.draw_half_row_dither
+{
+	LDX draw_dither
+	LDA bayer_table_LO,X
+	STA dither1+1
+	STA dither2+1
+	LDA bayer_table_HI,X
+	STA dither1+2
+	STA dither2+2
+
+	LDX #0
+	LDY #0
+	.loop1
+	LDA draw_byte
+	.dither1
+	AND bayer_8,X
+	STA (writeptr),Y
+	.dither2
+	LDA bayer_8,X
+	EOR #&FF
+	AND draw_blend
+	ORA (writeptr),Y
+	STA (writeptr),Y
+	INX
+	CPX #4
+	BNE not_4
+	LDX #8
+	INY:INY:INY:INY
+	
+	.not_4
+	CPX #12
+	BNE continue
+	LDX #0
+	INY:INY:INY:INY
+	
+	.continue
+	INY
+	BNE loop1
+
+	.return
+	RTS
+}
+
+
+.draw_32_line_dither
+{
+	CALC_WRITEPTR
+	
+	\\ Need to loop from dither 0 to dither 15 step 2
+	\\ Draw a half height (4 line) character row per dither
+	
+	LDX #0
+	.loop
+	STX draw_dither
+	
+	JSR draw_half_row_dither
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither
+
+	LDX draw_dither
+	INX:INX
+	STX draw_dither
+	WRITEPTR_ADD &FF04
+
+	JSR draw_half_row_dither
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither
+
+	LDX draw_dither
+	INX:INX
+	WRITEPTR_ADD 380
+	
+	CPX #16
+	BNE loop
+
+	.return
+	RTS
+}
+
+
+.dither_draw_5
+{
+	\\ Blend colour 1 - 2 - 3 - 4 - 5 - 6 - 1 (hues)
+	\\ 256 scanlines ~= 42 lines per blended
+	\\ 16 dither patterns ~ 3 lines per dither
+	\\ Dither patterns require 4x4 pixels to be valid!
+	\\ 6 x 32 lines x 8 dither patterns
+	\\ More complicated as want to draw just half a character line at a time
+
+	LDA #0
+	STA draw_X_col
+
+	LDY #1
+	.loop
+
+	LDA colour_to_both_pixels,Y
+	STA draw_blend
+	
+	TYA
+	CLC
+	ADC #1
+	CMP #7
+	BCC no_wrap
+	LDA #1
+	.no_wrap
+	TAX
+	LDA colour_to_both_pixels,X
+	STA draw_byte
+
+	TYA
+	ASL A: ASL A
+	STA draw_Y_col
+	
+	TYA:PHA
+	JSR draw_32_line_dither
+	PLA:TAY
+	
+	INY
+	CPY #7
+	BNE loop
+	
+	.return
+	RTS
+}
+
+.draw_half_row_dither_mode0
+{
+	LDX draw_dither
+	LDA bayer_table_mode0_LO,X
+	STA dither+1
+	LDA bayer_table_mode0_HI,X
+	STA dither+2
+
+	LDX #0
+	LDY #0
+	.dither
+	LDA bayer_0_mode0,X
+	STA (writeptr),Y
+	INX
+	CPX #4
+	BNE not_4
+	LDX #0
+	INY:INY:INY:INY
+	
+	.not_4
+	INY
+	BNE dither
+
+	.return
+	RTS
+}
+
+
+.dither_draw_8
+{
+	\\ MODE 0 - black to white across the screen using full 640 width
+	
+	LDX #0
+	STX draw_X_col
+	LDY #0
+	
+	.outer
+	STY draw_Y_col
+
+	CALC_WRITEPTR_MODE0
+	
+	LDX #0
+	.loop
+	STX draw_dither
+	LDA bayer_table_mode0_LO,X
+	STA dither+1
+	LDA bayer_table_mode0_HI,X
+	STA dither+2
+
+	LDX #0
+	LDY #0
+	.dither
+	LDA bayer_0_mode0,X
+	STA (writeptr),Y
+	INX
+	CPX #8
+	BNE continue
+	LDX #0
+	.continue
+	INY
+	CPY #32
+	BNE dither
+
+	WRITEPTR_ADD 32
+	LDX draw_dither
+	INX
+	CPX #17
+	BNE loop
+
+	LDY draw_Y_col
+	INY
+	STY draw_Y_col
+	CPY #32
+	BNE outer
+	
+	.return
+	RTS
+}
+
+
+.dither_draw_9
+{
+	\\ MODE 0 - dither from black to white and back vertically
+	
+	LDX #0
+	STX draw_X_col
+	LDY #0
+	STY draw_Y_col
+
+	CALC_WRITEPTR_MODE0
+	
+	LDY #0
+	.outer
+	TYA:PHA
+	
+	LDX #0
+	.loop1
+	STX draw_dither
+	
+	JSR draw_half_row_dither_mode0
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither_mode0
+	
+	LDX draw_dither
+	INX:INX
+	STX draw_dither
+	WRITEPTR_ADD &FF04
+	
+	JSR draw_half_row_dither_mode0
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither_mode0
+
+	LDX draw_dither
+	INX:INX
+	WRITEPTR_ADD (MODE0_bytes_per_row - 4 - 256)
+	
+	CPX #16
+	BNE loop1
+
+	.loop2
+	STX draw_dither
+	
+	JSR draw_half_row_dither_mode0
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither_mode0
+	
+	LDX draw_dither
+	DEX
+;	CPX #15:BEQ skip_second_dex		; use odd dither patterns on second pass - less pleasing
+	DEX
+	.skip_second_dex
+	STX draw_dither
+	WRITEPTR_ADD &FF04
+	
+	JSR draw_half_row_dither_mode0
+	WRITEPTR_ADD 256
+	JSR draw_half_row_dither_mode0
+
+	LDX draw_dither
+	DEX:DEX
+	WRITEPTR_ADD (MODE0_bytes_per_row - 4 - 256)
+	
+	CPX #2
+	BCS loop2
+	
+	PLA:TAY
+	INY
+	CPY #3
+	BEQ return
+
+	JMP outer
+	
+	.return
+	RTS
+}
+
+
+\ ******************************************************************
+\ *	Data blocks
+\ ******************************************************************
+
+
+\ ******************************************************************
+\ *	Values of CRTC regs for MODE 1
+\ ******************************************************************
+
+.main_crtcregs_MODE0
+{
+	EQUB 127			; R0  horizontal total
+	EQUB MODE0_num_cols	; R1  horizontal displayed
+	EQUB 98				; R2  horizontal position
+	EQUB 40				; R3  sync width 40 = &28
+	EQUB 38				; R4  vertical total
+	EQUB 0				; R5  vertical total adjust
+	EQUB 32				; R6  vertical displayed
+	EQUB 34				; R7  vertical position; 35=top of screen
+	EQUB 0				; R8  interlace
+	EQUB 7				; R9  scanlines per row
+	EQUB 32				; R10 cursor start
+	EQUB 8				; R11 cursor end
+	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+}
+
+.main_crtcregs_MODE1
+{
+	EQUB 127			; R0  horizontal total
+	EQUB 80				; R1  horizontal displayed
+	EQUB 98				; R2  horizontal position
+	EQUB 40				; R3  sync width 40 = &28
+	EQUB 38				; R4  vertical total
+	EQUB 0				; R5  vertical total adjust
+	EQUB 32				; R6  vertical displayed
+	EQUB 34				; R7  vertical position; 35=top of screen
+	EQUB 0				; R8  interlace
+	EQUB 7				; R9  scanlines per row
+	EQUB 32				; R10 cursor start
+	EQUB 8				; R11 cursor end
+	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+}
+
+.main_crtcregs_MODE2
+{
+	EQUB 127			; R0  horizontal total
+	EQUB 80				; R1  horizontal displayed
+	EQUB 98				; R2  horizontal position
+	EQUB 40				; R3  sync width 40 = &28
+	EQUB 38				; R4  vertical total
+	EQUB 0				; R5  vertical total adjust
+	EQUB 32				; R6  vertical displayed
+	EQUB 34				; R7  vertical position; 35=top of screen
+	EQUB 0				; R8  interlace
+	EQUB 7				; R9  scanlines per row
+	EQUB 32				; R10 cursor start
+	EQUB 8				; R11 cursor end
+	EQUB HI(MAIN_screen_base_addr/8)		; R12 screen start address, high
+	EQUB LO(MAIN_screen_base_addr/8)		; R13 screen start address, low
+}
+
+
+\ ******************************************************************
+\ *	Sprite data
+\ ******************************************************************
+
+.bayer_0
+EQUB &00,&00,&00,&00
+EQUB &00,&00,&00,&00
+EQUB &00,&00,&00,&00
+EQUB &00,&00,&00,&00
+
+.bayer_1
+EQUB &2A,&00,&00,&00
+EQUB &2A,&00,&00,&00
+EQUB &00,&00,&00,&00
+EQUB &00,&00,&00,&00
+
+.bayer_2
+EQUB &2A,&00,&00,&00
+EQUB &2A,&00,&00,&00
+EQUB &00,&00,&2A,&00			; ordered as written (character order)
+EQUB &00,&00,&2A,&00			; ordered as written (character order)
+
+.bayer_3
+EQUB &00,&00,&2A,&00
+EQUB &00,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+
+.bayer_4
+EQUB &2A,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+
+.bayer_5
+EQUB &2A,&15,&2A,&00
+EQUB &2A,&15,&2A,&00
+EQUB &2A,&00,&2A,&00
+EQUB &2A,&00,&2A,&00
+
+.bayer_6
+EQUB &2A,&15,&2A,&00
+EQUB &2A,&15,&2A,&00
+EQUB &2A,&00,&2A,&15
+EQUB &2A,&00,&2A,&15
+
+.bayer_7
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&00,&2A,&15
+EQUB &2A,&00,&2A,&15
+
+.bayer_8
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&15,&2A,&15
+
+.bayer_9
+EQUB &2A,&3F,&2A,&15
+EQUB &2A,&3F,&2A,&15
+EQUB &2A,&15,&2A,&15
+EQUB &2A,&15,&2A,&15
+
+.bayer_10
+EQUB &2A,&3F,&2A,&15
+EQUB &2A,&3F,&2A,&15
+EQUB &2A,&15,&2A,&3F
+EQUB &2A,&15,&2A,&3F
+
+.bayer_11
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&15,&2A,&3F
+EQUB &2A,&15,&2A,&3F
+
+.bayer_12
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+
+.bayer_13
+EQUB &3F,&3F,&2A,&3F
+EQUB &3F,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+EQUB &2A,&3F,&2A,&3F
+
+.bayer_14
+EQUB &3F,&3F,&2A,&3F
+EQUB &3F,&3F,&2A,&3F
+EQUB &2A,&3F,&3F,&3F
+EQUB &2A,&3F,&3F,&3F
+
+.bayer_15
+EQUB &3F,&3F,&3F,&3F
+EQUB &3F,&3F,&3F,&3F
+EQUB &2A,&3F,&3F,&3F
+EQUB &2A,&3F,&3F,&3F
+
+.bayer_16
+EQUB &3F,&3F,&3F,&3F
+EQUB &3F,&3F,&3F,&3F
+EQUB &3F,&3F,&3F,&3F
+EQUB &3F,&3F,&3F,&3F
+
+
+.bayer_table_LO
+{
+	EQUB LO(bayer_0)
+	EQUB LO(bayer_1)
+	EQUB LO(bayer_2)
+	EQUB LO(bayer_3)
+	EQUB LO(bayer_4)
+	EQUB LO(bayer_5)
+	EQUB LO(bayer_6)
+	EQUB LO(bayer_7)
+	EQUB LO(bayer_8)
+	EQUB LO(bayer_9)
+	EQUB LO(bayer_10)
+	EQUB LO(bayer_11)
+	EQUB LO(bayer_12)
+	EQUB LO(bayer_13)
+	EQUB LO(bayer_14)
+	EQUB LO(bayer_15)
+	EQUB LO(bayer_16)
+}
+
+.bayer_table_HI
+{
+	EQUB HI(bayer_0)
+	EQUB HI(bayer_1)
+	EQUB HI(bayer_2)
+	EQUB HI(bayer_3)
+	EQUB HI(bayer_4)
+	EQUB HI(bayer_5)
+	EQUB HI(bayer_6)
+	EQUB HI(bayer_7)
+	EQUB HI(bayer_8)
+	EQUB HI(bayer_9)
+	EQUB HI(bayer_10)
+	EQUB HI(bayer_11)
+	EQUB HI(bayer_12)
+	EQUB HI(bayer_13)
+	EQUB HI(bayer_14)
+	EQUB HI(bayer_15)
+	EQUB HI(bayer_16)
+}
+
+.bayer_0_mode0
+EQUB &00,&00,&00,&00
+EQUB &00,&00,&00,&00
+
+.bayer_1_mode0
+EQUB &88,&00,&00,&00
+EQUB &88,&00,&00,&00
+
+.bayer_2_mode0
+EQUB &88,&00,&22,&00
+EQUB &88,&00,&22,&00
+
+.bayer_3_mode0
+EQUB &88,&00,&AA,&00
+EQUB &88,&00,&AA,&00
+
+.bayer_4_mode0
+EQUB &AA,&00,&AA,&00
+EQUB &AA,&00,&AA,&00
+
+.bayer_5_mode0
+EQUB &AA,&44,&AA,&00
+EQUB &AA,&44,&AA,&00
+
+.bayer_6_mode0
+EQUB &AA,&44,&AA,&11
+EQUB &AA,&44,&AA,&11
+
+.bayer_7_mode0
+EQUB &AA,&44,&AA,&55
+EQUB &AA,&44,&AA,&55
+
+.bayer_8_mode0
+EQUB &AA,&55,&AA,&55
+EQUB &AA,&55,&AA,&55
+
+.bayer_9_mode0
+EQUB &AA,&DD,&AA,&55
+EQUB &AA,&DD,&AA,&55
+
+.bayer_10_mode0
+EQUB &AA,&DD,&AA,&77
+EQUB &AA,&DD,&AA,&77
+
+.bayer_11_mode0
+EQUB &AA,&DD,&AA,&FF
+EQUB &AA,&DD,&AA,&FF
+
+.bayer_12_mode0
+EQUB &AA,&FF,&AA,&FF
+EQUB &AA,&FF,&AA,&FF
+
+.bayer_13_mode0
+EQUB &EE,&FF,&AA,&FF
+EQUB &EE,&FF,&AA,&FF
+
+.bayer_14_mode0
+EQUB &EE,&FF,&BB,&FF
+EQUB &EE,&FF,&BB,&FF
+
+.bayer_15_mode0
+EQUB &EE,&FF,&FF,&FF
+EQUB &EE,&FF,&FF,&FF
+
+.bayer_16_mode0
+EQUB &FF,&FF,&FF,&FF
+EQUB &FF,&FF,&FF,&FF
+
+.bayer_table_mode0_LO
+{
+	EQUB LO(bayer_0_mode0)
+	EQUB LO(bayer_1_mode0)
+	EQUB LO(bayer_2_mode0)
+	EQUB LO(bayer_3_mode0)
+	EQUB LO(bayer_4_mode0)
+	EQUB LO(bayer_5_mode0)
+	EQUB LO(bayer_6_mode0)
+	EQUB LO(bayer_7_mode0)
+	EQUB LO(bayer_8_mode0)
+	EQUB LO(bayer_9_mode0)
+	EQUB LO(bayer_10_mode0)
+	EQUB LO(bayer_11_mode0)
+	EQUB LO(bayer_12_mode0)
+	EQUB LO(bayer_13_mode0)
+	EQUB LO(bayer_14_mode0)
+	EQUB LO(bayer_15_mode0)
+	EQUB LO(bayer_16_mode0)
+}
+
+.bayer_table_mode0_HI
+{
+	EQUB HI(bayer_0_mode0)
+	EQUB HI(bayer_1_mode0)
+	EQUB HI(bayer_2_mode0)
+	EQUB HI(bayer_3_mode0)
+	EQUB HI(bayer_4_mode0)
+	EQUB HI(bayer_5_mode0)
+	EQUB HI(bayer_6_mode0)
+	EQUB HI(bayer_7_mode0)
+	EQUB HI(bayer_8_mode0)
+	EQUB HI(bayer_9_mode0)
+	EQUB HI(bayer_10_mode0)
+	EQUB HI(bayer_11_mode0)
+	EQUB HI(bayer_12_mode0)
+	EQUB HI(bayer_13_mode0)
+	EQUB HI(bayer_14_mode0)
+	EQUB HI(bayer_15_mode0)
+	EQUB HI(bayer_16_mode0)
+}
+
+
+\ ******************************************************************
+\ *	Look up tables
+\ ******************************************************************
+
+.colours_to_right_pixel
+{
+	EQUB &00		; col 0 pixels
+	EQUB &01		; col 1 pixels
+	EQUB &04		; col 2 pixels
+	EQUB &05		; col 3 pixels
+	EQUB &10		; col 4 pixels
+	EQUB &11		; col 5 pixels
+	EQUB &14		; col 6 pixels
+	EQUB &15		; col 7 pixels
+}
+
+.colour_to_left_pixel
+{
+	EQUB &00		; col 0 pixels
+	EQUB &02		; col 1 pixels
+	EQUB &08		; col 2 pixels
+	EQUB &0A		; col 3 pixels
+	EQUB &20		; col 4 pixels
+	EQUB &22		; col 5 pixels
+	EQUB &28		; col 6 pixels
+	EQUB &2A		; col 7 pixels
+}
+
+.colour_to_both_pixels
+{
+	EQUB &00		; col 0 pixels
+	EQUB &03		; col 1 pixels
+	EQUB &0C		; col 2 pixels
+	EQUB &0F		; col 3 pixels
+	EQUB &30		; col 4 pixels
+	EQUB &33		; col 5 pixels
+	EQUB &3C		; col 6 pixels
+	EQUB &3F		; col 7 pixels
+}
+
+
+.mode0_hue_table	; 0 = red, 1 = yellow		; at top of frame
+MODE0_PAL_TABLE 1, PAL_yellow
+MODE0_PAL_TABLE 0, PAL_green
+MODE0_PAL_TABLE 1, PAL_cyan
+MODE0_PAL_TABLE 0, PAL_blue
+MODE0_PAL_TABLE 1, PAL_magenta
+MODE0_PAL_TABLE 0, PAL_red
+
+ALIGN &100
+\\ LO byte of n * 640 for 0 < n < 31
+.multby640_LO
+FOR n, 0, 31, 1
+EQUB LO(n*640)
+NEXT
+
+\\ HI byte of n * 640 for 0 < n < 31
+.multby640_HI
+FOR n, 0, 31, 1
+EQUB HI(n*640)
+NEXT
+
+\\ LO byte of MODE 0 bytes per row for 0 < n < 31
+.multbyMODE0_LO
+FOR n, 0, 31, 1
+EQUB LO(n*MODE0_bytes_per_row)
+NEXT
+
+\\ HI byte of MODE 0 bytes per row for 0 < n < 31
+.multbyMODE0_HI
+FOR n, 0, 31, 1
+EQUB HI(n*MODE0_bytes_per_row)
+NEXT
+
+.multby16_LO
+FOR n, 0, 39, 1
+EQUB LO(n*16)
+NEXT
+
+.multby16_HI
+FOR n, 0, 39, 1
+EQUB HI(n*16)
+NEXT
+
+.multby8_LO
+FOR n, 0, 79, 1
+EQUB LO(n*8)
+NEXT
+
+.multby8_HI
+FOR n, 0, 79, 1
+EQUB HI(n*8)
+NEXT
+
+\ ******************************************************************
+\ *	End address to be saved
+\ ******************************************************************
+
+.end
+
+
+\ ******************************************************************
+\ *	Space reserved for runtime buffers not preinitialised
+\ ******************************************************************
+
+
+\ ******************************************************************
+\ *	Save the code
+\ ******************************************************************
+
+SAVE "MyCode", start, end
