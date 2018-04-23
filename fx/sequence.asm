@@ -46,6 +46,12 @@
     JMP main_set_fx
 }
 
+.sequence_set_fx_copper
+{
+    LDA #fx_Copper
+    JMP main_set_fx
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -79,6 +85,9 @@ NEXT
 ENDIF
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 20.0
+
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
