@@ -2,11 +2,13 @@
 \ *	Copper colours
 \ ******************************************************************
 
-copper_index = locals_start + 0
-copper_col = locals_start + 1
-copper_idx2 = locals_start + 2
+copper_top_line = locals_start + 0
+copper_wave_index = locals_start + 1
+copper_delta = locals_start + 2
+copper_accum = locals_start + 3
+copper_temp = locals_start + 4
 
-COPPER_ROW_ADDR = screen_base_addr + 8 * 640
+COPPER_MAX_INDEX = 96
 
 .copper_start
 
@@ -19,60 +21,36 @@ COPPER_ROW_ADDR = screen_base_addr + 8 * 640
 
     SET_ULA_MODE ULA_Mode0
 
-    LDX #LO(copper_pal)
-    LDY #HI(copper_pal)
-    JSR ula_set_palette
-
-    STZ copper_index
-	STZ copper_idx2
+	STZ copper_top_line
+	STZ copper_wave_index
 
     RTS
 }
 
-.copper_pal
-{
-	EQUB &00 + PAL_black
-	EQUB &10 + PAL_black
-	EQUB &20 + PAL_black
-	EQUB &30 + PAL_black
-	EQUB &40 + PAL_black
-	EQUB &50 + PAL_black
-	EQUB &60 + PAL_black
-	EQUB &70 + PAL_black
-	EQUB &80 + PAL_black
-	EQUB &90 + PAL_white
-	EQUB &A0 + PAL_white
-	EQUB &B0 + PAL_white
-	EQUB &C0 + PAL_white
-	EQUB &D0 + PAL_white
-	EQUB &E0 + PAL_white
-	EQUB &F0 + PAL_white
-}
-
 .copper_update
 {
-    INC copper_index
+\\ This is the top line of our copper
 
-	LDA copper_index
-	AND #&1F
-	TAY
-
-   	LDA #12: STA &FE00		; 6c
-    LDA copper_lookup_HI, Y	; 4c
-	STA &FE01				; 4c
-
-	LDA #13: STA &FE00		; 6c
-    LDA copper_lookup_LO, Y	; 4c
-	STA &FE01				; 4c
-	
-	LDA copper_idx2
-	INC A
-	CMP #96
+	LDY copper_top_line
+	INY
+	CPY #COPPER_MAX_INDEX
 	BCC ok
-	LDA #0
+	LDY #0
 	.ok
-	STA copper_idx2
+	STY copper_top_line
 
+\\ Set the address & palette for first screen row
+
+	JSR copper_set_charrow		; 172c
+
+\\ Update our ripple
+
+	LDY copper_wave_index
+	INY
+	STY copper_wave_index
+
+	LDA copper_delta_wave, Y
+	STA copper_delta
     RTS
 }
 
@@ -92,30 +70,23 @@ COPPER_ROW_ADDR = screen_base_addr + 8 * 640
 
 	\\ R6=0 - one row displayed
 	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #1: STA &FE01		; 8 * 6c = 48c
 
-	LDA copper_idx2
-	STA copper_col
+	LDA copper_delta		; 3c
+	STA copper_accum		; 3c
 
-    LDA copper_index		; 3c
-    AND #&1F				; 2c
-    TAY						; 2c
+	\\ Set up second charrow
 
-   	LDA #12: STA &FE00		; 6c
-    LDA copper_lookup_HI, Y	; 4c
-	STA &FE01				; 4c
+	LDY copper_top_line			; 3c
+	JSR copper_accumulate	; 36c
+	JSR copper_set_charrow	; 172c
 
-	LDA #13: STA &FE00		; 6c
-    LDA copper_lookup_LO, Y	; 4c
-	STA &FE01				; 4c
- 
-	FOR n,1,1,1
+	\\ Cycle count to end of charrow (4 scanlines)
+
+	FOR n,1,46,1
 	NOP
 	NEXT
-	BIT 0
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
 	JSR cycles_wait_128
 
 	.start_of_charrow_1
@@ -124,60 +95,12 @@ COPPER_ROW_ADDR = screen_base_addr + 8 * 640
 
 	.here
 
-	INY						; 2c
-	TYA						; 2c
-	AND #&1F				; 2c
-	TAY						; 2c
-   	LDA #12: STA &FE00		; 6c
-    LDA copper_lookup_HI, Y	; 4c
-	STA &FE01				; 4c
+	JSR copper_accumulate	; 36c
+	JSR copper_set_charrow	; 172c
 
-	LDA #13: STA &FE00		; 6c
-    LDA copper_lookup_LO, Y	; 4c
-	STA &FE01				; 4c
+	\\ Cycle count to end of charrow (4 scanlines)
 
-IF 1
-	PHY
-	LDY copper_col
-
-	LDA copper_colour_black, Y	; 4c		\\ black=this
-	STA &FE21				; 4c
-	AND #&F:ORA #&10:STA &FE21		; 8c
-	AND #&F:ORA #&20:STA &FE21		; 8c
-	AND #&F:ORA #&30:STA &FE21		; 8c
-	AND #&F:ORA #&40:STA &FE21		; 8c
-	AND #&F:ORA #&50:STA &FE21		; 8c
-	AND #&F:ORA #&60:STA &FE21		; 8c
-	AND #&F:ORA #&70:STA &FE21		; 8c
-
-	LDA copper_colour_white, Y	; 4c		\\ white=this
-	AND #&F:ORA #&80:STA &FE21		; 8c
-	AND #&F:ORA #&90:STA &FE21		; 8c
-	AND #&F:ORA #&A0:STA &FE21		; 8c
-	AND #&F:ORA #&B0:STA &FE21		; 8c
-	AND #&F:ORA #&C0:STA &FE21		; 8c
-	AND #&F:ORA #&D0:STA &FE21		; 8c
-	AND #&F:ORA #&E0:STA &FE21		; 8c
-	AND #&F:ORA #&F0:STA &FE21		; 8c
-
-	INY
-	CPY #96
-	BCC path2
-	\\ path1 = 2+2+3c
-	LDY #0
-	BRA cont
-
-	.path2 \\= 3+2+2c
-	NOP:NOP
-
-	.cont
-	STY copper_col
-	PLY
-ELSE
-	JSR cycles_wait_128
-ENDIF
-
-	FOR n,1,25,1
+	FOR n,1,17,1
 	NOP
 	NEXT
 
@@ -185,15 +108,14 @@ ENDIF
 	JSR cycles_wait_128
 	
 	DEX							; 2c
-	BEQ start_of_charrow_63	; 2c
-	JMP here					; 3c
+	BNE here
 
 	\\ Should arrive here on scanline 255 = last row but scanline 3
 	.start_of_charrow_63
 
 	\\ R9=0 - character row = 2 scanlines
 	LDA #9: STA &FE00
-	LDA #3:	STA &FE01		; 4 scanlines
+	LDA #3:	STA &FE01			; 4 scanlines
 
 	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
@@ -207,17 +129,7 @@ ENDIF
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	INY						; 2c
-	TYA
-	AND #&1F
-	TAY
-   	LDA #12: STA &FE00		; 6c
-    LDA copper_lookup_HI, Y	; 4c
-	STA &FE01				; 4c
-
-	LDA #13: STA &FE00		; 6c
-    LDA copper_lookup_LO, Y	; 4c
-	STA &FE01				; 4c
+	\\ Don't set anything else here - will happen in update for charrow 0
 
     RTS
 }
@@ -229,6 +141,73 @@ ENDIF
 	JSR crtc_reset
     JMP ula_pal_reset
 }
+
+.copper_set_charrow
+{
+	\\ Set screen row to this
+   	LDA #12: STA &FE00				; 6c
+    LDA copper_lookup_HI, Y			; 4c
+	STA &FE01						; 4c
+
+	LDA #13: STA &FE00				; 6c
+    LDA copper_lookup_LO, Y			; 4c
+	STA &FE01						; 4c
+
+	\\ Set black to this
+	LDA copper_colour_black, Y		; 4c
+	STA &FE21						; 4c
+	AND #&F:ORA #&10:STA &FE21		; 8c
+	AND #&F:ORA #&20:STA &FE21		; 8c
+	AND #&F:ORA #&30:STA &FE21		; 8c
+	AND #&F:ORA #&40:STA &FE21		; 8c
+	AND #&F:ORA #&50:STA &FE21		; 8c
+	AND #&F:ORA #&60:STA &FE21		; 8c
+	AND #&F:ORA #&70:STA &FE21		; 8c
+
+	\\ Set white to this
+	LDA copper_colour_white, Y		; 4c
+	AND #&F:ORA #&80:STA &FE21		; 8c
+	AND #&F:ORA #&90:STA &FE21		; 8c
+	AND #&F:ORA #&A0:STA &FE21		; 8c
+	AND #&F:ORA #&B0:STA &FE21		; 8c
+	AND #&F:ORA #&C0:STA &FE21		; 8c
+	AND #&F:ORA #&D0:STA &FE21		; 8c
+	AND #&F:ORA #&E0:STA &FE21		; 8c
+	AND #&F:ORA #&F0:STA &FE21		; 8c
+
+	RTS
+}	\\ Total time = 28 + 64 + 64 + 4 + 6 + 6 = 172c
+
+.copper_accumulate
+{
+	\\ Accumulate an amount of delta
+
+	CLC								; 2c
+	LDA copper_accum				; 3c
+	ADC copper_delta				; 3c
+	STA copper_accum				; 3c
+
+	\\ Add the carry to our index
+
+	TYA						; 2c
+	ADC #0					; 2c
+	TAY						; 2c
+	
+	\\ Wrap our index
+
+	CPY #COPPER_MAX_INDEX
+	BCC path2
+
+	\\ path1 = 2+2+3=7c
+	LDY #0
+	BEQ return
+
+	.path2	\\ 3+2+2=7c
+	NOP:NOP
+
+	.return
+	RTS
+}	\\ 12 + 17 + 7 = 36c
 
 .copper_screen_data
 INCBIN "data/dither.pu"
@@ -244,17 +223,60 @@ INCBIN "data/dither.pu"
     EQUB LO((screen_base_addr + n*640)/8)
     NEXT
 	\\ Solid white
+    FOR n,0,16,1
+    EQUB LO((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid black
+    FOR n,15,1,-1
+    EQUB LO((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid white
+    FOR n,0,16,1
+    EQUB LO((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid black
+    FOR n,15,1,-1
+    EQUB LO((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid white
 }
 
 .copper_lookup_HI
 {
+	\\ Solid white
     FOR n,0,16,1
     EQUB HI((screen_base_addr + n*640)/8)
     NEXT
+	\\ Solid black
     FOR n,15,1,-1
     EQUB HI((screen_base_addr + n*640)/8)
     NEXT
+	\\ Solid white
+    FOR n,0,16,1
+    EQUB HI((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid black
+    FOR n,15,1,-1
+    EQUB HI((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid white
+    FOR n,0,16,1
+    EQUB HI((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid black
+    FOR n,15,1,-1
+    EQUB HI((screen_base_addr + n*640)/8)
+    NEXT
+	\\ Solid white
 }
+
+\\ Row 0 - white = red & black = magenta
+\\ Row 16 - black = magenta, white = blue
+\\ Row 32 - white = blue, black = cyan
+\\ Row 48 - black = cyan, white = green
+
+\\ White = red, blue, green
+\\ Black = magenta, cyan, yellow
 
 .copper_colour_white
 {
@@ -285,12 +307,10 @@ INCBIN "data/dither.pu"
 	NEXT
 }
 
-\\ Row 0 - white = red & black = magenta
-\\ Row 16 - black = magenta, white = blue
-\\ Row 32 - white = blue, black = cyan
-\\ Row 48 - black = cyan, white = green
-
-\\ White = red, blue, green
-\\ Black = magenta, cyan, yellow
+PAGE_ALIGN
+.copper_delta_wave
+FOR n,0,255,1
+EQUB 128 + 127 * SIN(2 * PI * n / 256)
+NEXT
 
 .copper_end

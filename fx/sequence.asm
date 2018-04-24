@@ -84,10 +84,9 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 0.5
 NEXT
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
-
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 20.0
 
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
