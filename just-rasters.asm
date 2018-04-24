@@ -46,7 +46,8 @@ fx_BoxRot = 3
 fx_Parallax = 4
 fx_CheckerZoom = 5
 fx_VBlinds = 6
-fx_MAX = 7
+fx_Copper = 7
+fx_MAX = 8
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -497,12 +498,13 @@ INCLUDE "fx/sequence.asm"
 	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
-}	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
-
+	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
+	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
+}
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5		; need something better here?
 }
 
 .data_end
@@ -609,6 +611,7 @@ INCLUDE "fx/boxrot.asm"
 INCLUDE "fx/parallax.asm"
 INCLUDE "fx/checker-zoom.asm"
 INCLUDE "fx/vblinds.asm"
+INCLUDE "fx/copper.asm"
 
 .bank1_end
 
@@ -624,6 +627,8 @@ PRINT "------"
 PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
 PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
+PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
+PRINT "COPPER size =", ~copper_end-copper_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%

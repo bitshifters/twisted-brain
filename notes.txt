@@ -148,6 +148,8 @@ Interference by displaying circle pattern on alternate scanlines in different co
 Bring logo/screens on in horizontal slices
 VRUP screen into four & pulse on channel beats
 Copper colour hue with ordered dither
+- Don't forget horizontal dither in MODE 0 looks really nice
+  could wibble & blend this between different colours
 
 Twist:
 Old venetian blind effect (vbars v8)
@@ -196,3 +198,6 @@ Or do this in MODE 2 as simpler masking? Or even just do byte alignment
 as vertical is going to be two row aligned? Might be able to blit these
 out in different colours and set colours at raster time to isolate
 individual boxes? - Put on the backlog!
+
+Dither
+4x4 ordered dither in 0 to 16, need 4 rows
