@@ -2,11 +2,13 @@
 \ *	Copper colours
 \ ******************************************************************
 
+_COPPER_SCROLL = TRUE
+
 copper_top_line = locals_start + 0
-copper_wave_index = locals_start + 1
+copper_stretch_index = locals_start + 1
 copper_delta = locals_start + 2
 copper_accum = locals_start + 3
-copper_temp = locals_start + 4
+copper_wibble_index = locals_start + 4
 
 COPPER_MAX_INDEX = 96
 
@@ -22,7 +24,8 @@ COPPER_MAX_INDEX = 96
     SET_ULA_MODE ULA_Mode0
 
 	STZ copper_top_line
-	STZ copper_wave_index
+	STZ copper_stretch_index
+	STZ copper_wibble_index
 
     RTS
 }
@@ -31,6 +34,7 @@ COPPER_MAX_INDEX = 96
 {
 \\ This is the top line of our copper
 
+IF _COPPER_SCROLL
 	LDY copper_top_line
 	INY
 	CPY #COPPER_MAX_INDEX
@@ -38,6 +42,13 @@ COPPER_MAX_INDEX = 96
 	LDY #0
 	.ok
 	STY copper_top_line
+ELSE
+	INC copper_wibble_index
+	LDY copper_wibble_index
+	LDA copper_wibble, Y
+	STA copper_top_line
+	TAY
+ENDIF
 
 \\ Set the address & palette for first screen row
 
@@ -45,11 +56,11 @@ COPPER_MAX_INDEX = 96
 
 \\ Update our ripple
 
-	LDY copper_wave_index
+	LDY copper_stretch_index
 	INY
-	STY copper_wave_index
+	STY copper_stretch_index
 
-	LDA copper_delta_wave, Y
+	LDA copper_stretch_table, Y
 	STA copper_delta
     RTS
 }
@@ -270,14 +281,15 @@ INCBIN "data/dither.pu"
 	\\ Solid white
 }
 
-\\ Row 0 - white = red & black = magenta
-\\ Row 16 - black = magenta, white = blue
-\\ Row 32 - white = blue, black = cyan
-\\ Row 48 - black = cyan, white = green
+\\ Row 0: white = red, black = magenta
+\\ Row 16: black = magenta, white = blue
+\\ Row 32: white = blue, black = cyan
+\\ Row 48: black = cyan, white = green
+\\ Row 64: white = green, black = yellow
+\\ Row 80: black = yellow, white = red
+\\ Row 96 = Row 0
 
 \\ White = red, blue, green
-\\ Black = magenta, cyan, yellow
-
 .copper_colour_white
 {
 	FOR n,0,15,1
@@ -294,6 +306,7 @@ INCBIN "data/dither.pu"
 	NEXT
 }
 
+\\ Black = magenta, cyan, yellow
 .copper_colour_black
 {
 	FOR n,0,31,1
@@ -308,9 +321,16 @@ INCBIN "data/dither.pu"
 }
 
 PAGE_ALIGN
-.copper_delta_wave
+.copper_stretch_table	\\ this linearly stretches the copper by factor below
 FOR n,0,255,1
 EQUB 128 + 127 * SIN(2 * PI * n / 256)
 NEXT
+
+IF _COPPER_SCROLL = FALSE	\\ doesn't quite do what I want it to yet!
+.copper_wibble
+FOR n,0,255,1
+EQUB 48 + (47 * SIN(PI * n / 256)) * SIN(2 * PI * n / 256)
+NEXT
+ENDIF
 
 .copper_end
