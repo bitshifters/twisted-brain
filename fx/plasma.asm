@@ -35,8 +35,10 @@ PLASMA_MAX_OFFSET = 160
 
 .plasma_update
 {
+	INC plasma_anim
+
 	LDX plasma_offset
-	INX							; increment this on another sinewave?
+;	INX							; increment this on another sinewave?
 	CPX #PLASMA_MAX_OFFSET
 	BCC ok
 
@@ -59,6 +61,7 @@ PLASMA_MAX_OFFSET = 160
 
 \\ Set the address for first screen row
 
+	LDX plasma_anim
 	CLC							; 2c
 	LDA plasma_offset_table, X	; 4c
 	ADC plasma_offset			; 3c
@@ -92,7 +95,7 @@ PLASMA_MAX_OFFSET = 160
 
 	LDY plasma_row				; 3c
 
-	LDX plasma_offset			; 3c
+	LDX plasma_anim			; 3c
 	STX plasma_count			; 3c
 
 	INX							; 2c
