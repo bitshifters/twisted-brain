@@ -47,7 +47,8 @@ fx_Parallax = 4
 fx_CheckerZoom = 5
 fx_VBlinds = 6
 fx_Copper = 7
-fx_MAX = 8
+fx_Plasma = 8
+fx_MAX = 9
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -139,6 +140,12 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #HI(bank1_start)
 	LDX #LO(bank1_filename)
 	LDY #HI(bank1_filename)
+	JSR disksys_load_file
+
+	LDA #6:JSR swr_select_slot
+	LDA #HI(bank2_start)
+	LDX #LO(bank2_filename)
+	LDY #HI(bank2_filename)
 	JSR disksys_load_file
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
@@ -487,6 +494,7 @@ INCLUDE "fx/sequence.asm"
 
 .bank0_filename EQUS "Bank0  $"
 .bank1_filename EQUS "Bank1  $"
+.bank2_filename EQUS "Bank2  $"
 
 .main_fx_table
 {
@@ -500,11 +508,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
 	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
+	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6		; need something better here?
 }
 
 .data_end
@@ -633,3 +642,42 @@ PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
 PRINT "------"
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank2_start
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/plasma.asm"
+
+.bank2_end
+
+SAVE "Bank2", bank2_start, bank2_end
+
+\ ******************************************************************
+\ *	BANK 1 Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 2"
+PRINT "------"
+PRINT "PLASMA size =", ~plasma_end-plasma_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+\ ******************************************************************
+\ *	Any other files for the disc
+\ ******************************************************************
+
+IF _DEBUG
+PUTFILE "basic/makdith.bas.bin", "MAKDITH", &0E00
+PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
+ENDIF
