@@ -58,6 +58,12 @@
     JMP main_set_fx
 }
 
+.sequence_set_fx_logo
+{
+    LDA #fx_Logo
+    JMP main_set_fx
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -90,6 +96,8 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 0.5
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 0.5
 NEXT
 ENDIF
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 60.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_plasma, 60.0
 

@@ -33,6 +33,18 @@ MACRO SET_ULA_MODE ula_mode
 }
 ENDMACRO
 
+MACRO CYCLES_WAIT cycles
+{
+	IF cycles=128
+	JSR cycles_wait_128
+	ELSE
+	FOR n,1,cycles DIV 2,1
+	NOP
+	NEXT
+	ENDIF
+}
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************
@@ -48,7 +60,8 @@ fx_CheckerZoom = 5
 fx_VBlinds = 6
 fx_Copper = 7
 fx_Plasma = 8
-fx_MAX = 9
+fx_Logo = 9
+fx_MAX = 10
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -509,11 +522,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
+	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6		; need something better here?
 }
 
 .data_end
@@ -655,6 +669,7 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/plasma.asm"
+INCLUDE "fx/logo.asm"
 
 .bank2_end
 
@@ -668,6 +683,7 @@ PRINT "------"
 PRINT "BANK 2"
 PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
+PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
