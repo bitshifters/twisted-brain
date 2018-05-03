@@ -32,7 +32,7 @@ _DONT_HIDE_SCREEN = FALSE		; for debugging FX init
 	EQUB 0				; R5  vertical total adjust
 	EQUB 32				; R6  vertical displayed
 	EQUB 35				; R7  vertical position; 35=top of screen
-	EQUB 0				; R8  interlace
+	EQUB &30			; R8  interlace = HIDE SCREEN
 	EQUB 7				; R9  scanlines per row
 	EQUB 32				; R10 cursor start
 	EQUB 8				; R11 cursor end

@@ -103,12 +103,12 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 0.5
 NEXT
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_logo_anim_sine, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_logo_anim_sine, 2.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
+;SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
@@ -132,13 +132,13 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 1.0
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 10.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 10.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
+;SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 2.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_plasma, 60.0
 

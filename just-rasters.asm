@@ -210,9 +210,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR crtc_hide_screen
 	JSR screen_clear_all
 
-;	LDA #22:JSR oswrch
-;	LDA #2:JSR oswrch
-
 	\ ******************************************************************
 	\ *	DEMO START - from here on out there is no OS to help you!!
 	\ ******************************************************************
@@ -272,9 +269,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	.main_init_fx
 
-	\\ Hide the screen to cover any initialisation
+	\\ Screen already hidden to cover any initialisation
 
-	JSR crtc_hide_screen
 	STZ first_frame
 
 	{
@@ -331,7 +327,7 @@ ENDIF
 	.call_init
 	JSR &FFFF
 
-	\\ We don't know how long the init took so resync
+	\\ We don't know how long the init took so resync to timer 1
 
 	{
 		lda #&42
@@ -348,6 +344,18 @@ ENDIF
 		\\ Now can enter main loop with enough time to do work
 	}
 
+IF 1
+	\\ Update typically happens during vblank so wait 255 lines
+
+	{
+		LDX #1
+		.loop
+		JSR cycles_wait_128
+		INX
+		BNE loop
+	}
+ENDIF
+
 	\ ******************************************************************
 	\ *	MAIN LOOP
 	\ ******************************************************************
@@ -363,7 +371,7 @@ ENDIF
 		.no_carry
 	}
 
-	\\ Service music player (move to music module)
+	\\ Service music player (move to music module?)
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
 	JSR vgm_poll_player
@@ -440,7 +448,8 @@ ENDIF
 	CMP main_fx_enum
 	BEQ continue
 
-	\\ It has so we'd better put the CRTC straight for the rest of this frame
+	\\ FX has changed so get current module to return CRTC to known state
+	\\ NB. screen display already turned off at this point
 
 	.call_kill
 	JSR crtc_reset
@@ -484,7 +493,14 @@ ENDIF
 
 .main_set_fx
 {
+\\ Remember our new FX until correct place in the frame to kill/init
+
 	STA main_new_fx
+
+\\ But hide the screen immediately to avoid CRTC glitches
+\\ Will break if script runs in visible portion i.e. not in vblank
+
+	JSR crtc_hide_screen
 }
 .do_nothing
 {
