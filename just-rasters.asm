@@ -45,6 +45,18 @@ MACRO CYCLES_WAIT cycles
 }
 ENDMACRO
 
+MACRO SCREEN_ADDR_ROW row
+	EQUW ((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
+MACRO SCREEN_ADDR_LO row
+	EQUB LO((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
+MACRO SCREEN_ADDR_HI row
+	EQUB HI((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************

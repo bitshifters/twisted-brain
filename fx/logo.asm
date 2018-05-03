@@ -2,6 +2,9 @@
 \ *	Logo glitch
 \ ******************************************************************
 
+logo_charrow = locals_start + 0
+logo_scroll = locals_start + 1
+
 .logo_start
 
 .logo_init
@@ -16,12 +19,21 @@
 	LDY #HI(logo_pal)
 	JSR ula_set_palette
 
+	STZ logo_scroll
+
+	LDA #0
+	JSR logo_set_anim
+
     RTS
 }
 
 .logo_update
 {
 \\ Set the address & palette for first screen row
+
+	INC logo_scroll
+	LDA logo_scroll
+	STA logo_charrow
 
 	LDX #0
 	JSR logo_set_white		; 46c
@@ -49,35 +61,35 @@
 
 	\\ Set up second charrow
 
-	LDX #1					; 3c
+	LDX #1
+	INC logo_charrow		; 5c
 	JSR logo_set_charrow	; 46c
 
 	\\ Cycle count to end of charrow
 
-	FOR n,1,4,1
-	NOP
-	NEXT
+;	FOR n,1,4,1
+;	NOP
+;	NEXT
 
 	.start_of_charrow_1
 
-;	LDX #254					; 2c
-
 	.here
 
-	INX							; 2c
+	INC logo_charrow		; 5c
 	JSR logo_set_white		; 46c
 
 	\\ Cycle count to end of charrow
 
-	FOR n,1,5,1
-	NOP
-	NEXT
+;	FOR n,1,5,1
+;	NOP
+;	NEXT
 	
+	INX							; 2c
 	CPX #255					; 2c
 	BNE here					; 3c
 
 	\\ Should arrive here on scanline 255 = last row but scanline 3
-	.start_of_charrow_63
+	.start_of_charrow_255
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
@@ -125,22 +137,44 @@
 }	\\ Total time = 12c + 14c + 40c = 66c
 \\ Fall through!
 .logo_set_charrow
-{
-	TXA								; 2c
-	AND #&3F						; 2c
-	TAY								; 2c
+	LDY logo_charrow				; 3c
+
+	CLC							; 2c
+
+	LDA #13: STA &FE00				; 6c
+    LDA logo_default_LO, X			; 4c
+.logo_set_charrow_smLO
+	ADC &FFFF, Y				; 4c
+	STA &FE01						; 4c
 
 	\\ Set screen row to this
    	LDA #12: STA &FE00				; 6c
-    LDA logo_lookup_HI, Y			; 4c
-	STA &FE01						; 4c
-
-	LDA #13: STA &FE00				; 6c
-    LDA logo_lookup_LO, Y			; 4c
+    LDA logo_default_HI, X			; 4c
+.logo_set_charrow_smHI
+	ADC &FFFF, Y				; 4c
 	STA &FE01						; 4c
 
 	RTS
-}	\\ Total time = 12c + 6c + 14c + 14c = 46c
+	\\ Total time = 12c + 6c + 14c + 14c = 46c
+
+
+.logo_set_anim
+{
+	ASL A:ASL A
+	TAX
+
+	LDA logo_anim_table, X
+	STA logo_set_charrow_smLO+1
+	LDA logo_anim_table+1, X
+	STA logo_set_charrow_smLO+2
+
+	LDA logo_anim_table+2, X
+	STA logo_set_charrow_smHI+1
+	LDA logo_anim_table+3, X
+	STA logo_set_charrow_smHI+2
+
+	RTS
+}
 
 .logo_pal
 {
@@ -162,59 +196,6 @@
 	EQUB &F0 + PAL_white
 }
 
-.logo_screen_data
-INCBIN "data/shift.pu"
-
-MACRO SCREEN_ADDR_LO row
-	EQUB LO((screen_base_addr + row*640)/8)
-ENDMACRO
-
-MACRO SCREEN_ADDR_HI row
-	EQUB HI((screen_base_addr + row*640)/8)
-ENDMACRO
-
-.logo_lookup_LO
-{
-	FOR n,1,7,1
-	SCREEN_ADDR_LO 15		; blank
-	NEXT
-
-	\\ Separated teletext look
-	FOR n,0,14,1
-	SCREEN_ADDR_LO n
-	SCREEN_ADDR_LO n
-	IF n MOD 3 = 1
-	SCREEN_ADDR_LO n
-	ENDIF
-	SCREEN_ADDR_LO 15		; blank
-	NEXT
-
-	FOR n,1,7,1
-	SCREEN_ADDR_LO 15		; blank
-	NEXT
-}
-
-.logo_lookup_HI
-{
-	FOR n,1,7,1
-	SCREEN_ADDR_HI 15		; blank
-	NEXT
-
-	\\ Separated teletext look
-	FOR n,0,14,1
-	SCREEN_ADDR_HI n
-	SCREEN_ADDR_HI n
-	IF n MOD 3 = 1
-	SCREEN_ADDR_HI n
-	ENDIF
-	SCREEN_ADDR_HI 15		; blank
-	NEXT
-
-	FOR n,1,7,1
-	SCREEN_ADDR_HI 15		; blank
-	NEXT
-}
-
 .logo_colour
 {
 	EQUB PAL_red
@@ -223,10 +204,106 @@ ENDMACRO
 	EQUB PAL_blue
 }
 
+.logo_screen_data
+INCBIN "data/shift.pu"
+
 PAGE_ALIGN
-.logo_stretch_table	\\ this linearly stretches the copper by factor below
-FOR n,0,255,1
-EQUB 128 + 127 * SIN(2 * PI * n / 256)
+.logo_default_LO
+{
+FOR a,0,3,1
+	FOR n,1,7,1
+	SCREEN_ADDR_LO 15		; blank
+	NEXT
+
+	\\ Separated teletext look
+	FOR n,0,14,1
+	SCREEN_ADDR_LO n
+	SCREEN_ADDR_LO n
+	IF n MOD 3 = 1
+	SCREEN_ADDR_LO n
+	ENDIF
+	SCREEN_ADDR_LO 15		; blank
+	NEXT
+
+	FOR n,1,7,1
+	SCREEN_ADDR_LO 15		; blank
+	NEXT
 NEXT
+}
+
+.logo_default_HI
+{
+FOR a,0,3,1
+	FOR n,1,7,1
+	SCREEN_ADDR_HI 15		; blank
+	NEXT
+
+	\\ Separated teletext look
+	FOR n,0,14,1
+	SCREEN_ADDR_HI n
+	SCREEN_ADDR_HI n
+	IF n MOD 3 = 1
+	SCREEN_ADDR_HI n
+	ENDIF
+	SCREEN_ADDR_HI 15		; blank
+	NEXT
+
+	FOR n,1,7,1
+	SCREEN_ADDR_HI 15		; blank
+	NEXT
+NEXT
+}
+
+.logo_offset_none
+{
+	FOR n,0,255,1
+	EQUB 0
+	NEXT
+}
+
+.logo_sinewave_LO
+{
+	FOR n,0,255,1
+	x = INT(20 * SIN(2 * PI * n / 256))
+	IF (x AND 1) = 1
+		IF x < 0
+		a = &500 - ((x-1) DIV 2)
+		ELSE
+		a = &500 - (x DIV 2)
+		ENDIF
+	ELSE
+	a = -(x DIV 2)
+	ENDIF
+	EQUB LO(a)
+	NEXT
+}
+
+.logo_sinewave_HI
+{
+	FOR n,0,255,1
+	x = INT(20 * SIN(2 * PI * n / 256))
+	IF (x AND 1) = 1
+		IF x < 0
+		a = &500 - ((x-1) DIV 2)
+		ELSE
+		a = &500 - (x DIV 2)
+		ENDIF
+	ELSE
+	a = -(x DIV 2)
+	ENDIF
+	PRINT "x=",x," a=",~a
+	EQUB HI(a)
+	NEXT
+}
+
+.logo_anim_table
+{
+	EQUW logo_offset_none, logo_offset_none
+	EQUW logo_sinewave_LO, logo_sinewave_HI
+	\\ static
+	\\ glitch
+	\\ flip
+	\\ etc.
+}
 
 .logo_end

@@ -64,6 +64,12 @@
     JMP main_set_fx
 }
 
+.sequence_set_fx_logo_anim_sine
+{
+    LDA #1
+    JMP logo_set_anim       ; hope SWRAM paged in!
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -97,9 +103,8 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 0.5
 NEXT
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 60.0
-
-SEQUENCE_FX_FOR_SECS sequence_set_fx_plasma, 60.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 5.0
+SEQUENCE_FX_FOR_SECS sequence_set_fx_logo_anim_sine, 5.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
@@ -109,6 +114,7 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 2.0
 
+IF 0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 5.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 5.0
@@ -124,6 +130,7 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 1.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 1.0
+ENDIF
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 10.0
@@ -132,6 +139,8 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 10.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 10.0
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_plasma, 60.0
 
 SCRIPT_END
 
