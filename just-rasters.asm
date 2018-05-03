@@ -33,6 +33,30 @@ MACRO SET_ULA_MODE ula_mode
 }
 ENDMACRO
 
+MACRO CYCLES_WAIT cycles
+{
+	IF cycles=128
+	JSR cycles_wait_128
+	ELSE
+	FOR n,1,cycles DIV 2,1
+	NOP
+	NEXT
+	ENDIF
+}
+ENDMACRO
+
+MACRO SCREEN_ADDR_ROW row
+	EQUW ((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
+MACRO SCREEN_ADDR_LO row
+	EQUB LO((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
+MACRO SCREEN_ADDR_HI row
+	EQUB HI((screen_base_addr + row*640) DIV 8)
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************
@@ -47,7 +71,9 @@ fx_Parallax = 4
 fx_CheckerZoom = 5
 fx_VBlinds = 6
 fx_Copper = 7
-fx_MAX = 8
+fx_Plasma = 8
+fx_Logo = 9
+fx_MAX = 10
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -141,6 +167,12 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDY #HI(bank1_filename)
 	JSR disksys_load_file
 
+	LDA #6:JSR swr_select_slot
+	LDA #HI(bank2_start)
+	LDX #LO(bank2_filename)
+	LDY #HI(bank2_filename)
+	JSR disksys_load_file
+
 	LDA #SLOT_MUSIC:JSR swr_select_slot
 
 	\\ Initalise system vars
@@ -177,9 +209,6 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR ula_control_reset
 	JSR crtc_hide_screen
 	JSR screen_clear_all
-
-;	LDA #22:JSR oswrch
-;	LDA #2:JSR oswrch
 
 	\ ******************************************************************
 	\ *	DEMO START - from here on out there is no OS to help you!!
@@ -240,9 +269,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	.main_init_fx
 
-	\\ Hide the screen to cover any initialisation
+	\\ Screen already hidden to cover any initialisation
 
-	JSR crtc_hide_screen
 	STZ first_frame
 
 	{
@@ -299,7 +327,7 @@ ENDIF
 	.call_init
 	JSR &FFFF
 
-	\\ We don't know how long the init took so resync
+	\\ We don't know how long the init took so resync to timer 1
 
 	{
 		lda #&42
@@ -316,6 +344,18 @@ ENDIF
 		\\ Now can enter main loop with enough time to do work
 	}
 
+IF 1
+	\\ Update typically happens during vblank so wait 255 lines
+
+	{
+		LDX #1
+		.loop
+		JSR cycles_wait_128
+		INX
+		BNE loop
+	}
+ENDIF
+
 	\ ******************************************************************
 	\ *	MAIN LOOP
 	\ ******************************************************************
@@ -331,7 +371,7 @@ ENDIF
 		.no_carry
 	}
 
-	\\ Service music player (move to music module)
+	\\ Service music player (move to music module?)
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
 	JSR vgm_poll_player
@@ -408,7 +448,8 @@ ENDIF
 	CMP main_fx_enum
 	BEQ continue
 
-	\\ It has so we'd better put the CRTC straight for the rest of this frame
+	\\ FX has changed so get current module to return CRTC to known state
+	\\ NB. screen display already turned off at this point
 
 	.call_kill
 	JSR crtc_reset
@@ -452,7 +493,14 @@ ENDIF
 
 .main_set_fx
 {
+\\ Remember our new FX until correct place in the frame to kill/init
+
 	STA main_new_fx
+
+\\ But hide the screen immediately to avoid CRTC glitches
+\\ Will break if script runs in visible portion i.e. not in vblank
+
+	JSR crtc_hide_screen
 }
 .do_nothing
 {
@@ -487,6 +535,7 @@ INCLUDE "fx/sequence.asm"
 
 .bank0_filename EQUS "Bank0  $"
 .bank1_filename EQUS "Bank1  $"
+.bank2_filename EQUS "Bank2  $"
 
 .main_fx_table
 {
@@ -500,11 +549,13 @@ INCLUDE "fx/sequence.asm"
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
 	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
+	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
+	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6		; need something better here?
 }
 
 .data_end
@@ -633,3 +684,46 @@ PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
 PRINT "------"
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank2_start
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/plasma.asm"
+INCLUDE "fx/logo.asm"
+
+.bank2_end
+
+SAVE "Bank2", bank2_start, bank2_end
+
+\ ******************************************************************
+\ *	BANK 1 Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 2"
+PRINT "------"
+PRINT "PLASMA size =", ~plasma_end-plasma_start
+PRINT "LOGO size =", ~logo_end-logo_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+\ ******************************************************************
+\ *	Any other files for the disc
+\ ******************************************************************
+
+IF _DEBUG
+PUTFILE "basic/makdith.bas.bin", "MAKDITH", &0E00
+PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
+PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
+PUTFILE "data/bsmode1.bin", "LOGO", &3000
+ENDIF

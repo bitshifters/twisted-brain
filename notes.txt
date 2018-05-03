@@ -201,3 +201,29 @@ individual boxes? - Put on the backlog!
 
 Dither
 4x4 ordered dither in 0 to 16, need 4 rows
+
+Float
+Float text up the screen with increasing ripples
+Write small (8x8 or 16x8) font into the screen buffer spread across
+8 character rows then move these up the screen from bottom to top,
+repeating lines as necessary to stretch and bend the words
+Can only (easily) have 32 char rows without resorting to SHADOW
+Could then repeat some of the scanlines at the bottom as a mirror
+(with colour change to blue or hatched blue)
+MODE 2 or MODE 1?
+
+Logo
+Looks like Teletext but with a Twist :)
+4x raster FX
+- horizontal sinewave shift
+- horizontal random shift "static"
+- vertical line swap "glitch"
+- vertical logo flip "spin"
+
+RANDOM IDEA:
+- Horizontal twist by having colours 1-15 in vertical strips across MODE 2 screen then set palette per scanline as appropriate: https://youtu.be/4Ma3X3YrtBE?t=3m4s
+https://youtu.be/7maJ-ZaiAIo?t=43s
+
+Simple text FX
+- Plot static text with hatching 2x colours for fg & bg and animate palette: https://youtu.be/q53FIfd8r5Q?t=36s
+Could turn the boxrot part into this to make it more interesting?
