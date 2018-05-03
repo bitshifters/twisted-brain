@@ -48,3 +48,6 @@ Temporary Items
 compile.txt
 audio/vgm_process_pop.txt
 b-emlog.txt
+Debug/
+*.suo
+just-font/just-font.VC.VC.opendb
