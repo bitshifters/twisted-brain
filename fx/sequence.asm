@@ -8,74 +8,6 @@
 \ *	The fns
 \ ******************************************************************
 
-.sequence_set_fx_kefrens
-{
-    LDA #fx_Kefrens
-    JMP main_set_fx
-}
-
-\\ Additional fns to set params etc.
-
-.sequence_set_fx_twister
-{
-    LDA #fx_Twister
-    JMP main_set_fx
-}
-
-.sequence_set_fx_boxrot
-{
-    LDA #fx_BoxRot
-    JMP main_set_fx
-}
-
-.sequence_set_fx_parallax
-{
-    LDA #fx_Parallax
-    JMP main_set_fx
-}
-
-.sequence_set_fx_checkerzoom
-{
-    LDA #fx_CheckerZoom
-    JMP main_set_fx
-}
-
-.sequence_set_fx_vblinds
-{
-    LDA #fx_VBlinds
-    JMP main_set_fx
-}
-
-.sequence_set_fx_copper
-{
-    LDA #fx_Copper
-    JMP main_set_fx
-}
-
-.sequence_set_fx_plasma
-{
-    LDA #fx_Plasma
-    JMP main_set_fx
-}
-
-.sequence_set_fx_logo
-{
-    LDA #fx_Logo
-    JMP main_set_fx
-}
-
-.sequence_set_fx_logo_anim_sine
-{
-    LDA #1
-    JMP logo_set_anim       ; hope SWRAM paged in!
-}
-
-.sequence_set_fx_text
-{
-    LDA #fx_Text
-    JMP main_set_fx
-}
-
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -86,8 +18,8 @@ MACRO SEQUENCE_WAIT_SECS secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
-MACRO SEQUENCE_FX_FOR_SECS fxfn, secs
-    SCRIPT_CALL fxfn
+MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
+    SCRIPT_CALLV main_set_fx, fxenum
     SCRIPT_SEGMENT_START secs
     ; just wait
     SCRIPT_SEGMENT_END
@@ -99,56 +31,57 @@ ENDMACRO
 \\ AKA epilepsy mode
 IF 0
 FOR n,1,20,1
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 0.5
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 0.5
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 0.5
+SEQUENCE_FX_FOR_SECS fx_VBlinds, 0.5
+SEQUENCE_FX_FOR_SECS fx_CheckZoom, 0.5
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 0.5
+SEQUENCE_FX_FOR_SECS fx_Parallax, 0.5
+SEQUENCE_FX_FOR_SECS fx_Twister, 0.5
+SEQUENCE_FX_FOR_SECS fx_Copper, 0.5
 NEXT
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_text, 20.0
+SEQUENCE_FX_FOR_SECS fx_Text, 20.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_logo_anim_sine, 2.0
+SEQUENCE_FX_FOR_SECS fx_Logo, 2.0
+SCRIPT_CALLV logo_set_anim, 1
+SEQUENCE_WAIT_SECS 2.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
-;SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 2.0
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 2.0
+SEQUENCE_FX_FOR_SECS fx_VBlinds, 2.0
+;SEQUENCE_FX_FOR_SECS fx_CheckZoom, 2.0
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 2.0
+SEQUENCE_FX_FOR_SECS fx_Parallax, 2.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 2.0
+SEQUENCE_FX_FOR_SECS fx_Copper, 2.0
 
 IF 0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 5.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 5.0
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 5.0
+SEQUENCE_FX_FOR_SECS fx_VBlinds, 5.0
+SEQUENCE_FX_FOR_SECS fx_CheckZoom, 5.0
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 5.0
+SEQUENCE_FX_FOR_SECS fx_Parallax, 5.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 5.0
+SEQUENCE_FX_FOR_SECS fx_Copper, 5.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 1.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 1.0
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 1.0
+SEQUENCE_FX_FOR_SECS fx_VBlinds, 1.0
+SEQUENCE_FX_FOR_SECS fx_CheckZoom, 1.0
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 1.0
+SEQUENCE_FX_FOR_SECS fx_Parallax, 1.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 1.0
+SEQUENCE_FX_FOR_SECS fx_Copper, 1.0
 ENDIF
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_kefrens, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_vblinds, 2.0
-;SEQUENCE_FX_FOR_SECS sequence_set_fx_checkerzoom, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_boxrot, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_parallax, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 2.0
-SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 2.0
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 2.0
+SEQUENCE_FX_FOR_SECS fx_VBlinds, 2.0
+;SEQUENCE_FX_FOR_SECS fx_CheckZoom, 2.0
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 2.0
+SEQUENCE_FX_FOR_SECS fx_Parallax, 2.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 2.0
+SEQUENCE_FX_FOR_SECS fx_Copper, 2.0
 
-SEQUENCE_FX_FOR_SECS sequence_set_fx_plasma, 60.0
+SEQUENCE_FX_FOR_SECS fx_Plasma, 60.0
 
 SCRIPT_END
 

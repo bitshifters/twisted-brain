@@ -395,6 +395,6 @@ ENDIF
 NEXT
 
 .text_font_data
-INCBIN "just-font\test2.bin"
+INCBIN "data\font_replic.bin"
 
 .text_end

@@ -74,16 +74,32 @@ int main(int argc, char **argv)
 			{
 				for (int x = 0; x < glyph_width; x += 8)
 				{
+					int c0, c1, c2, c3, c4, c5, c6, c7;
 					// MODE 4 only for now
 
-					int c0 = rgb_to_beeb_colour(font(gx + x + 0, gy + y + 0, 0), font(gx + x + 0, gy + y + 0, 0), font(gx + x + 0, gy + y + 0, 0));
-					int c1 = rgb_to_beeb_colour(font(gx + x + 1, gy + y + 0, 0), font(gx + x + 1, gy + y + 0, 0), font(gx + x + 1, gy + y + 0, 0));
-					int c2 = rgb_to_beeb_colour(font(gx + x + 2, gy + y + 0, 0), font(gx + x + 2, gy + y + 0, 0), font(gx + x + 2, gy + y + 0, 0));
-					int c3 = rgb_to_beeb_colour(font(gx + x + 3, gy + y + 0, 0), font(gx + x + 3, gy + y + 0, 0), font(gx + x + 3, gy + y + 0, 0));
-					int c4 = rgb_to_beeb_colour(font(gx + x + 4, gy + y + 0, 0), font(gx + x + 4, gy + y + 0, 0), font(gx + x + 4, gy + y + 0, 0));
-					int c5 = rgb_to_beeb_colour(font(gx + x + 5, gy + y + 0, 0), font(gx + x + 5, gy + y + 0, 0), font(gx + x + 5, gy + y + 0, 0));
-					int c6 = rgb_to_beeb_colour(font(gx + x + 6, gy + y + 0, 0), font(gx + x + 6, gy + y + 0, 0), font(gx + x + 6, gy + y + 0, 0));
-					int c7 = rgb_to_beeb_colour(font(gx + x + 7, gy + y + 0, 0), font(gx + x + 7, gy + y + 0, 0), font(gx + x + 7, gy + y + 0, 0));
+					if (font._depth == 1)
+					{
+						c0 = rgb_to_beeb_colour(font(gx + x + 0, gy + y + 0, 0), font(gx + x + 0, gy + y + 0, 0), font(gx + x + 0, gy + y + 0, 0));
+						c1 = rgb_to_beeb_colour(font(gx + x + 1, gy + y + 0, 0), font(gx + x + 1, gy + y + 0, 0), font(gx + x + 1, gy + y + 0, 0));
+						c2 = rgb_to_beeb_colour(font(gx + x + 2, gy + y + 0, 0), font(gx + x + 2, gy + y + 0, 0), font(gx + x + 2, gy + y + 0, 0));
+						c3 = rgb_to_beeb_colour(font(gx + x + 3, gy + y + 0, 0), font(gx + x + 3, gy + y + 0, 0), font(gx + x + 3, gy + y + 0, 0));
+						c4 = rgb_to_beeb_colour(font(gx + x + 4, gy + y + 0, 0), font(gx + x + 4, gy + y + 0, 0), font(gx + x + 4, gy + y + 0, 0));
+						c5 = rgb_to_beeb_colour(font(gx + x + 5, gy + y + 0, 0), font(gx + x + 5, gy + y + 0, 0), font(gx + x + 5, gy + y + 0, 0));
+						c6 = rgb_to_beeb_colour(font(gx + x + 6, gy + y + 0, 0), font(gx + x + 6, gy + y + 0, 0), font(gx + x + 6, gy + y + 0, 0));
+						c7 = rgb_to_beeb_colour(font(gx + x + 7, gy + y + 0, 0), font(gx + x + 7, gy + y + 0, 0), font(gx + x + 7, gy + y + 0, 0));
+					}
+					else
+					{
+
+						c0 = rgb_to_beeb_colour(font(gx + x + 0, gy + y + 0, 0), font(gx + x + 0, gy + y + 0, 1), font(gx + x + 0, gy + y + 0, 2));
+						c1 = rgb_to_beeb_colour(font(gx + x + 1, gy + y + 0, 0), font(gx + x + 1, gy + y + 0, 1), font(gx + x + 1, gy + y + 0, 2));
+						c2 = rgb_to_beeb_colour(font(gx + x + 2, gy + y + 0, 0), font(gx + x + 2, gy + y + 0, 1), font(gx + x + 2, gy + y + 0, 2));
+						c3 = rgb_to_beeb_colour(font(gx + x + 3, gy + y + 0, 0), font(gx + x + 3, gy + y + 0, 1), font(gx + x + 3, gy + y + 0, 2));
+						c4 = rgb_to_beeb_colour(font(gx + x + 4, gy + y + 0, 0), font(gx + x + 4, gy + y + 0, 1), font(gx + x + 4, gy + y + 0, 2));
+						c5 = rgb_to_beeb_colour(font(gx + x + 5, gy + y + 0, 0), font(gx + x + 5, gy + y + 0, 1), font(gx + x + 5, gy + y + 0, 2));
+						c6 = rgb_to_beeb_colour(font(gx + x + 6, gy + y + 0, 0), font(gx + x + 6, gy + y + 0, 1), font(gx + x + 6, gy + y + 0, 2));
+						c7 = rgb_to_beeb_colour(font(gx + x + 7, gy + y + 0, 0), font(gx + x + 7, gy + y + 0, 1), font(gx + x + 7, gy + y + 0, 2));
+					}
 
 					unsigned char byte = make_beeb_byte_mode4(c0, c1, c2, c3, c4, c5, c6, c7);
 	
