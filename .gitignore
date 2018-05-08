@@ -52,3 +52,4 @@ Debug/
 *.suo
 just-font/just-font.VC.VC.opendb
 just-font/just-font.VC.db
+*.user
