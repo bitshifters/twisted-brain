@@ -557,7 +557,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6		; need something better here?
 }
 
 .data_end
@@ -664,7 +664,6 @@ INCLUDE "fx/boxrot.asm"
 INCLUDE "fx/parallax.asm"
 INCLUDE "fx/checker-zoom.asm"
 INCLUDE "fx/vblinds.asm"
-INCLUDE "fx/copper.asm"
 
 .bank1_end
 
@@ -681,7 +680,6 @@ PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
 PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
-PRINT "COPPER size =", ~copper_end-copper_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -698,6 +696,7 @@ GUARD &C000
 \ ******************************************************************
 
 PAGE_ALIGN
+INCLUDE "fx/copper.asm"
 INCLUDE "fx/plasma.asm"
 INCLUDE "fx/logo.asm"
 INCLUDE "fx/text.asm"
@@ -713,6 +712,7 @@ SAVE "Bank2", bank2_start, bank2_end
 PRINT "------"
 PRINT "BANK 2"
 PRINT "------"
+PRINT "COPPER size =", ~copper_end-copper_start
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start

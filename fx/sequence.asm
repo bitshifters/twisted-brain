@@ -27,6 +27,8 @@ ENDMACRO
 
 .sequence_script_start
 
+SEQUENCE_FX_FOR_SECS fx_BoxRot, 60.0
+
 \\ Test whether all FX are keeping sync with timer
 \\ AKA epilepsy mode
 IF 0
