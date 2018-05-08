@@ -73,7 +73,8 @@ fx_VBlinds = 6
 fx_Copper = 7
 fx_Plasma = 8
 fx_Logo = 9
-fx_MAX = 10
+fx_Text = 10
+fx_MAX = 11
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -551,11 +552,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
+	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6		; need something better here?
 }
 
 .data_end
@@ -698,6 +700,7 @@ GUARD &C000
 PAGE_ALIGN
 INCLUDE "fx/plasma.asm"
 INCLUDE "fx/logo.asm"
+INCLUDE "fx/text.asm"
 
 .bank2_end
 
@@ -712,6 +715,7 @@ PRINT "BANK 2"
 PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
+PRINT "TEXT size =", ~text_end-text_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%

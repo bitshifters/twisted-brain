@@ -70,6 +70,12 @@
     JMP logo_set_anim       ; hope SWRAM paged in!
 }
 
+.sequence_set_fx_text
+{
+    LDA #fx_Text
+    JMP main_set_fx
+}
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -102,6 +108,8 @@ SEQUENCE_FX_FOR_SECS sequence_set_fx_twister, 0.5
 SEQUENCE_FX_FOR_SECS sequence_set_fx_copper, 0.5
 NEXT
 ENDIF
+
+SEQUENCE_FX_FOR_SECS sequence_set_fx_text, 20.0
 
 SEQUENCE_FX_FOR_SECS sequence_set_fx_logo, 2.0
 SEQUENCE_FX_FOR_SECS sequence_set_fx_logo_anim_sine, 2.0
