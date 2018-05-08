@@ -14,6 +14,7 @@ boxrot_stripe = locals_start + 8
 boxrot_page = locals_start + 9
 boxrot_table_LO = locals_start + 10
 boxrot_table_HI = locals_start + 11
+boxrot_temp = locals_start + 12
 
 BOXROT_MAX_STRIPES = 10
 
@@ -59,26 +60,37 @@ BOXROT_MAX_STRIPES = 10
 	TAY
 
 \\ Now self-mod the draw code to shuffle which buffer each palette change affects
+	{
+		LDA #0
+		STA boxrot_temp
 
-	LDX #0
-	.loop
-	TYA
-	STA boxrot_draw_here + 2, X
-	TXA
-	CLC
-	ADC #8
-	CMP #8*BOXROT_MAX_STRIPES
-	BCS done
-	TAX
-	DEY
-	CPY #HI(boxrot_palette_table)
-	BCS loop
-	LDY #HI(boxrot_palette_end - &100)
-	BNE loop
+		LDX #0
+		.loop
+		TYA
+		STA boxrot_draw_here + 2, X
+
+	\\ Could inject vertical movement here?
+
+		LDA boxrot_temp
+		STA boxrot_draw_here + 1, X
+		TXA
+		CLC
+		ADC #8
+		CMP #8*BOXROT_MAX_STRIPES
+		BCS done
+		TAX
+
+		DEY
+		CPY #HI(boxrot_palette_table)
+		BCS loop
+		LDY #HI(boxrot_palette_end - &100)
+		BNE loop
+
+		.done
+	}
 
 \\ Update one palette buffer with our new rotation values
 
-	.done
 	JMP boxrot_do_rotation
 }
 
