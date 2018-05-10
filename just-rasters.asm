@@ -569,9 +569,10 @@ INCLUDE "fx/sequence.asm"
 	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 7		; need something better here?
 }
 
-TEXTURE_WIDTH_BYTES = 64
-TEXTURE_HEIGHT_BYTES = 32
+TEXTURE_WIDTH_BYTES = 48
+TEXTURE_HEIGHT_BYTES = 48
 TEXTURE_SIZE_BYTES = TEXTURE_WIDTH_BYTES * TEXTURE_HEIGHT_BYTES
+TEXTURE_NUM_ANGLES = 32
 
 \\ Texture data arranged in columns of length TEXTURE_HEIGHT_BYTES
 PAGE_ALIGN
@@ -579,6 +580,30 @@ PAGE_ALIGN
 \\INCBIN "data\amazing texture.bin"
 FOR n,0,TEXTURE_SIZE_BYTES-1,1
 EQUB n AND &FF
+NEXT
+
+.texture_rotation_tables
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+PRINT "texture angle = ", n
+FOR y,0,TEXTURE_HEIGHT_BYTES-1,1
+offset = n + y
+IF offset >= TEXTURE_HEIGHT_BYTES
+	EQUB offset - TEXTURE_HEIGHT_BYTES
+ELSE
+	EQUB offset
+ENDIF
+NEXT
+
+NEXT
+
+.texture_rotation_LO
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+EQUB LO(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
+NEXT
+
+.texture_rotation_HI
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+EQUB HI(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
 NEXT
 
 .data_end
@@ -744,7 +769,7 @@ PRINT "------"
 
 CLEAR 0, &FFFF
 ORG &8000
-GUARD &C000
+GUARD &F000;C000
 
 .bank3_start
 

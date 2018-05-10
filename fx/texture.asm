@@ -6,8 +6,6 @@ TEXTURE_SEGMENTS = 8
 TEXTURE_COLUMNS_PER_SEGMENT = TEXTURE_WIDTH_BYTES / TEXTURE_SEGMENTS
 TEXTURE_SEGMENT_SIZE_BYTES = TEXTURE_COLUMNS_PER_SEGMENT * TEXTURE_HEIGHT_BYTES
 
-TEXTURE_NUM_ANGLES = 32
-
 \\ Centred 8 character rows down
 TEXTURE_SCREEN_X = (80 - TEXTURE_WIDTH_BYTES)/2
 TEXTURE_SCREEN_Y = (256 - TEXTURE_HEIGHT_BYTES)/2
@@ -67,8 +65,8 @@ texture_angle = texture_offset_top + 0
 	INY
 	STA texture_offset_ptrs, Y
 
-	.loop
 	{
+		.loop
 		DEX
 		BPL ok
 		LDX #TEXTURE_NUM_ANGLES-1
@@ -79,10 +77,9 @@ texture_angle = texture_offset_top + 0
 		LDA texture_rotation_HI, X
 		INY
 		STA texture_offset_ptrs, Y
-		CPY #TEXTURE_SEGMENTS*2
+		CPY #(TEXTURE_SEGMENTS*2)-1
 		BCC loop
 	}
-
 
     lda &fe34
     eor #1+4	; invert bits 0 (CRTC) & 2 (RAM)
@@ -106,6 +103,8 @@ texture_angle = texture_offset_top + 0
 
 	FOR segment,0,TEXTURE_SEGMENTS-1,1
 
+	PRINT "SEGMENT ", segment
+
 		\\ Each segment has own rotation
 		LDY #0
 
@@ -124,7 +123,7 @@ texture_angle = texture_offset_top + 0
 
 		screen_addr = &3000 + (screen_x * 8) +((screen_y DIV 8) * 640) + ((screen_y MOD 8))
 
-		PRINT "x=",screen_x,"y=",screen_y,"a=",~screen_addr
+		;PRINT "x=",screen_x,"y=",screen_y,"a=",~screen_addr
 
 		STA screen_addr
 
@@ -142,28 +141,26 @@ texture_angle = texture_offset_top + 0
     RTS
 }
 
-.texture_rotation_tables
-FOR n,0,TEXTURE_NUM_ANGLES-1,1
-PRINT "texture angle = ", n
-FOR y,0,TEXTURE_HEIGHT_BYTES-1,1
-offset = n + y
-IF offset >= TEXTURE_HEIGHT_BYTES
-	EQUB offset - TEXTURE_HEIGHT_BYTES
-ELSE
-	EQUB offset
-ENDIF
-NEXT
+TEXTURE_CYCLES_PER_SEGMENT = 2
+TEXTURE_CYCLES_PER_ROW = 8
+TEXTURE_CYCLES_PER_COLUMN = 8
 
-NEXT
+TEXTURE_TOTAL_CYCLES = ((TEXTURE_COLUMNS_PER_SEGMENT * TEXTURE_CYCLES_PER_COLUMN + TEXTURE_CYCLES_PER_ROW) * TEXTURE_HEIGHT_BYTES + TEXTURE_CYCLES_PER_SEGMENT) * TEXTURE_SEGMENTS
 
-.texture_rotation_LO
-FOR n,0,TEXTURE_NUM_ANGLES-1,1
-EQUB LO(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
-NEXT
+TEXTURE_CODE_PER_SEGMENT = 2
+TEXTURE_CODE_PER_ROW = 4
+TEXTURE_CODE_PER_COLUMN = 6
 
-.texture_rotation_HI
-FOR n,0,TEXTURE_NUM_ANGLES-1,1
-EQUB HI(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
-NEXT
+TEXTURE_TOTAL_CODE = ((TEXTURE_COLUMNS_PER_SEGMENT * TEXTURE_CODE_PER_COLUMN + TEXTURE_CODE_PER_ROW) * TEXTURE_HEIGHT_BYTES + TEXTURE_CODE_PER_SEGMENT) * TEXTURE_SEGMENTS
+
+PRINT "------"
+PRINT "TEXTURE INFO"
+PRINT "------"
+PRINT "SEGMENTS = ", TEXTURE_SEGMENTS
+PRINT "TEXTURE DIMENSIONS = ", TEXTURE_WIDTH_BYTES, "x", TEXTURE_HEIGHT_BYTES
+PRINT "TEXTURE TOTAL CYCLES = ", TEXTURE_TOTAL_CYCLES
+PRINT "TEXTURE FRAME USED = ", TEXTURE_TOTAL_CYCLES/(256*128)
+PRINT "TEXTURE TOTAL CODE SIZE = ", ~TEXTURE_TOTAL_CODE
+PRINT "------"
 
 .texture_end
