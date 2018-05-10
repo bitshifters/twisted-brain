@@ -577,21 +577,39 @@ TEXTURE_NUM_ANGLES = 32
 \\ Texture data arranged in columns of length TEXTURE_HEIGHT_BYTES
 PAGE_ALIGN
 .texture_data
-\\INCBIN "data\amazing texture.bin"
-FOR n,0,TEXTURE_SIZE_BYTES-1,1
-EQUB n AND &FF
-NEXT
+INCBIN "just-font\test48.bin"
+;FOR n,0,TEXTURE_SIZE_BYTES-1,1
+;EQUB n AND &FF
+;NEXT
+
+PRINT "TEXTURE APPARENT SIZE =", SQR((TEXTURE_HEIGHT_BYTES*TEXTURE_HEIGHT_BYTES)/2)
 
 .texture_rotation_tables
 FOR n,0,TEXTURE_NUM_ANGLES-1,1
-PRINT "texture angle = ", n
+a = 0.25 * PI + 0.5 * PI * n / TEXTURE_NUM_ANGLES
+PRINT "TEXTURE TABLE=",n," angle=", a
+h = TEXTURE_HEIGHT_BYTES/2
+y1 = h + h * SIN(a)
+y2 = h + h * SIN(a + 0.5 * PI)
+y3 = h + h * SIN(a + 1.0 * PI)
+y4 = h + h * SIN(a + 1.5 * PI)
+PRINT "y1=", y1, "y2=", y2, "y3=", y3, "y4=", y4
+
 FOR y,0,TEXTURE_HEIGHT_BYTES-1,1
-offset = n + y
-IF offset >= TEXTURE_HEIGHT_BYTES
-	EQUB offset - TEXTURE_HEIGHT_BYTES
+
+; Twister
+IF y1 < y2 AND y >= y1 AND y < y2
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y1) / (y2 - y1)
+ELIF y2 < y3 AND y >= y2 AND y < y3
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y2) / (y3 - y2)
+ELIF y3 < y4 AND y >= y3 AND y < y4
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y3) / (y4 - y3)
+ELIF y4 < y1 AND y >= y4 AND y < y1
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y4) / (y1 - y4)
 ELSE
-	EQUB offset
+	EQUB 0	; blank
 ENDIF
+
 NEXT
 
 NEXT

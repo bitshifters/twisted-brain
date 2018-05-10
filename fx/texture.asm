@@ -14,14 +14,14 @@ texture_offset_ptrs = locals_start + 0
 texture_offset_top = texture_offset_ptrs + TEXTURE_SEGMENTS * 2
 
 texture_angle = texture_offset_top + 0
+texture_index = texture_offset_top + 1
 
 .texture_start
 
 .texture_init
 {
-	\\ SET UP DOUBLE BUFFERING
-	\\ CLEAR BOTH SCREENS
 	STZ texture_angle
+	STZ texture_index
 
 	LDX #0
 	LDA texture_rotation_LO, X
@@ -33,20 +33,21 @@ texture_angle = texture_offset_top + 0
 	STA texture_offset_ptrs + 1 + n*2
 	NEXT
 
+	\\ SET UP DOUBLE BUFFERING
     ; we set bits 0 and 2 of ACCCON, so that display=Main RAM, and shadow ram is selected as main memory
     lda &fe34
     and #255-1  ; set D to 0
     ora #4    	; set X to 1
     sta &fe34
 
+	\\ CLEAR BOTH SCREENS
 	JMP screen_clear_all
 }
 
 .texture_update
 {
-	\\ SWAP BUFFERS
 	\\ UPDATE ROTATION ANGLE
-	\\ SPECIFY WHICH ANGLE EACH SEGMENT HAS BY UPDATING SEGMENT ROTATION PTRS
+	IF 0
 	{
 		LDA texture_angle
 		INC A
@@ -56,7 +57,36 @@ texture_angle = texture_offset_top + 0
 		.angle_ok
 		STA texture_angle
 	}
+	ELSE
+	{
+		LDX texture_index
+		LDA texture_delta_table, X
+		CLC
+		ADC texture_angle
+		STA texture_angle
+		INX
+		STX texture_index
+	}
+	ENDIF
 
+	\\ SPECIFY WHICH ANGLE EACH SEGMENT HAS BY UPDATING SEGMENT ROTATION PTRS
+
+	IF 1
+	{
+		LDY #(TEXTURE_SEGMENTS*2)-3
+		.loop
+		LDA texture_offset_ptrs, Y
+		STA texture_offset_ptrs + 2, Y
+		DEY
+		LDA texture_offset_ptrs, Y
+		STA texture_offset_ptrs + 2, Y
+		DEY
+		BPL loop
+	}
+	ENDIF
+
+	LDA texture_angle
+	AND #TEXTURE_NUM_ANGLES-1
 	TAX
 	LDA texture_rotation_LO, X
 	LDY #0
@@ -65,12 +95,14 @@ texture_angle = texture_offset_top + 0
 	INY
 	STA texture_offset_ptrs, Y
 
+	IF 0
 	{
 		.loop
 		DEX
-		BPL ok
+		BPL ok1
 		LDX #TEXTURE_NUM_ANGLES-1
-		.ok
+		.ok1
+		
 		LDA texture_rotation_LO, X
 		INY
 		STA texture_offset_ptrs, Y
@@ -80,6 +112,9 @@ texture_angle = texture_offset_top + 0
 		CPY #(TEXTURE_SEGMENTS*2)-1
 		BCC loop
 	}
+	ENDIF
+
+	\\ SWAP BUFFERS
 
     lda &fe34
     eor #1+4	; invert bits 0 (CRTC) & 2 (RAM)
@@ -140,6 +175,12 @@ texture_angle = texture_offset_top + 0
 
     RTS
 }
+
+PAGE_ALIGN
+.texture_delta_table
+FOR n,0,255,1
+EQUB 6 * SIN(2 * PI * n / 256)
+NEXT
 
 TEXTURE_CYCLES_PER_SEGMENT = 2
 TEXTURE_CYCLES_PER_ROW = 8
