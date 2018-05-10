@@ -74,7 +74,8 @@ fx_Copper = 7
 fx_Plasma = 8
 fx_Logo = 9
 fx_Text = 10
-fx_MAX = 11
+fx_Texture = 11
+fx_MAX = 12
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -172,6 +173,12 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDA #HI(bank2_start)
 	LDX #LO(bank2_filename)
 	LDY #HI(bank2_filename)
+	JSR disksys_load_file
+
+	LDA #7:JSR swr_select_slot
+	LDA #HI(bank3_start)
+	LDX #LO(bank3_filename)
+	LDY #HI(bank3_filename)
 	JSR disksys_load_file
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
@@ -537,6 +544,7 @@ INCLUDE "fx/sequence.asm"
 .bank0_filename EQUS "Bank0  $"
 .bank1_filename EQUS "Bank1  $"
 .bank2_filename EQUS "Bank2  $"
+.bank3_filename EQUS "Bank3  $"
 
 .main_fx_table
 {
@@ -553,12 +561,25 @@ INCLUDE "fx/sequence.asm"
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
+	EQUW texture_init,    texture_update,    texture_draw,    texture_kill
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 7		; need something better here?
 }
+
+TEXTURE_WIDTH_BYTES = 64
+TEXTURE_HEIGHT_BYTES = 32
+TEXTURE_SIZE_BYTES = TEXTURE_WIDTH_BYTES * TEXTURE_HEIGHT_BYTES
+
+\\ Texture data arranged in columns of length TEXTURE_HEIGHT_BYTES
+PAGE_ALIGN
+.texture_data
+\\INCBIN "data\amazing texture.bin"
+FOR n,0,TEXTURE_SIZE_BYTES-1,1
+EQUB n AND &FF
+NEXT
 
 .data_end
 
@@ -707,7 +728,7 @@ INCLUDE "fx/text.asm"
 SAVE "Bank2", bank2_start, bank2_end
 
 \ ******************************************************************
-\ *	BANK 1 Info
+\ *	BANK 2 Info
 \ ******************************************************************
 
 PRINT "------"
@@ -716,6 +737,36 @@ PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD &C000
+
+.bank3_start
+
+\ ******************************************************************
+\ *	FX
+\ ******************************************************************
+
+PAGE_ALIGN
+INCLUDE "fx/texture.asm"
+
+.bank3_end
+
+SAVE "Bank3", bank3_start, bank3_end
+
+\ ******************************************************************
+\ *	BANK 3 Info
+\ ******************************************************************
+
+PRINT "------"
+PRINT "BANK 3"
+PRINT "------"
+PRINT "TEXTURE size =", ~texture_end-texture_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%

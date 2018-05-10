@@ -227,3 +227,55 @@ https://youtu.be/7maJ-ZaiAIo?t=43s
 Simple text FX
 - Plot static text with hatching 2x colours for fg & bg and animate palette: https://youtu.be/q53FIfd8r5Q?t=36s
 Could turn the boxrot part into this to make it more interesting?
+
+Challenge from IP, can we do a textured horizontal twister?
+Assume double buffered screen and maximum 32768 cycles
+
+For rotation 0-63 (say) precalculate the texture offset
+Assume single texture on each "side" of the box
+For each vertical slice want something like:
+
+INY                       ; next row
+LDA (offset_table), Y     ; load texture offset
+TAX                       ; transfer
+LDA texture_column_N, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+
+So each byte = 2c+5c+2c+4c+4c = 17c
+Theoretical maximum ~1927
+Can share texture offset if doing multiple columns together
+Say 1024 bytes to be safe = 32x32
+See how much we can get this up to column-wise if sharing offset
+Could we do 64x32 with 8 sections? So 8x columns per section
+
+INY                       ; next row
+LDA (offset_table), Y     ; load texture offset
+TAX                       ; transfer
+LDA texture_column_0, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_1, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_2, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_3, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_4, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_5, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_6, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+LDA texture_column_7, X   ; lookup texture byte
+STA screen_address        ; store on screen (unrolled)
+
+So each byte row = 2+5+2+8*8 = 73c
+With 32 byte rows = 73x32 = 2336c
+Across 8 sections = 2336x8 = 18688c
+Seems feasible but what about memory?
+Need 2K for the texture itself
+
+So each byte row = 1+3+1+8*6 = 53b
+With 32 byte rows = 52x32 = 1696b
+Across 8 sections = 1696x8 = 13568b = ouch!
+
+Texture offset lookups = 64x32 = 2048b
