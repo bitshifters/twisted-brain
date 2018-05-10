@@ -584,6 +584,12 @@ INCBIN "just-font\test48.bin"
 
 PRINT "TEXTURE APPARENT SIZE =", SQR((TEXTURE_HEIGHT_BYTES*TEXTURE_HEIGHT_BYTES)/2)
 
+PAGE_ALIGN
+.texture_delta_table
+FOR n,0,255,1
+EQUB 6 * SIN(2 * PI * n / 256)
+NEXT
+
 .texture_rotation_tables
 FOR n,0,TEXTURE_NUM_ANGLES-1,1
 a = 0.25 * PI + 0.5 * PI * n / TEXTURE_NUM_ANGLES
@@ -787,7 +793,7 @@ PRINT "------"
 
 CLEAR 0, &FFFF
 ORG &8000
-GUARD &F000;C000
+GUARD &C000
 
 .bank3_start
 

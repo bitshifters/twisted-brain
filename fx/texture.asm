@@ -71,7 +71,7 @@ texture_index = texture_offset_top + 1
 
 	\\ SPECIFY WHICH ANGLE EACH SEGMENT HAS BY UPDATING SEGMENT ROTATION PTRS
 
-	IF 1
+	IF 1 AND TEXTURE_SEGMENTS > 1
 	{
 		LDY #(TEXTURE_SEGMENTS*2)-3
 		.loop
@@ -175,12 +175,6 @@ texture_index = texture_offset_top + 1
 
     RTS
 }
-
-PAGE_ALIGN
-.texture_delta_table
-FOR n,0,255,1
-EQUB 6 * SIN(2 * PI * n / 256)
-NEXT
 
 TEXTURE_CYCLES_PER_SEGMENT = 2
 TEXTURE_CYCLES_PER_ROW = 8
