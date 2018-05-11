@@ -2,8 +2,19 @@
 \ *	Logo glitch
 \ ******************************************************************
 
+LOGO_NUM_ANGLES = 32
+LOGO_HEIGHT_APPARENT = 70
+LOGO_HEIGHT_TOTAL = 64
+LOGO_HEIGHT_ACTUAL = 50
+LOGO_DEFAULT_START = 7
+
 logo_charrow = locals_start + 0
 logo_scroll = locals_start + 1
+logo_angle = locals_start + 2
+logo_rotation_ptr = locals_start + 3
+logo_temp = locals_start + 5
+logo_side = locals_start + 6
+logo_scanline = locals_start + 7
 
 .logo_start
 
@@ -20,6 +31,7 @@ logo_scroll = locals_start + 1
 	JSR ula_set_palette
 
 	STZ logo_scroll
+	STZ logo_angle
 
 	LDA #0
 	JSR logo_set_anim
@@ -30,14 +42,32 @@ logo_scroll = locals_start + 1
 .logo_update
 {
 \\ Set the address & palette for first screen row
-
+IF 0
 	INC logo_scroll
 	LDA logo_scroll
 	STA logo_charrow
 
 	LDX #0
 	JSR logo_set_white		; 46c
+ELSE
+	LDA logo_angle
+	INC A
+	STA logo_angle
 
+	AND #LOGO_NUM_ANGLES-1
+	TAX
+	LDA logo_rotation_LO, X
+	STA logo_rotation_ptr
+	LDA logo_rotation_HI, X
+	STA logo_rotation_ptr+1
+
+	LDA logo_angle
+	LSR A:LSR A:LSR A:LSR A:LSR A;:LSR A
+	STA logo_side
+
+	LDY #0
+	JSR logo_set_white
+ENDIF
     RTS
 }
 
@@ -61,31 +91,43 @@ logo_scroll = locals_start + 1
 
 	\\ Set up second charrow
 
-	LDX #1
-	INC logo_charrow		; 5c
-	JSR logo_set_charrow	; 46c
+	LDY #1
+	JSR logo_set_white	; 46c
 
 	\\ Cycle count to end of charrow
 
-;	FOR n,1,4,1
-;	NOP
-;	NEXT
+	FOR n,1,1,1
+	NOP
+	NEXT
+
+	LDA #254
+	STA logo_scanline
 
 	.start_of_charrow_1
 
 	.here
 
-	INC logo_charrow		; 5c
-	JSR logo_set_white		; 46c
+	INY						; 2c
+	CPY #LOGO_HEIGHT_TOTAL
+	BCS path2
+	\\path 1; 2c
+	NOP:BIT 0 ; 5c
+	BRA ok  ; 3c
+
+	.path2	; 3c
+	LDY #0  ; 2c
+	INC logo_side ; 5c
+
+	.ok
+	JSR logo_set_white	; 47c
 
 	\\ Cycle count to end of charrow
 
-;	FOR n,1,5,1
+;	FOR n,1,1,1
 ;	NOP
 ;	NEXT
-	
-	INX							; 2c
-	CPX #255					; 2c
+
+	DEC logo_scanline			; 5c	
 	BNE here					; 3c
 
 	\\ Should arrive here on scanline 255 = last row but scanline 3
@@ -122,44 +164,37 @@ logo_scroll = locals_start + 1
 
 .logo_set_white
 {
-	TXA								; 2c
-	LSR A:LSR A:LSR A:LSR A:LSR A:LSR A	; 10c
-	TAY								; 2c
-	LDA logo_colour, Y				; 4c
-	ORA #&A0:STA &FE21				; 6c
-	LDA logo_colour, Y				; 4c
-	ORA #&B0:STA &FE21				; 6c
-	LDA logo_colour, Y				; 4c
-	ORA #&E0:STA &FE21				; 6c
-	LDA logo_colour, Y				; 4c
-	ORA #&F0:STA &FE21				; 6c
-
-}	\\ Total time = 12c + 14c + 40c = 66c
-\\ Fall through!
-.logo_set_charrow
-	LDY logo_charrow				; 3c
-
-	CLC							; 2c
+	LDA (logo_rotation_ptr), Y		; 5c
+	AND #&3F						; 2c
+	TAX								; 2c
 
 	LDA #13: STA &FE00				; 6c
     LDA logo_default_LO, X			; 4c
-.logo_set_charrow_smLO
-	ADC &FFFF, Y				; 4c
 	STA &FE01						; 4c
 
 	\\ Set screen row to this
    	LDA #12: STA &FE00				; 6c
     LDA logo_default_HI, X			; 4c
-.logo_set_charrow_smHI
-	ADC &FFFF, Y				; 4c
 	STA &FE01						; 4c
 
-	RTS
-	\\ Total time = 12c + 6c + 14c + 14c = 46c
+	LDA (logo_rotation_ptr), Y		; 5c
+	CLC:ROL A:ROL A: ROL A		; 8c
+	CLC
+	ADC logo_side				; 3c
+	AND #3
+	TAX								; 2c
+	LDA logo_colour, X				; 4c
+	ORA #&A0:STA &FE21				; 6c
+	EOR #&10:STA &FE21				; 6c
+	EOR #&40:STA &FE21				; 6c
+	ORA #&10:STA &FE21				; 6c
 
+	RTS
+}	\\ 47c
 
 .logo_set_anim
 {
+IF 0
 	ASL A:ASL A
 	TAX
 
@@ -172,6 +207,7 @@ logo_scroll = locals_start + 1
 	STA logo_set_charrow_smHI+1
 	LDA logo_anim_table+3, X
 	STA logo_set_charrow_smHI+2
+ENDIF
 
 	RTS
 }
@@ -194,14 +230,6 @@ logo_scroll = locals_start + 1
 	EQUB &D0 + PAL_yellow
 	EQUB &E0 + PAL_white
 	EQUB &F0 + PAL_white
-}
-
-.logo_colour
-{
-	EQUB PAL_red
-	EQUB PAL_green
-	EQUB PAL_yellow
-	EQUB PAL_blue
 }
 
 .logo_screen_data
@@ -304,6 +332,70 @@ NEXT
 	\\ glitch
 	\\ flip
 	\\ etc.
+}
+
+.logo_rotation_LO
+FOR n,0,LOGO_NUM_ANGLES-1,1
+EQUB LO(logo_rotation_tables + n*LOGO_HEIGHT_TOTAL)
+NEXT
+
+.logo_rotation_HI
+FOR n,0,LOGO_NUM_ANGLES-1,1
+EQUB HI(logo_rotation_tables + n*LOGO_HEIGHT_TOTAL)
+NEXT
+
+PAGE_ALIGN
+.logo_rotation_tables
+FOR n,0,LOGO_NUM_ANGLES-1,1
+a = 0.25 * PI + 0.5 * PI * n / LOGO_NUM_ANGLES
+PRINT "LOGO ROTATION TABLE=",n," angle=", a
+h = LOGO_HEIGHT_APPARENT/2
+y1 = INT(h + h * SIN(a))
+y2 = INT(h + h * SIN(a + 0.5 * PI))
+y3 = INT(h + h * SIN(a + 1.0 * PI))
+y4 = INT(h + h * SIN(a + 1.5 * PI))
+PRINT "y1=", y1, "y2=", y2, "y3=", y3, "y4=", y4
+
+FOR m,0,LOGO_HEIGHT_TOTAL-1,1
+y = m + (LOGO_HEIGHT_APPARENT-LOGO_HEIGHT_TOTAL)/2
+; Twister
+IF y1 < y2 AND y >= y1 AND y < y2
+	EQUB (LOGO_DEFAULT_START + LOGO_HEIGHT_ACTUAL * (y - y1) / (y2 - y1)) OR &C0
+ELIF y2 < y3 AND y >= y2 AND y < y3
+	EQUB (LOGO_DEFAULT_START + LOGO_HEIGHT_ACTUAL * (y - y2) / (y3 - y2)) OR &80
+ELIF y3 < y4 AND y >= y3 AND y < y4
+	EQUB (LOGO_DEFAULT_START + LOGO_HEIGHT_ACTUAL * (y - y3) / (y4 - y3)) OR &40
+ELIF y4 < y1 AND y >= y4 AND y < y1
+	EQUB (LOGO_DEFAULT_START + LOGO_HEIGHT_ACTUAL * (y - y4) / (y1 - y4)) OR &00
+ELSE
+	EQUB 0	; blank
+ENDIF
+
+NEXT
+
+NEXT
+
+.logo_colour
+{
+	IF 1
+	EQUB PAL_red
+	EQUB PAL_green
+	EQUB PAL_yellow
+	EQUB PAL_blue
+	ELSE
+	FOR n,0,255,1
+	c=n >> 6
+	IF c=0
+	EQUB PAL_red
+	ELIF c=1
+	EQUB PAL_green
+	ELIF c=2
+	EQUB PAL_yellow
+	ELSE
+	EQUB PAL_blue
+	ENDIF
+	NEXT
+	ENDIF
 }
 
 .logo_end

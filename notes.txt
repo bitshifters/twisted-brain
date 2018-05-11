@@ -227,3 +227,64 @@ https://youtu.be/7maJ-ZaiAIo?t=43s
 Simple text FX
 - Plot static text with hatching 2x colours for fg & bg and animate palette: https://youtu.be/q53FIfd8r5Q?t=36s
 Could turn the boxrot part into this to make it more interesting?
+
+TEXTURE_WIDTH_BYTES = 48
+TEXTURE_HEIGHT_BYTES = 48
+TEXTURE_SIZE_BYTES = TEXTURE_WIDTH_BYTES * TEXTURE_HEIGHT_BYTES
+TEXTURE_NUM_ANGLES = 32
+
+\\ Texture data arranged in columns of length TEXTURE_HEIGHT_BYTES
+PAGE_ALIGN
+.texture_data
+INCBIN "just-font\test48.bin"
+;FOR n,0,TEXTURE_SIZE_BYTES-1,1
+;EQUB n AND &FF
+;NEXT
+
+PRINT "TEXTURE APPARENT SIZE =", SQR((TEXTURE_HEIGHT_BYTES*TEXTURE_HEIGHT_BYTES)/2)
+
+PAGE_ALIGN
+.texture_delta_table
+FOR n,0,255,1
+EQUB 6 * SIN(2 * PI * n / 256)
+NEXT
+
+.texture_rotation_tables
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+a = 0.25 * PI + 0.5 * PI * n / TEXTURE_NUM_ANGLES
+PRINT "TEXTURE TABLE=",n," angle=", a
+h = TEXTURE_HEIGHT_BYTES/2
+y1 = h + h * SIN(a)
+y2 = h + h * SIN(a + 0.5 * PI)
+y3 = h + h * SIN(a + 1.0 * PI)
+y4 = h + h * SIN(a + 1.5 * PI)
+PRINT "y1=", y1, "y2=", y2, "y3=", y3, "y4=", y4
+
+FOR y,0,TEXTURE_HEIGHT_BYTES-1,1
+
+; Twister
+IF y1 < y2 AND y >= y1 AND y < y2
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y1) / (y2 - y1)
+ELIF y2 < y3 AND y >= y2 AND y < y3
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y2) / (y3 - y2)
+ELIF y3 < y4 AND y >= y3 AND y < y4
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y3) / (y4 - y3)
+ELIF y4 < y1 AND y >= y4 AND y < y1
+	EQUB TEXTURE_HEIGHT_BYTES * (y - y4) / (y1 - y4)
+ELSE
+	EQUB 0	; blank
+ENDIF
+
+NEXT
+
+NEXT
+
+.texture_rotation_LO
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+EQUB LO(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
+NEXT
+
+.texture_rotation_HI
+FOR n,0,TEXTURE_NUM_ANGLES-1,1
+EQUB HI(texture_rotation_tables + n * TEXTURE_HEIGHT_BYTES)
+NEXT
