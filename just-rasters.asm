@@ -61,7 +61,7 @@ ENDMACRO
 \ *	DEMO defines
 \ ******************************************************************
 
-SLOT_MUSIC = 4
+SLOT_MUSIC = 7
 
 fx_Null = 0
 fx_Kefrens = 1
@@ -175,6 +175,17 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR disksys_load_file
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
+	LDA #HI(music_start)
+	LDX #LO(music_filename)
+	LDY #HI(music_filename)
+	JSR disksys_load_file
+
+	LDA #HI(HAZEL_START)
+	LDX #LO(hazel_filename)
+	LDY #HI(hazel_filename)
+	JSR disksys_load_file
+
+	\\ NB! CAN'T USE DISC AFTER THIS AS HAZEL TRASHED!
 
 	\\ Initalise system vars
 
@@ -537,6 +548,8 @@ INCLUDE "fx/sequence.asm"
 .bank0_filename EQUS "Bank0  $"
 .bank1_filename EQUS "Bank1  $"
 .bank2_filename EQUS "Bank2  $"
+.music_filename EQUS "Music  $"
+.hazel_filename EQUS "Hazel  $"
 
 .main_fx_table
 {
@@ -614,14 +627,6 @@ GUARD &C000
 .bank0_start
 
 \ ******************************************************************
-\ *	MUSIC
-\ ******************************************************************
-
-.music_data
-INCBIN "audio/music/BotB 23787 djmaximum - your VGM has arrived for the Tandy 1000.raw.exo"
-.music_end
-
-\ ******************************************************************
 \ *	FX
 \ ******************************************************************
 
@@ -639,8 +644,6 @@ SAVE "Bank0", bank0_start, bank0_end
 
 PRINT "------"
 PRINT "BANK 0"
-PRINT "------"
-PRINT "MUSIC size =", ~music_end-music_data
 PRINT "------"
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "TWISTER size =", ~twister_end-twister_start
@@ -707,7 +710,7 @@ INCLUDE "fx/text.asm"
 SAVE "Bank2", bank2_start, bank2_end
 
 \ ******************************************************************
-\ *	BANK 1 Info
+\ *	BANK 2 Info
 \ ******************************************************************
 
 PRINT "------"
@@ -719,6 +722,41 @@ PRINT "TEXT size =", ~text_end-text_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+
+HAZEL_START = &C000
+HAZEL_TOP = &E000
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD HAZEL_TOP
+
+.music_start
+
+\ ******************************************************************
+\ *	MUSIC BANK = SWRAM + HAZEL
+\ ******************************************************************
+
+.music_data
+INCBIN "audio\music\mongolia.bin.exo"
+
+.music_end
+
+SAVE "Music", music_start, HAZEL_START
+SAVE "Hazel", HAZEL_START, music_end
+
+\ ******************************************************************
+\ *	MUSIC INFO
+\ ******************************************************************
+
+PRINT "------"
+PRINT "MUSIC BANK"
+PRINT "------"
+PRINT "MUSIC SIZE = ", ~(music_end - music_start)
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~HAZEL_TOP-P%
 PRINT "------"
 
 \ ******************************************************************
