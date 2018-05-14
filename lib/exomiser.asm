@@ -25,7 +25,7 @@
 
 \\ Exomiser unpack buffer (must be page aligned)
 \\ Now moved this to the language workspace at &0400 - &0800
-EXO_buffer_start = &400; EXO_buffer ; &400
+EXO_buffer_start = &300; EXO_buffer ; &400
 EXO_buffer_end = EXO_buffer_start + EXO_buffer_len
 
 ; -------------------------------------------------------------------

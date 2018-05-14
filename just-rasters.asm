@@ -61,7 +61,7 @@ ENDMACRO
 \ *	DEMO defines
 \ ******************************************************************
 
-SLOT_MUSIC = 4
+SLOT_MUSIC = 7
 
 fx_Null = 0
 fx_Kefrens = 1
@@ -73,7 +73,8 @@ fx_VBlinds = 6
 fx_Copper = 7
 fx_Plasma = 8
 fx_Logo = 9
-fx_MAX = 10
+fx_Text = 10
+fx_MAX = 11
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -174,6 +175,17 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR disksys_load_file
 
 	LDA #SLOT_MUSIC:JSR swr_select_slot
+	LDA #HI(music_start)
+	LDX #LO(music_filename)
+	LDY #HI(music_filename)
+	JSR disksys_load_file
+
+	LDA #HI(HAZEL_START)
+	LDX #LO(hazel_filename)
+	LDY #HI(hazel_filename)
+	JSR disksys_load_file
+
+	\\ NB! CAN'T USE DISC AFTER THIS AS HAZEL TRASHED!
 
 	\\ Initalise system vars
 
@@ -536,6 +548,8 @@ INCLUDE "fx/sequence.asm"
 .bank0_filename EQUS "Bank0  $"
 .bank1_filename EQUS "Bank1  $"
 .bank2_filename EQUS "Bank2  $"
+.music_filename EQUS "Music  $"
+.hazel_filename EQUS "Hazel  $"
 
 .main_fx_table
 {
@@ -551,11 +565,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
+	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6		; need something better here?
+	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6		; need something better here?
 }
 
 .data_end
@@ -612,14 +627,6 @@ GUARD &C000
 .bank0_start
 
 \ ******************************************************************
-\ *	MUSIC
-\ ******************************************************************
-
-.music_data
-INCBIN "audio/music/BotB 23787 djmaximum - your VGM has arrived for the Tandy 1000.raw.exo"
-.music_end
-
-\ ******************************************************************
 \ *	FX
 \ ******************************************************************
 
@@ -637,8 +644,6 @@ SAVE "Bank0", bank0_start, bank0_end
 
 PRINT "------"
 PRINT "BANK 0"
-PRINT "------"
-PRINT "MUSIC size =", ~music_end-music_data
 PRINT "------"
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "TWISTER size =", ~twister_end-twister_start
@@ -698,13 +703,14 @@ GUARD &C000
 PAGE_ALIGN
 INCLUDE "fx/plasma.asm"
 INCLUDE "fx/logo.asm"
+INCLUDE "fx/text.asm"
 
 .bank2_end
 
 SAVE "Bank2", bank2_start, bank2_end
 
 \ ******************************************************************
-\ *	BANK 1 Info
+\ *	BANK 2 Info
 \ ******************************************************************
 
 PRINT "------"
@@ -712,9 +718,45 @@ PRINT "BANK 2"
 PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
+PRINT "TEXT size =", ~text_end-text_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
+PRINT "------"
+
+
+HAZEL_START = &C000
+HAZEL_TOP = &E000
+
+CLEAR 0, &FFFF
+ORG &8000
+GUARD HAZEL_TOP
+
+.music_start
+
+\ ******************************************************************
+\ *	MUSIC BANK = SWRAM + HAZEL
+\ ******************************************************************
+
+.music_data
+INCBIN "audio\music\mongolia.bin.exo"
+
+.music_end
+
+SAVE "Music", music_start, HAZEL_START
+SAVE "Hazel", HAZEL_START, music_end
+
+\ ******************************************************************
+\ *	MUSIC INFO
+\ ******************************************************************
+
+PRINT "------"
+PRINT "MUSIC BANK"
+PRINT "------"
+PRINT "MUSIC SIZE = ", ~(music_end - music_start)
+PRINT "------"
+PRINT "HIGH WATERMARK =", ~P%
+PRINT "FREE =", ~HAZEL_TOP-P%
 PRINT "------"
 
 \ ******************************************************************

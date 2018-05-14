@@ -227,3 +227,53 @@ https://youtu.be/7maJ-ZaiAIo?t=43s
 Simple text FX
 - Plot static text with hatching 2x colours for fg & bg and animate palette: https://youtu.be/q53FIfd8r5Q?t=36s
 Could turn the boxrot part into this to make it more interesting?
+
+MONGOLIA TUNE
+~~~
+Total duration 3m 33s - perfect!
+Pattern 1 0:00 - 0:19 = 19s
+
+Bitshifters presents
+A demo for NOVA
+Called <something> :)
+
+Pattern 2 0:19 - 0:34 = 15s
+
+<Things start to go rastery>
+
+Drums kick in 0:34 - 0:42 = 8s
+
+<High energy FX for drums - maybe checker zoom?>
+
+Pattern 3 0:42 - 0:57 = 15s
+
+<FX 1 - variation 1>
+<short text?>
+
+Pattern 4 0:57 - 1:12 = 15s
+
+<FX 1 - variation 2>
+<short text?>
+
+High part 1:12 - 1:20 = 8s
+
+Long bit A 1:20 - 1:51 = 31s
+
+<FX x3 variations>
+
+Long bit B 1:51 - 2:22 = 31s
+
+<FX x3 variations>
+
+Drums disappear 2:22 - 3:00 = 38s
+
+<Credits, greetz, thanx?>
+Building energy here?
+
+Drums kick in again 3:00 - 3:31 = 31s
+
+<Plasma?>
+
+Final chords 3:31 - 3:33 = 2s + silence
+
+<Copper?>

@@ -2,7 +2,7 @@
 \\ EXOMISER (compression library)
 \\ ******************************************************************
 
-EXO_buffer_len = 256
+EXO_buffer_len = 2048
 EXO_TABL_SIZE = 156
 
 \\ Declare ZP vars
