@@ -11,6 +11,10 @@ parallax_delta_lookup = locals_start + 4
 parallax_readrowptr = locals_start + 5
 parallax_writerowptr = locals_start + 7
 
+parallax_x = locals_start + 9
+parallax_index = locals_start + 10
+parallax_crtc_row = locals_start + 11
+
 .parallax_start
 
 .parallax_init
@@ -20,6 +24,8 @@ parallax_writerowptr = locals_start + 7
 	STA parallax_delta
 	STA parallax_angle
     STA parallax_delta_lookup
+	STA parallax_x
+	STA parallax_index
 
     SET_ULA_MODE ULA_Mode1
 
@@ -142,6 +148,41 @@ ENDIF
 
 .parallax_update
 {
+	LDY parallax_angle
+	INY
+	TYA
+	AND #&3F
+	STA parallax_angle
+	TAY
+
+	LDA parallax_x
+	INC A
+	AND #&3F
+	STA parallax_x
+	INC parallax_index
+
+	LDX parallax_index
+	LDA parallax_delta_wave, X
+	CLC
+	ADC parallax_x
+	AND #&3F
+	TAY
+
+	LDA #12: STA &FE00			; 2c + 4c++
+	LDA parallax_vram_table_HI, Y		; 4c
+	STA &FE01					; 4c++
+
+	LDA #13: STA &FE00			; 2c + 4c++
+	LDA parallax_vram_table_LO, Y		; 4c
+	STA &FE01					; 4c++
+
+	\\ Set correct video page - OK as long as in VBlank
+
+	LDA &FE34					; 4c++
+	AND #&FE					; 2c
+	ORA parallax_vram_table_page, Y		; 4c
+	STA &FE34					; 4c++
+
 	LDY parallax_delta_lookup
 	INY
 	STY parallax_delta_lookup
@@ -168,17 +209,21 @@ ENDIF
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-;	FOR n,1,1,1
-;	NOP
-;	NEXT
-	BIT 0
+	FOR n,1,55,1
+	NOP
+	NEXT
 
 	\\ Should be exactly on next scanline
 	JSR cycles_wait_128
 	JSR cycles_wait_128
-	JSR cycles_wait_128
 
-	LDY parallax_angle
+	LDX parallax_index			; 3c
+	INX							; 2c
+	LDA parallax_delta_wave, X	; 4c
+	CLC							; 2c
+	ADC parallax_x				; 3c
+	AND #&3F					; 2c
+	TAY							; 2c
 
 	\\ R12,13 - frame buffer address
 	LDA #12: STA &FE00			; 2c + 4c++
@@ -196,7 +241,8 @@ ENDIF
 	ORA parallax_vram_table_page, Y		; 4c
 	STA &FE34					; 4c++
 
-	LDX #256-62					; 2c
+	LDA #62
+	STA parallax_crtc_row
 
 	LDA parallax_delta
 	STA parallax_accum
@@ -204,6 +250,7 @@ ENDIF
 	.here
 
 IF 1
+	IF 0
 	\\ Add our parallax_delta to the parallax_accumulator
 	CLC						; 2c
 	LDA parallax_accum				; 3c
@@ -216,13 +263,28 @@ IF 1
 	AND #&3F				; 2c
 	TAY						; 2c
 
-	FOR n,1,27,1
+	FOR n,1,25,1
 	NOP
 	NEXT
 
+	ELSE
+
+	INX							; 2c
+	INX							; 2c
+	LDA parallax_delta_wave, X	; 4c
+	CLC							; 2c
+	ADC parallax_x				; 3c
+	AND #&3F					; 2c
+	TAY							; 2c
+
+	FOR n,1,27,1
+	NOP
+	NEXT
+	ENDIF
+
 ELSE
 \\ Sit here and do nothing!!!
-    FOR n,1,37,1
+    FOR n,1,35,1
     NOP
     NEXT
 ENDIF
@@ -248,8 +310,7 @@ ENDIF
 	ORA parallax_vram_table_page, Y		; 4c
 	STA &FE34					; 4c++
 
-;	BIT 0			; 3c
-	INX				; 2c
+	DEC parallax_crtc_row		; 5c
 	BNE here		; 3c
 
 	\\ R9=0 - character row = 2 scanlines
@@ -267,33 +328,6 @@ ENDIF
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-
-	\\ Could/should do this in Update
-
-	LDY parallax_angle
-	INY
-	TYA
-	AND #&3F
-	STA parallax_angle
-	TAY
-
-	LDA #12: STA &FE00			; 2c + 4c++
-	LDA parallax_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
-
-	LDA #13: STA &FE00			; 2c + 4c++
-	LDA parallax_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
-
-	\\ Set correct video page - MAY NEED A DELAY HERE?
-	JSR cycles_wait_128
-	JSR cycles_wait_128
-	JSR cycles_wait_128
-
-	LDA &FE34					; 4c++
-	AND #&FE					; 2c
-	ORA parallax_vram_table_page, Y		; 4c
-	STA &FE34					; 4c++
 
     RTS
 }
