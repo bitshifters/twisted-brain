@@ -21,11 +21,31 @@ parallax_writerowptr = locals_start + 7
 	STA parallax_angle
     STA parallax_delta_lookup
 
+    SET_ULA_MODE ULA_Mode1
+
+	LDX #LO(parallax_pal)
+	LDY #HI(parallax_pal)
+	JSR ula_set_palette
+
 	\\ Expand our MODE 5 128 line parallax_screen_data into appropriate CRTC format
 
 	\ Ensure MAIN RAM is writeable
     LDA &FE34:AND #&FB:STA &FE34
 
+IF 1
+	LDX #LO(parallax_screen1)
+	LDY #HI(parallax_screen1)
+    LDA #HI(screen_base_addr)
+    JSR PUCRUNCH_UNPACK
+
+	\ Ensure SHADOW RAM is writeable
+    LDA &FE34:ORA #&4:STA &FE34
+
+	LDX #LO(parallax_screen2)
+	LDY #HI(parallax_screen2)
+    LDA #HI(screen_base_addr)
+    JSR PUCRUNCH_UNPACK
+ELSE
 	LDA #LO(parallax_screen_data)
 	STA parallax_readrowptr
 	LDA #HI(parallax_screen_data)
@@ -111,6 +131,8 @@ parallax_writerowptr = locals_start + 7
 	BNE screenloop
 
 	.donescreenloop
+ENDIF
+
 	\ Ensure MAIN RAM is writeable
     LDA &FE34:AND #&FB:STA &FE34
 
@@ -130,9 +152,9 @@ parallax_writerowptr = locals_start + 7
 
 .parallax_draw
 {
-	\\ R9=0 - character row = 1 scanline
+	\\ R9=0 - character row = 4 scanlines
 	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	LDA #3:	STA &FE01
 
 	\\ R4=0 - CRTC cycle is one row
 	LDA #4: STA &FE00
@@ -145,6 +167,16 @@ parallax_writerowptr = locals_start + 7
 	\\ R6=1 - one row displayed
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
+
+;	FOR n,1,1,1
+;	NOP
+;	NEXT
+	BIT 0
+
+	\\ Should be exactly on next scanline
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
 
 	LDY parallax_angle
 
@@ -164,20 +196,14 @@ parallax_writerowptr = locals_start + 7
 	ORA parallax_vram_table_page, Y		; 4c
 	STA &FE34					; 4c++
 
-;	FOR n,1,3,1
-;	NOP
-;	NEXT
-
-	\\ Should be exactly on next scanline
-
-	LDX #2					; 2c
+	LDX #256-62					; 2c
 
 	LDA parallax_delta
 	STA parallax_accum
 
 	.here
 
-IF 0
+IF 1
 	\\ Add our parallax_delta to the parallax_accumulator
 	CLC						; 2c
 	LDA parallax_accum				; 3c
@@ -189,12 +215,21 @@ IF 0
 	ADC #0					; 2c
 	AND #&3F				; 2c
 	TAY						; 2c
+
+	FOR n,1,27,1
+	NOP
+	NEXT
+
 ELSE
 \\ Sit here and do nothing!!!
-    FOR n,1,9,1
+    FOR n,1,37,1
     NOP
     NEXT
 ENDIF
+
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
 
 	LDA #12: STA &FE00			; 2c + 4c++
 	LDA parallax_vram_table_HI, Y		; 4c
@@ -206,10 +241,6 @@ ENDIF
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,27,1
-	NOP
-	NEXT
-	
 	\\ Set correct video page
 
 	LDA &FE34					; 4c++
@@ -221,39 +252,23 @@ ENDIF
 	INX				; 2c
 	BNE here		; 3c
 
-IF 0 ; this resets CRTC to  8 scanline character rows for vsync
-	\\ R9=7 - character row = 8 scanlines
+	\\ R9=0 - character row = 2 scanlines
 	LDA #9: STA &FE00
-	LDA #7:	STA &FE01
+	LDA #3:	STA &FE01			; 4 scanlines
 
-	\\ R4=6 - CRTC cycle is 7 more rows
+	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
-	LDA #6: STA &FE01
-
-	\\ R7=2 - vsync is at row 34
-	LDA #7:	STA &FE00
-	LDA #2: STA &FE01
-
-	\\ R6=0 - no more rows to display
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
-ELSE ; this just keeps 1 scanline character rows and calculates vsync that way
-	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
-
-	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #14-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 14 rows + the one we're on
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
 	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #6+1: STA &FE01			; 280 - 256 = 24 scanlines = 6 rows
 
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-ENDIF
+
+	\\ Could/should do this in Update
 
 	LDY parallax_angle
 	INY
@@ -271,6 +286,9 @@ ENDIF
 	STA &FE01					; 4c++
 
 	\\ Set correct video page - MAY NEED A DELAY HERE?
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
 
 	LDA &FE34					; 4c++
 	AND #&FE					; 2c
@@ -303,6 +321,8 @@ ENDIF
 .parallax_kill
 {
 	JSR crtc_reset
+    SET_ULA_MODE ULA_Mode2
+    JSR ula_pal_reset
 
 	\\ Ensure we're displaying main memory
 
@@ -312,6 +332,7 @@ ENDIF
 
 \\ For rot value N ptr to framebuffer
 
+PAGE_ALIGN
 .parallax_vram_table_LO
 FOR n,0,63,1
 EQUB LO((&3000 + (n AND &1F) *640)/8)
@@ -327,6 +348,26 @@ FOR n,0,63,1
 EQUB (n AND &20) >> 5
 NEXT
 
+.parallax_pal
+{
+	EQUB &00 + PAL_black
+	EQUB &10 + PAL_black
+	EQUB &20 + PAL_red
+	EQUB &30 + PAL_red
+	EQUB &40 + PAL_black
+	EQUB &50 + PAL_black
+	EQUB &60 + PAL_red
+	EQUB &70 + PAL_red
+	EQUB &80 + PAL_yellow
+	EQUB &90 + PAL_yellow
+	EQUB &A0 + PAL_white
+	EQUB &B0 + PAL_white
+	EQUB &C0 + PAL_yellow
+	EQUB &D0 + PAL_yellow
+	EQUB &E0 + PAL_white
+	EQUB &F0 + PAL_white
+}
+
 PAGE_ALIGN
 .parallax_delta_wave
 FOR n,0,255,1
@@ -334,7 +375,11 @@ EQUB 32 + 31 * SIN(2 * PI * n / 256)
 NEXT
 
 PAGE_ALIGN
-.parallax_screen_data
-INCBIN "data/parallax.bin"
+.parallax_screen1
+INCBIN "data/parallax1.pu"
+
+PAGE_ALIGN
+.parallax_screen2
+INCBIN "data/parallax2.pu"
 
 .parallax_end
