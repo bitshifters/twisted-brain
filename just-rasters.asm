@@ -358,12 +358,13 @@ ENDIF
 
 IF 1
 	\\ Update typically happens during vblank so wait 255 lines
+	\\ But don't forget that the loop also takes time!!
 
 	{
-		LDX #1
+		LDX #245
 		.loop
 		JSR cycles_wait_128
-		INX
+		DEX
 		BNE loop
 	}
 ENDIF
@@ -632,6 +633,7 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/kefrens.asm"
+PAGE_ALIGN
 INCLUDE "fx/twister.asm"
 
 .bank0_end
@@ -664,9 +666,13 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/boxrot.asm"
+PAGE_ALIGN
 INCLUDE "fx/parallax.asm"
+PAGE_ALIGN
 INCLUDE "fx/checker-zoom.asm"
+PAGE_ALIGN
 INCLUDE "fx/vblinds.asm"
+PAGE_ALIGN
 INCLUDE "fx/copper.asm"
 
 .bank1_end
@@ -702,7 +708,9 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/plasma.asm"
+PAGE_ALIGN
 INCLUDE "fx/logo.asm"
+PAGE_ALIGN
 INCLUDE "fx/text.asm"
 
 .bank2_end
@@ -738,6 +746,7 @@ GUARD HAZEL_TOP
 \ *	MUSIC BANK = SWRAM + HAZEL
 \ ******************************************************************
 
+PAGE_ALIGN
 .music_data
 INCBIN "audio\music\mongolia.bin.exo"
 
