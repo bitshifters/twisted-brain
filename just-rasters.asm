@@ -764,7 +764,7 @@ PRINT "------"
 \ ******************************************************************
 
 IF _DEBUG
-PUTBASIC "basic/parallax.bas", "para0"
+PUTBASIC "basic/parallax mode0.bas", "para0"
 PUTBASIC "basic/parallax mode1.bas", "para1"
 ;PUTFILE "basic/makdith.bas.bin", "MAKDITH", &0E00
 PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00

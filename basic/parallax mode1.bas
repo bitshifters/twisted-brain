@@ -35,11 +35,11 @@
 166 radius = (sx2 - sx1)/2
 170 REM MOVE sx1, y
 171 REM DRAW sx2, y
-180 FOR X%=sx1 TO sx2 STEP 4
-181 N% = 16*ABS(X% - centre)/radius
+180 FOR X%=0 TO radius*2 STEP 4
+181 N% = 16*ABS(X% - radius)/radius
 190 FOR Y%=0 TO 3
-200 IF DITHER((ABS(X%/4)MOD4)+1, (Y% MOD 4)+1) > N% THEN GCOL 0,C% ELSE GCOL 0,0
-210 PLOT 69, X%, y-Y%*4
+200 IF DITHER((ABS(X%DIV4)MOD4)+1, (Y% MOD 4)+1) > N% THEN GCOL 0,C% ELSE GCOL 0,0
+210 PLOT 69, sx1+X%, y-Y%*4
 211 NEXT
 212 NEXT
 220 NEXT
