@@ -29,7 +29,24 @@ ENDMACRO
 
 \\ TEST TEST TEST
 
-SEQUENCE_FX_FOR_SECS fx_Parallax, 38.0
+SEQUENCE_FX_FOR_SECS fx_Parallax, 5.0
+SCRIPT_CALLV parallax_set_inc_x, 2
+SCRIPT_CALLV parallax_set_wave_f, 2
+
+\\ Need some sort of fade / blackout in between
+
+SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV parallax_set_inc_x, 1
+SCRIPT_CALLV parallax_set_wave_f, 2
+SCRIPT_CALLV parallax_set_wave_y, 3
+
+SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV parallax_set_inc_x, 0
+SCRIPT_CALLV parallax_set_wave_f, 1
+SCRIPT_CALLV parallax_set_wave_y, 15
+
+SEQUENCE_WAIT_SECS 5.0
+
 SEQUENCE_FX_FOR_SECS fx_VBlinds, 15.0
 
 
