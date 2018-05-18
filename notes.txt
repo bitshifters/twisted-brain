@@ -277,3 +277,14 @@ Drums kick in again 3:00 - 3:31 = 31s
 Final chords 3:31 - 3:33 = 2s + silence
 
 <Copper?>
+
+
+Parallax
+~~~
+Variations:
+- straight bars, linear motion
+- straight bars, sine motion (not full sinewave so shift over time)
+- sine wavey bars, linear motion
+- sine wavey bars, sine motion
+- alternating scanlines at different offsets for both
+- colours

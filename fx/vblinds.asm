@@ -46,7 +46,10 @@ vblinds_buffer = locals_start+7
 	STA vblinds_bar_max
 
 	JSR vblinds_erase_line
-	RTS
+
+\\ Technically only need to erase 4x rows
+
+	JMP screen_clear_all
 }
 
 \ ******************************************************************
@@ -239,7 +242,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 	\\ How much time left?
 
-	LDX #161					; 2c
+	LDX #163					; 2c
 
 	.here
 
@@ -250,6 +253,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	
 	INX				; 2c
 	BNE here		; 3c
+	NOP
 
 	\\ Should arrive here on scanline 255 = last row but scanline 1
 	.start_of_scanline_255

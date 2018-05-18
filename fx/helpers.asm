@@ -68,6 +68,31 @@ ENDIF
 	rts	
 }
 
+.music_poll_if_vsync
+{
+	PHA
+
+	lda #2
+	.vsync1
+	bit &FE4D
+	beq return
+	sta &FE4D \ 4(stretched), ack vsync
+
+	LDA &F4:PHA
+
+	LDA #SLOT_MUSIC:JSR swr_select_slot
+
+	PHX:PHY
+	JSR vgm_poll_player
+	PLY:PLX
+
+	PLA:JSR swr_select_slot
+
+	.return
+	PLA
+	rts	
+}
+
 .ula_pal_reset
 {
 	LDX #LO(ula_pal_defaults)
@@ -132,6 +157,9 @@ ENDIF
   iny
   bne loop
   inc loop+2
+
+  JSR music_poll_if_vsync
+
   dex
   bne loop
   rts
@@ -153,5 +181,29 @@ ENDIF
 	NEXT				; = 116c
 	RTS					; 6c
 }						; = 128c
+
+.pal_set_mode1_colour2
+	ORA #&80
+	BRA pal_set_mode1
+
+.pal_set_mode1_colour3
+	ORA #&A0
+	BRA pal_set_mode1
+
+.pal_set_mode1_colour1
+	ORA #&20
+	\\ fall through
+	
+.pal_set_mode1
+{
+	STA &FE21
+	EOR #&10
+	STA &FE21
+	EOR #&40
+	STA &FE21
+	EOR #&10
+	STA &FE21
+	RTS
+}
 
 .helpers_end
