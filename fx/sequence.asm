@@ -36,11 +36,13 @@ SCRIPT_CALLV parallax_set_wave_f, 2
 \\ Need some sort of fade / blackout in between
 
 SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV pal_set_mode1_colour2, PAL_cyan
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 2
 SCRIPT_CALLV parallax_set_wave_y, 3
 
 SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV pal_set_mode1_colour1, PAL_blue
 SCRIPT_CALLV parallax_set_inc_x, 0
 SCRIPT_CALLV parallax_set_wave_f, 1
 SCRIPT_CALLV parallax_set_wave_y, 15

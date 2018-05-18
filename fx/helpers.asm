@@ -182,4 +182,28 @@ ENDIF
 	RTS					; 6c
 }						; = 128c
 
+.pal_set_mode1_colour2
+	ORA #&80
+	BRA pal_set_mode1
+
+.pal_set_mode1_colour3
+	ORA #&A0
+	BRA pal_set_mode1
+
+.pal_set_mode1_colour1
+	ORA #&20
+	\\ fall through
+	
+.pal_set_mode1
+{
+	STA &FE21
+	EOR #&10
+	STA &FE21
+	EOR #&40
+	STA &FE21
+	EOR #&10
+	STA &FE21
+	RTS
+}
+
 .helpers_end
