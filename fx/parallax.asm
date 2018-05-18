@@ -291,14 +291,14 @@ NEXT
 	EQUB &50 + PAL_black
 	EQUB &60 + PAL_red
 	EQUB &70 + PAL_red
-	EQUB &80 + PAL_yellow
-	EQUB &90 + PAL_yellow
-	EQUB &A0 + PAL_white
-	EQUB &B0 + PAL_white
-	EQUB &C0 + PAL_yellow
-	EQUB &D0 + PAL_yellow
-	EQUB &E0 + PAL_white
-	EQUB &F0 + PAL_white
+	EQUB &80 + PAL_red;PAL_yellow
+	EQUB &90 + PAL_red;PAL_yellow
+	EQUB &A0 + PAL_red;PAL_white
+	EQUB &B0 + PAL_red;PAL_white
+	EQUB &C0 + PAL_red;PAL_yellow
+	EQUB &D0 + PAL_red;PAL_yellow
+	EQUB &E0 + PAL_red;PAL_white
+	EQUB &F0 + PAL_red;PAL_white
 }
 
 PAGE_ALIGN
