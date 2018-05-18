@@ -253,6 +253,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	
 	INX				; 2c
 	BNE here		; 3c
+	NOP
 
 	\\ Should arrive here on scanline 255 = last row but scanline 1
 	.start_of_scanline_255
