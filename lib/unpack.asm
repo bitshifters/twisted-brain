@@ -208,8 +208,14 @@ ENDIF
 	iny		; Y does not wrap because X=0..255 and Y initially 0
 	dex
 	bne lzloop	; X loops, (256,1..255)
-	beq mainbeq	; jump through another beq (-1 byte, +3 cycles)
 
+IF 1
+	\\ Keep music playing during decrunch!
+	PHX
+	JSR music_poll_if_vsync
+	PLX
+ENDIF
+	beq mainbeq	; jump through another beq (-1 byte, +3 cycles)
 
 .getnew:pha		; 1 Byte/3 cycles
 

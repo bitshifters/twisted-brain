@@ -68,6 +68,31 @@ ENDIF
 	rts	
 }
 
+.music_poll_if_vsync
+{
+	PHA
+
+	lda #2
+	.vsync1
+	bit &FE4D
+	beq return
+	sta &FE4D \ 4(stretched), ack vsync
+
+	LDA &F4:PHA
+
+	LDA #SLOT_MUSIC:JSR swr_select_slot
+
+	PHX:PHY
+	JSR vgm_poll_player
+	PLY:PLX
+
+	PLA:JSR swr_select_slot
+
+	.return
+	PLA
+	rts	
+}
+
 .ula_pal_reset
 {
 	LDX #LO(ula_pal_defaults)
@@ -132,6 +157,9 @@ ENDIF
   iny
   bne loop
   inc loop+2
+
+  JSR music_poll_if_vsync
+
   dex
   bne loop
   rts

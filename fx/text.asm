@@ -105,6 +105,9 @@ text_scroll = locals_start + 6
   iny
   bne loop
   inc loop+2
+
+	JSR music_poll_if_vsync
+
   dex
   bne loop
   rts
