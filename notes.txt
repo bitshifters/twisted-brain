@@ -300,3 +300,41 @@ Row increment = 1 <- static twist
 Propagate line 0 delta to line 1 etc.
 This is what the accumulator code was previously
 Propogate a fraction of the twist amount to the following line
+
+PICO ex:for y = 0, 127 do
+		a = cos(t/300+y/2000)*1
+
+		x1 = 14+sin(a)*xl
+		x2 = 14+sin(a+0.25)*xl
+		x3 = 14+sin(a+0.50)*xl
+		x4 = 14+sin(a+0.75)*xl
+	
+		xm = cos((t/80)-y+20*sin(t/20000+a/(120+20*sin(t/100+y/500))))*16
+	
+		if (x1 < x2) then
+			hline (xm+0x12+x1,xm+0x12+x2,y,0x98)
+		end
+		if (x2 < x3) then
+			hline (xm+0x12+x2,xm+0x12+x3,y,0xba)
+		end
+		if (x3 < x4) then
+			hline (xm+0x12+x3,xm+0x12+x4,y,0xdc)
+		end
+		if (x4 < x1) then
+			hline (xm+0x12+x4,xm+0x12+x1,y,0xef)
+		end
+	end
+
+Amiga BASIC example - add y/amplitude
+60 LET x1=((SIN((y/amp)+ang))*100)+xoff
+
+Can also move top of Twister left & right but will be in whole bytes...
+
+Top speed = 128/256 = 0.5 brot/f
+Amp = 256/64 = 4 rows/brot
+256 rows / 4 = 64 brots = 180 degree twist from top to bottom
+
+Assuming top rotates at constant speed
+If we want the Twister to have knots in it then need multiple twists
+but at different amplitudes down the string
+Amplitude would cycle from 0 (flat) to maybe &400 max and back again
