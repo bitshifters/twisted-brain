@@ -27,6 +27,10 @@ ENDMACRO
 
 .sequence_script_start
 
+\\ TEST TEST TEST
+SEQUENCE_FX_FOR_SECS fx_Twister, 31.0
+
+
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
 \\ BITSHIFTERS PRESENTS DEMO NAME

@@ -558,7 +558,7 @@ INCLUDE "fx/sequence.asm"
 \\ 
 	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
 	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    crtc_reset
-	EQUW twister_init,    twister_update,    twister_draw,    crtc_reset
+	EQUW twister_init,    twister_update,    twister_draw,    twister_kill
 	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
@@ -779,4 +779,5 @@ PUTBASIC "basic/parallax mode1.bas", "para1"
 PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
 ;PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
+PUTBASIC "basic/twist.bas", "TWIST"
 ENDIF

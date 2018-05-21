@@ -288,3 +288,15 @@ Variations:
 - sine wavey bars, sine motion
 - alternating scanlines at different offsets for both
 - colours
+
+Twister
+~~~
+Angle of twister 0-127
+Top can spin linearly or accelerate/decelerate via sine curve
+Want energy to propagate up & down the twister in a non-linear fashion
+Row increment = 0 <- straight (each row the same)
+Row increment = 1 <- static twist
+
+Propagate line 0 delta to line 1 etc.
+This is what the accumulator code was previously
+Propogate a fraction of the twist amount to the following line

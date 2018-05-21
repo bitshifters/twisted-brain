@@ -2,84 +2,36 @@
 \ *	Twister
 \ ******************************************************************
 
-twister_delta = locals_start + 0
-twister_delta_lookup = locals_start + 1
-twister_temp = locals_start + 2
-twister_angle = locals_start + 3
-twister_accum = locals_start + 4
+twister_crtc_row = locals_start + 0
+twister_angle = locals_start + 1
+twister_frame_speed = locals_start + 2
+twister_row_speed = locals_start + 3
+
+twister_prop = locals_start + 6
+twister_prop_idx = locals_start + 8
 
 .twister_start
 
 .twister_init
 {
-    STZ twister_delta
-    STZ twister_delta_lookup
+	STZ twister_angle
+	STZ twister_prop_idx
 
-	\\ Expand our MODE 5 128 line twister_screen_data into appropriate CRTC format
+	LDA #1:STA twister_frame_speed
+	LDA #1:STA twister_row_speed
 
-	LDA #LO(twister_screen_data)
-	STA readptr
-	LDA #HI(twister_screen_data)
-	STA readptr+1
+    SET_ULA_MODE ULA_Mode1
 
-	LDA #LO(&3000)
-	STA writeptr
-	LDA #HI(&3000)
-	STA writeptr+1
+	LDX #LO(twister_pal)
+	LDY #HI(twister_pal)
+	JSR ula_set_palette
 
-	LDA #128
-	STA twister_temp
+;	LDA #20:JSR twister_set_displayed
 
-	.screenloop
-
-	\\ Copying characters remember!
-
-	LDY #0
-	.copyloop
-	LDA (readptr), Y
-	STA (writeptr), Y
-
-	TYA
-	CLC
-	ADC #8
-	TAY
-
-	CPY #160
-	BNE copyloop
-
-	\\ Next read line
-	LDA readptr
-	AND #&7
-	CMP #&7
-	BEQ next_char_row
-
-	INC readptr
-	BCC no_carry
-	INC readptr+1
-	.no_carry
-	JMP continue
-
-	.next_char_row
-	CLC
-	LDA readptr
-	ADC #LO(320-7)
-	STA readptr
-	LDA readptr+1
-	ADC #HI(320-7)
-	STA readptr+1
-
-	.continue
-	\\ Next write line
-	CLC
-	LDA writeptr
-	ADC #160
-	STA writeptr
-	LDA writeptr+1
-	ADC #0
-	STA writeptr+1
-
-	DEC twister_temp
-	BNE screenloop
+	LDX #LO(twister_screen_data)
+	LDY #HI(twister_screen_data)
+    LDA #HI(screen_base_addr)
+    JSR PUCRUNCH_UNPACK
 
 	.return
 	RTS
@@ -87,11 +39,27 @@ twister_accum = locals_start + 4
 
 .twister_update
 {
-	LDY twister_delta_lookup
-	INY
-	STY twister_delta_lookup
-	LDA twister_delta_wave, Y
-	STA twister_delta
+	CLC
+	LDA twister_angle
+	ADC twister_frame_speed		; speed of top line
+	STA twister_angle
+
+	STA twister_prop + 1
+	STZ twister_prop
+
+	AND #&7F
+	TAY
+
+	LDA #12: STA &FE00			; 2c + 4c++
+	LDA twister_vram_table_HI, Y		; 4c
+	STA &FE01					; 4c++
+
+	LDA #13: STA &FE00			; 2c + 4c++
+	LDA twister_vram_table_LO, Y		; 4c
+	STA &FE01					; 4c++
+
+	INC twister_prop_idx
+
     RTS
 }
 
@@ -113,7 +81,23 @@ twister_accum = locals_start + 4
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	LDY twister_angle
+IF 0
+	LDA twister_angle
+	CLC
+	ADC twister_row_speed	; twist amount
+	TAX
+ELSE
+	LDA twister_prop
+	CLC
+	LDX twister_prop_idx
+	ADC twister_sine_table,X
+	STA twister_prop
+	LDA twister_prop+1
+	ADC #0
+	STA twister_prop+1
+ENDIF
+	AND #&7F
+	TAY
 
 	\\ R12,13 - frame buffer address
 	LDA #12: STA &FE00			; 2c + 4c++
@@ -124,30 +108,37 @@ twister_accum = locals_start + 4
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	FOR n,1,9,1
+	FOR n,1,1,1
 	NOP
 	NEXT
 
 	\\ Should be exactly on next scanline
 
-	LDX #2					; 2c
-
-	LDA twister_delta
-	STA twister_accum
+	LDA #254					; 2c
+	STA twister_crtc_row
 
 	.here
 
-	\\ Add our twister_delta to the accumulator
-	CLC						; 2c
-	LDA twister_accum				; 3c
-	ADC twister_delta				; 3c
-	STA twister_accum				; 3c
+IF 0
+	TXA
+	CLC
+	ADC twister_row_speed	; row amount
+	TAX
+ELSE
+	LDA twister_prop
+	CLC
+;	LDX twister_prop_idx
+;	INX:INX
+	NOP:NOP
+	ADC twister_sine_table,X
+	STA twister_prop
+	LDA twister_prop+1
+	ADC #0
+	STA twister_prop+1
+ENDIF
 
-	\\ Add the carry to our index
-	TYA						; 2c
-	ADC #0					; 2c
-	AND #&7F				; 2c
-	TAY						; 2c
+	AND #&7F
+	TAY
 
 	LDA #12: STA &FE00			; 2c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
@@ -159,31 +150,13 @@ twister_accum = locals_start + 4
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,34,1
+	FOR n,1,28,1
 	NOP
 	NEXT
 	
-;	BIT 0			; 3c
-	INX				; 2c
+	DEC twister_crtc_row
 	BNE here		; 3c
 
-IF 0 ; this resets CRTC to  8 scanline character rows for vsync
-	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #7:	STA &FE01
-
-	\\ R4=6 - CRTC cycle is 7 more rows
-	LDA #4: STA &FE00
-	LDA #6: STA &FE01
-
-	\\ R7=2 - vsync is at row 34
-	LDA #7:	STA &FE00
-	LDA #2: STA &FE01
-
-	\\ R6=0 - no more rows to display
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
-ELSE ; this just keeps 1 scanline character rows and calculates vsync that way
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
 	LDA #1-1:	STA &FE01		; 1 scanline
@@ -199,36 +172,45 @@ ELSE ; this just keeps 1 scanline character rows and calculates vsync that way
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-ENDIF
-
-\\ This sets the twister_screen_data address for the top line next time around...
-
-	LDY twister_angle
-	INY
-	TYA
-	AND #&7F
-	STA twister_angle
-	TAY
-
-IF 1
-	LDA #12: STA &FE00			; 2c + 4c++
-	LDA twister_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
-
-	LDA #13: STA &FE00			; 2c + 4c++
-	LDA twister_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
-ELSE
-	LDA #12: STA &FE00			; 2c + 4c++
-	LDA #HI(&3000/8)
-	STA &FE01					; 4c++
-
-	LDA #13: STA &FE00			; 2c + 4c++
-	LDA #LO(&3000/8)
-	STA &FE01					; 4c++
-ENDIF
 
     RTS
+}
+
+.twister_kill
+{
+	JSR crtc_reset
+    SET_ULA_MODE ULA_Mode2
+    JMP ula_pal_reset
+}
+
+.twister_set_displayed
+{
+	PHA
+	LDA #1
+	STA &FE00
+	PLA
+	STA &FE01
+	RTS
+}
+
+.twister_pal
+{
+	EQUB &00 + PAL_black
+	EQUB &10 + PAL_black
+	EQUB &20 + PAL_red
+	EQUB &30 + PAL_red
+	EQUB &40 + PAL_black
+	EQUB &50 + PAL_black
+	EQUB &60 + PAL_red
+	EQUB &70 + PAL_red
+	EQUB &80 + PAL_cyan
+	EQUB &90 + PAL_cyan
+	EQUB &A0 + PAL_white
+	EQUB &B0 + PAL_white
+	EQUB &C0 + PAL_cyan
+	EQUB &D0 + PAL_cyan
+	EQUB &E0 + PAL_white
+	EQUB &F0 + PAL_white
 }
 
 PAGE_ALIGN
@@ -245,12 +227,13 @@ FOR n,0,127,1
 EQUB HI((&3000 + n*160)/8)
 NEXT
 
-.twister_delta_wave
+.twister_sine_table
 FOR n,0,255,1
-EQUB 16 + 16 * SIN(2 * PI * n / 256)
+EQUB 32 + 32 * SIN(2 * PI * n / 256)
 NEXT
 
+PAGE_ALIGN
 .twister_screen_data
-INCBIN "data/twist.bin"
+INCBIN "data/twist.pu"
 
 .twister_end
