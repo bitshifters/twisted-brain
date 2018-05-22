@@ -8,20 +8,31 @@ twister_crtc_row = locals_start + 0
 twister_row_vel_idx_start = locals_start + 3	; index into row velocity table of top line
 
 twister_row_vel_idx = locals_start + 5			; per row index into velocity table
-twister_frame_vel_idx = locals_start + 7		; per frame index into velocity table
 
 twister_row_vel_idx_speed = locals_start + 9	; speed at which row vel idx is updated each row
 twister_row_vel_idx_frame = locals_start + 11	; speed at which row vel idx start is update each frame
 
-twister_frame_vel_idx_speed = locals_start + 13	; speed at which per frame index is updated each frame
 
-;ROT_SPEED_ROW = &0040
-;ROT_SPEED_TOP = &0000
+ROW_INDEX_SPEED = &0000			; if this is zero every row shares same 'velocity' (amount of twist)
+ROW_INDEX_FRAME = &0000			; if this is zero then the starting 'velocity' of the top row doesn't change
 
-ROW_INDEX_SPEED = &0060			; if this is zero every row shares same 'velocity' (amount of twist)
-ROW_INDEX_FRAME = &0080			; if this is zero then the starting 'velocity' of the top row doesn't change
 
-FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table doesn't change
+twister_velocity = locals_start + 15		; speed of top line of twister in half brads/frame
+twister_target_vel = locals_start + 17		; target velocity of top line
+twister_accel = locals_start + 19			; acceleration value used to accelerate to target velocity
+twister_accelN = locals_start + 21
+
+twister_diff = locals_start + 23
+
+twister_twist = locals_start + 25			; constant twist in brads/row
+twister_target_twist = locals_start + 27
+twister_twist_speed = locals_start + 29
+twister_twist_speedN = locals_start + 31
+
+TWISTER_DEFAULT_VELOCITY = &0000			; 8.8 brads/frame
+TWISTER_DEFAULT_ACCEL = &0001				; 8.8 brads/frame
+TWISTER_DEFAULT_TWIST = &0000				; 8.8 brads/row
+TWISTER_DEFAULT_TWIST_SPEED = &0001			; 8.8 brads/row
 
 .twister_start
 
@@ -49,32 +60,277 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	LDA #LO(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame
 	LDA #HI(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame+1
 
-	LDA #LO(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed
-	LDA #HI(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed+1
-		
 	STZ twister_row_vel_idx_start
 	STZ twister_row_vel_idx_start+1
-	STZ twister_frame_vel_idx
-	STZ twister_frame_vel_idx+1
+
+	LDA #LO(TWISTER_DEFAULT_ACCEL): JSR twister_set_accel_LO
+	LDA #HI(TWISTER_DEFAULT_ACCEL): JSR twister_set_accel_HI
+
+	LDA #LO(TWISTER_DEFAULT_VELOCITY): STA twister_velocity
+	LDA #HI(TWISTER_DEFAULT_VELOCITY): STA twister_velocity+1
+
+	LDA twister_velocity: STA twister_target_vel
+	LDA twister_velocity+1: STA twister_target_vel+1
+
+	LDA #LO(TWISTER_DEFAULT_TWIST_SPEED): JSR twister_set_twist_speed_LO
+	LDA #HI(TWISTER_DEFAULT_TWIST_SPEED): JSR twister_set_twist_speed_HI
+
+	LDA #LO(TWISTER_DEFAULT_TWIST): STA twister_twist
+	LDA #HI(TWISTER_DEFAULT_TWIST): STA twister_twist+1
+
+	LDA twister_twist: STA twister_target_twist
+	LDA twister_twist+1: STA twister_target_twist+1
+	
 
 	.return
 	RTS
 }
 
+.twister_set_accel_LO
+{
+	STA twister_accel
+	RTS
+}
+
+.twister_set_accel_HI
+{
+	STA twister_accel+1
+
+	CLC
+	LDA twister_accel
+	EOR #&FF
+	CLC
+	ADC #1
+	STA twister_accelN
+	LDA twister_accel+1
+	EOR #&FF
+	ADC #0
+	STA twister_accelN+1
+	RTS
+}
+
+.twister_set_twist_speed_LO
+{
+	STA twister_twist_speed
+	RTS
+}
+
+.twister_set_twist_speed_HI
+{
+	STA twister_twist_speed+1
+
+	CLC
+	LDA twister_twist_speed
+	EOR #&FF
+	CLC
+	ADC #1
+	STA twister_twist_speedN
+	LDA twister_twist_speed+1
+	EOR #&FF
+	ADC #0
+	STA twister_twist_speedN+1
+	RTS
+}
+
+.twister_set_target_vel_LO
+{
+	STA twister_target_vel
+	RTS
+}
+
+.twister_set_target_vel_HI
+{
+	STA twister_target_vel+1
+	RTS
+}
+
+.twister_set_target_twist_LO
+{
+	STA twister_target_twist
+	RTS
+}
+
+.twister_set_target_twist_HI
+{
+	STA twister_target_twist+1
+	RTS
+}
+
 .twister_update
 {
+	\\ Update velocity according to target
+	SEC
+	LDA twister_target_vel
+	SBC twister_velocity
+	STA twister_diff
+	LDA twister_target_vel+1
+	SBC twister_velocity+1
+	STA twister_diff+1
+	
+	{
+		LDA twister_diff
+		BNE not_zero
+		\\ Zero diff LO
+		LDA twister_diff+1
+		BEQ zero_diff
+		.not_zero
+		\\ Move towards target!
+
+		LDA twister_diff+1
+		CMP #&80
+		BCC positive
+
+		\\ Diff is negative
+		{
+			\\ Is our diff smaller than our acceleration value?
+			LDA twister_accelN+1
+			CMP twister_diff+1
+			BCC is_smaller
+			BNE is_larger_or_equal
+			\\ Same HI
+			LDA twister_accelN
+			CMP twister_diff
+			BCC is_smaller
+
+			.is_larger_or_equal
+			CLC
+			LDA twister_velocity
+			ADC twister_accelN
+			STA twister_velocity
+			LDA twister_velocity+1
+			ADC twister_accelN+1
+			STA twister_velocity+1
+			BRA done
+		}
+
+		.positive
+		{
+			\\ Is our diff smaller than our acceleration value?
+			LDA twister_diff+1
+			CMP twister_accel+1
+			BCC is_smaller
+			BNE is_larger_or_equal
+			\\ Same HI
+			LDA twister_diff
+			CMP twister_accel
+			BCC is_smaller
+
+			.is_larger_or_equal
+			CLC
+			LDA twister_velocity
+			ADC twister_accel
+			STA twister_velocity
+			LDA twister_velocity+1
+			ADC twister_accel+1
+			STA twister_velocity+1
+			BRA done
+		}
+
+			.is_smaller
+			CLC
+			LDA twister_velocity
+			ADC twister_diff
+			STA twister_velocity
+			LDA twister_velocity+1
+			ADC twister_diff+1
+			STA twister_velocity+1
+
+		.done
+		.zero_diff	; we're at target
+	}
+
+	\\ Update twist according to target
+	SEC
+	LDA twister_target_twist
+	SBC twister_twist
+	STA twister_diff
+	LDA twister_target_twist+1
+	SBC twister_twist+1
+	STA twister_diff+1
+	
+	{
+		LDA twister_diff
+		BNE not_zero
+		\\ Zero diff LO
+		LDA twister_diff+1
+		BEQ zero_diff
+		.not_zero
+		\\ Move towards target!
+
+		LDA twister_diff+1
+		CMP #&80
+		BCC positive
+
+		\\ Diff is negative
+		{
+			\\ Is our diff smaller than our acceleration value?
+			LDA twister_twist_speedN+1
+			CMP twister_diff+1
+			BCC is_smaller
+			BNE is_larger_or_equal
+			\\ Same HI
+			LDA twister_twist_speedN
+			CMP twister_diff
+			BCC is_smaller
+
+			.is_larger_or_equal
+			CLC
+			LDA twister_twist
+			ADC twister_twist_speedN
+			STA twister_twist
+			LDA twister_twist+1
+			ADC twister_twist_speedN+1
+			STA twister_twist+1
+			BRA done
+		}
+
+		.positive
+		{
+			\\ Is our diff smaller than our acceleration value?
+			LDA twister_diff+1
+			CMP twister_twist_speed+1
+			BCC is_smaller
+			BNE is_larger_or_equal
+			\\ Same HI
+			LDA twister_diff
+			CMP twister_twist_speed
+			BCC is_smaller
+
+			.is_larger_or_equal
+			CLC
+			LDA twister_twist
+			ADC twister_twist_speed
+			STA twister_twist
+			LDA twister_twist+1
+			ADC twister_twist_speed+1
+			STA twister_twist+1
+			BRA done
+		}
+
+			.is_smaller
+			CLC
+			LDA twister_twist
+			ADC twister_twist_speed
+			STA twister_twist
+			LDA twister_twist+1
+			ADC twister_twist_speed+1
+			STA twister_twist+1
+
+		.done
+		.zero_diff	; we're at target
+	}
+
+	\\ Update rotational angle of top of twister
 	CLC
 	LDA twister_x_LO+0
-;	ADC #LO(ROT_SPEED_TOP)
-	LDX twister_frame_vel_idx+1
-	ADC twister_frame_vel_LO,X
+	ADC twister_velocity
 	STA twister_x_LO+0
 
 	LDA twister_x_HI+0
-;	ADC #HI(ROT_SPEED_TOP)
-	ADC twister_frame_vel_HI,X
+	ADC twister_velocity+1
 	STA twister_x_HI+0
-
+	
+	\\ Set the address to be displayed on scanline 0
 	AND #&7F
 	TAY
 
@@ -86,14 +342,7 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	CLC
-	LDA twister_frame_vel_idx
-	ADC twister_frame_vel_idx_speed
-	STA twister_frame_vel_idx
-	LDA twister_frame_vel_idx+1
-	ADC twister_frame_vel_idx_speed+1
-	STA twister_frame_vel_idx+1
-
+	\\ Update various row indices
 	CLC
 	LDA twister_row_vel_idx_start
 	ADC twister_row_vel_idx_frame
@@ -131,16 +380,11 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 
 	CLC
 	LDA twister_x_LO+0
-;	ADC #LO(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const
-	LDY twister_row_vel_idx+1
-	ADC twister_row_vel_LO, Y
+	ADC twister_twist
 	STA twister_x_LO+1
 
 	LDA twister_x_HI+0
-;	ADC #HI(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const+1
-	ADC twister_row_vel_HI, Y
+	ADC twister_twist+1
 	STA twister_x_HI+1
 
 	AND #&7F
@@ -180,16 +424,15 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	
 	CLC
 	LDA twister_x_LO-1,X
-;	ADC #LO(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const
+	ADC twister_twist
 ;	LDY twister_row_vel_idx
-	ADC twister_row_vel_LO, Y
+;	ADC twister_row_vel_LO, Y
 	STA twister_x_LO+0,X
 
 	LDA twister_x_HI-1,X
-;	ADC #HI(ROT_SPEED_ROW)
 ;	ADC twister_row_vel_const+1
-	ADC twister_row_vel_HI, Y
+;	ADC twister_row_vel_HI, Y
+	ADC twister_twist+1
 	STA twister_x_HI+0,X
 	
 	AND #&7F
@@ -206,7 +449,7 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,13,1
+	FOR n,1,14,1
 	NOP
 	NEXT
 	
@@ -297,7 +540,8 @@ NEXT
 FOR n,0,255,1
 ;v = 128 + ABS(n - 128)
 ;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
-v = &80 * ABS(n-128)/128
+;v = &80 * ABS(n-128)/128
+v = 0
 EQUB LO(v)
 NEXT
 
@@ -306,21 +550,8 @@ FOR n,0,255,1
 ;EQUB ABS(n-128)
 ;v = 128 + ABS(n - 128)
 ;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
-v = &80 * ABS(n-128)/128
-EQUB HI(v)
-NEXT
-
-.twister_frame_vel_LO			; rotation increment of top angle per frame
-FOR n,0,255,1
-;v = &400 * ABS(n-128)/128
-v = &180
-EQUB LO(v)
-NEXT
-
-.twister_frame_vel_HI			; rotation increment of top angle per frame
-FOR n,0,255,1
-;v = &400 * ABS(n-128)/128
-v = &180
+;v = &80 * ABS(n-128)/128
+v = 0
 EQUB HI(v)
 NEXT
 

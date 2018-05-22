@@ -25,11 +25,41 @@ MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+MACRO TWISTER_SET_TARGET_VELOCITY deg_per_sec
+    brads = 256 * 128 * (deg_per_sec / 50) / 360
+    PRINT "Target Velocity: deg per sec=", deg_per_sec, "brads/frame=", ~brads
+    SCRIPT_CALLV twister_set_target_vel_LO, LO(brads)
+    SCRIPT_CALLV twister_set_target_vel_HI, HI(brads)
+ENDMACRO
+
+MACRO TWISTER_SET_TARGET_TWIST deg_per_frame
+    brads = 256 * 128 * (deg_per_frame / 256) / 360
+    PRINT "Target Twist: deg per frame=", deg_per_frame, "brads/frame=", ~brads
+    SCRIPT_CALLV twister_set_target_twist_LO, LO(brads)
+    SCRIPT_CALLV twister_set_target_twist_HI, HI(brads)
+ENDMACRO
+
 .sequence_script_start
 
 \\ TEST TEST TEST
-SEQUENCE_FX_FOR_SECS fx_Twister, 31.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 2.0
 
+TWISTER_SET_TARGET_VELOCITY 360.0
+
+SEQUENCE_WAIT_SECS 2.0
+
+TWISTER_SET_TARGET_TWIST 360.0
+
+SEQUENCE_WAIT_SECS 2.0
+
+TWISTER_SET_TARGET_TWIST 0.0
+TWISTER_SET_TARGET_VELOCITY -360.0
+
+SEQUENCE_WAIT_SECS 2.0
+
+TWISTER_SET_TARGET_TWIST -360.0
+
+SEQUENCE_WAIT_SECS 20.0
 
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
