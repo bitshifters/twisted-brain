@@ -4,24 +4,21 @@
 
 twister_crtc_row = locals_start + 0
 
-;twister_row_vel_const = locals_start + 1		; constant increment per row (if any)
-twister_row_vel_idx_start = locals_start + 3	; index into row velocity table of top line
+twister_spin_index = locals_start + 1		; index into spin table for top line
+twister_spin_index_step = locals_start + 3	; rate at which spin index is updated each frame
 
-twister_row_vel_idx = locals_start + 5			; per row index into velocity table
-twister_frame_vel_idx = locals_start + 7		; per frame index into velocity table
+twister_twist_index = locals_start + 5		; index into twist table for top line
+twister_twist_frame_step = locals_start + 7	; rate at which twist index is update each frame
+twister_twist_row_step = locals_start + 9	; rate at which twist indx is updated each row
 
-twister_row_vel_idx_speed = locals_start + 9	; speed at which row vel idx is updated each row
-twister_row_vel_idx_frame = locals_start + 11	; speed at which row vel idx start is update each frame
+twister_twist_local = locals_start + 11		; per row index into twist table
 
-twister_frame_vel_idx_speed = locals_start + 13	; speed at which per frame index is updated each frame
 
-;ROT_SPEED_ROW = &0040
-;ROT_SPEED_TOP = &0000
+TWIST_INDEX_ROW_STEP = &0060	; if this is zero every row shares same twist
+TWIST_INDEX_FRAME_STEP = &0080	; if this is zero then the twist amount stays same from frame-to-frame
 
-ROW_INDEX_SPEED = &0060			; if this is zero every row shares same 'velocity' (amount of twist)
-ROW_INDEX_FRAME = &0080			; if this is zero then the starting 'velocity' of the top row doesn't change
+SPIN_INDEX_STEP = &0100			; if this is zero then spin speed stays the same from frame-to-frame
 
-FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table doesn't change
 
 .twister_start
 
@@ -40,22 +37,21 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
     LDA #HI(screen_base_addr)
     JSR PUCRUNCH_UNPACK
 
-;	LDA #LO(ROT_SPEED_ROW):	STA twister_row_vel_const
-;	LDA #HI(ROT_SPEED_ROW):	STA twister_row_vel_const+1
+	\\ Starting vars
 
-	LDA #LO(ROW_INDEX_SPEED): STA twister_row_vel_idx_speed
-	LDA #HI(ROW_INDEX_SPEED): STA twister_row_vel_idx_speed+1
+	LDA #LO(TWIST_INDEX_ROW_STEP): STA twister_twist_row_step
+	LDA #HI(TWIST_INDEX_ROW_STEP): STA twister_twist_row_step+1
 
-	LDA #LO(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame
-	LDA #HI(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame+1
+	LDA #LO(TWIST_INDEX_FRAME_STEP): STA twister_twist_frame_step
+	LDA #HI(TWIST_INDEX_FRAME_STEP): STA twister_twist_frame_step+1
 
-	LDA #LO(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed
-	LDA #HI(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed+1
-		
-	STZ twister_row_vel_idx_start
-	STZ twister_row_vel_idx_start+1
-	STZ twister_frame_vel_idx
-	STZ twister_frame_vel_idx+1
+	LDA #LO(SPIN_INDEX_STEP): STA twister_spin_index_step
+	LDA #HI(SPIN_INDEX_STEP): STA twister_spin_index_step+1
+	
+	STZ twister_twist_index
+	STZ twister_twist_index+1
+	STZ twister_spin_index
+	STZ twister_spin_index+1
 
 	.return
 	RTS
@@ -63,17 +59,19 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 
 .twister_update
 {
+	\\ Update rotation of the top line by indexing into the spin table
+
 	CLC
 	LDA twister_x_LO+0
-;	ADC #LO(ROT_SPEED_TOP)
-	LDX twister_frame_vel_idx+1
-	ADC twister_frame_vel_LO,X
+	LDX twister_spin_index+1
+	ADC twister_spin_table_LO,X
 	STA twister_x_LO+0
 
 	LDA twister_x_HI+0
-;	ADC #HI(ROT_SPEED_TOP)
-	ADC twister_frame_vel_HI,X
+	ADC twister_spin_table_HI,X
 	STA twister_x_HI+0
+
+	\\ Set the first scanline
 
 	AND #&7F
 	TAY
@@ -86,27 +84,36 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	CLC
-	LDA twister_frame_vel_idx
-	ADC twister_frame_vel_idx_speed
-	STA twister_frame_vel_idx
-	LDA twister_frame_vel_idx+1
-	ADC twister_frame_vel_idx_speed+1
-	STA twister_frame_vel_idx+1
+	\\ Update the index into the spin table
 
 	CLC
-	LDA twister_row_vel_idx_start
-	ADC twister_row_vel_idx_frame
-	STA twister_row_vel_idx_start
+	LDA twister_spin_index
+	ADC twister_spin_index_step
+	STA twister_spin_index
 
-	LDA twister_row_vel_idx_start+1
-	ADC twister_row_vel_idx_frame+1
-	STA twister_row_vel_idx_start+1
+	LDA twister_spin_index+1
+	ADC twister_spin_index_step+1
+	STA twister_spin_index+1
 
-	LDA twister_row_vel_idx_start
-	STA twister_row_vel_idx
-	LDA twister_row_vel_idx_start+1
-	STA twister_row_vel_idx+1
+	\\ Update the index into the twist table
+
+	CLC
+	LDA twister_twist_index
+	ADC twister_twist_frame_step
+	STA twister_twist_index
+
+	LDA twister_twist_index+1
+	ADC twister_twist_frame_step+1
+	STA twister_twist_index+1
+
+	\\ Copy the twist index into a local variable for drawing
+
+	LDA twister_twist_index
+	STA twister_twist_local
+	LDA twister_twist_index+1
+	STA twister_twist_local+1
+
+	\\ Could also compute 2nd scanline here
 	
     RTS
 }
@@ -129,18 +136,16 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
+	\\ Calculate rotation of next line by indexing twist table
+
 	CLC
 	LDA twister_x_LO+0
-;	ADC #LO(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const
-	LDY twister_row_vel_idx+1
-	ADC twister_row_vel_LO, Y
+	LDY twister_twist_local+1
+	ADC twister_twist_table_LO, Y
 	STA twister_x_LO+1
 
 	LDA twister_x_HI+0
-;	ADC #HI(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const+1
-	ADC twister_row_vel_HI, Y
+	ADC twister_twist_table_HI, Y
 	STA twister_x_HI+1
 
 	AND #&7F
@@ -168,28 +173,26 @@ FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table 
 
 	.here
 
-;	INC twister_row_vel_idx
+	\\ Update local twist index value by incrementing by step
+
 	CLC
-	LDA twister_row_vel_idx
-	ADC twister_row_vel_idx_speed
-	STA twister_row_vel_idx
-	LDA twister_row_vel_idx+1
-	ADC twister_row_vel_idx_speed+1
-	STA twister_row_vel_idx+1
+	LDA twister_twist_local
+	ADC twister_twist_row_step
+	STA twister_twist_local
+	LDA twister_twist_local+1
+	ADC twister_twist_row_step+1
+	STA twister_twist_local+1
 	TAY
-	
+
+	\\ Use the locl twist index to calculate rotation value
+
 	CLC
 	LDA twister_x_LO-1,X
-;	ADC #LO(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const
-;	LDY twister_row_vel_idx
-	ADC twister_row_vel_LO, Y
+	ADC twister_twist_table_LO, Y
 	STA twister_x_LO+0,X
 
 	LDA twister_x_HI-1,X
-;	ADC #HI(ROT_SPEED_ROW)
-;	ADC twister_row_vel_const+1
-	ADC twister_row_vel_HI, Y
+	ADC twister_twist_table_HI, Y
 	STA twister_x_HI+0,X
 	
 	AND #&7F
@@ -293,35 +296,48 @@ FOR n,0,255,1
 EQUB 0
 NEXT
 
-.twister_row_vel_LO			; rotation increment per row
+MACRO TWISTER_TWIST_LO deg_per_frame
+	brads = 256 * 128 * (deg_per_frame / 256) / 360
+	EQUB LO(brads)
+ENDMACRO
+
+MACRO TWISTER_TWIST_HI deg_per_frame
+	brads = 256 * 128 * (deg_per_frame / 256) / 360
+	EQUB HI(brads)
+ENDMACRO
+
+MACRO TWISTER_SPIN_LO deg_per_sec
+	brads = 256 * 128 * (deg_per_sec / 50) / 360
+	EQUB LO(brads)
+ENDMACRO
+
+MACRO TWISTER_SPIN_HI deg_per_sec
+	brads = 256 * 128 * (deg_per_sec / 50) / 360
+	EQUB HI(brads)
+ENDMACRO
+
+.twister_twist_table_LO			; rotation increment per row of the twister
 FOR n,0,255,1
-;v = 128 + ABS(n - 128)
-;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
-v = &80 * ABS(n-128)/128
-EQUB LO(v)
+	t = 360 * ABS(n-128)/128
+	TWISTER_TWIST_LO t
 NEXT
 
-.twister_row_vel_HI			; rotation increment per row
+.twister_twist_table_HI			; rotation increment per row of the twister
 FOR n,0,255,1
-;EQUB ABS(n-128)
-;v = 128 + ABS(n - 128)
-;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
-v = &80 * ABS(n-128)/128
-EQUB HI(v)
+	t = 360 * ABS(n-128)/128
+	TWISTER_TWIST_HI t
 NEXT
 
-.twister_frame_vel_LO			; rotation increment of top angle per frame
+.twister_spin_table_LO			; rotation increment of top angle per frame
 FOR n,0,255,1
-;v = &400 * ABS(n-128)/128
-v = &180
-EQUB LO(v)
+	v = 210						; spin at 210 deg/sec
+	TWISTER_SPIN_LO v
 NEXT
 
-.twister_frame_vel_HI			; rotation increment of top angle per frame
+.twister_spin_table_HI			; rotation increment of top angle per frame
 FOR n,0,255,1
-;v = &400 * ABS(n-128)/128
-v = &180
-EQUB HI(v)
+	v = 210						; spin at 210 deg/sec
+	TWISTER_SPIN_HI v
 NEXT
 
 PAGE_ALIGN
