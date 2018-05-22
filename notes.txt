@@ -342,3 +342,39 @@ t/large = vary slowly over time
 
 Keep amp fairly constant but vary more slowly than 256 frames = 5.12 secs
 Need something in the 1000's
+
+d=|x0 - x1|
+x1 = x0 + min(f,d)
+
+Seem to have arrived at "something" that works and is somewhat understandable.
+
+Each row has a rotation angle 0-127 (0 - 360 degrees)
+
+Top row rotation angle is updated per frame by an amount 
+'velocity' (twist) indexed from the table twister_frame_vel_LO|HI
+
+The index twister_frame_vel_idx is updated by a speed variable
+twister_frame_vel_idx_speed
+
+So if the index speed is 0 then the 'velocity' (twist) of the top row
+doesn't change frame-to-frame (it may or may not be 0 itself)
+
+The rotation angle between each row is updated by an amount
+'velocity' (twist) indexed from the table twister_row_vel_LO|HI
+
+The index twister_row_vel_idx is updated by a speed variable
+twister_row_vel_idx_frame each frame
+
+So if the index speed is 0 then the 'velocity' (twist) of the top row
+doesn't change between frames
+
+The index twister_row_vel_idx is updated by a speed variable
+twister_row_vel_idx_speed each row
+
+So if the index speed is 0 then the 'velocity' (twist) of each row
+doesn't change between rows (it may or may not be 0 itself)
+
+Might be easier to just have targets for velocity and use acceleration
+functions to reach those targets, rather than look up in a table?
+
+Table useful for enabling variable twist along the whole column

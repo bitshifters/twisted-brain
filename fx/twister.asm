@@ -4,15 +4,24 @@
 
 twister_crtc_row = locals_start + 0
 
-twister_row_rot = locals_start + 1
+;twister_row_vel_const = locals_start + 1		; constant increment per row (if any)
+twister_row_vel_idx_start = locals_start + 3	; index into row velocity table of top line
 
-twister_row_rot_index = locals_start + 3
-twister_row_rot_local = locals_start + 4
+twister_row_vel_idx = locals_start + 5			; per row index into velocity table
+twister_frame_vel_idx = locals_start + 7		; per frame index into velocity table
 
-twister_top_index = locals_start + 5
+twister_row_vel_idx_speed = locals_start + 9	; speed at which row vel idx is updated each row
+twister_row_vel_idx_frame = locals_start + 11	; speed at which row vel idx start is update each frame
 
-ROT_SPEED_ROW = &0040
-ROT_SPEED_TOP = &0100
+twister_frame_vel_idx_speed = locals_start + 13	; speed at which per frame index is updated each frame
+
+;ROT_SPEED_ROW = &0040
+;ROT_SPEED_TOP = &0000
+
+ROW_INDEX_SPEED = &0060			; if this is zero every row shares same 'velocity' (amount of twist)
+ROW_INDEX_FRAME = &0080			; if this is zero then the starting 'velocity' of the top row doesn't change
+
+FRAME_INDEX_SPEED = &0100		; if this is zero then index into the velocity table doesn't change
 
 .twister_start
 
@@ -31,13 +40,22 @@ ROT_SPEED_TOP = &0100
     LDA #HI(screen_base_addr)
     JSR PUCRUNCH_UNPACK
 
-	LDA #LO(ROT_SPEED_ROW)
-	STA twister_row_rot
-	LDA #HI(ROT_SPEED_ROW)
-	STA twister_row_rot+1
+;	LDA #LO(ROT_SPEED_ROW):	STA twister_row_vel_const
+;	LDA #HI(ROT_SPEED_ROW):	STA twister_row_vel_const+1
 
-	STZ twister_row_rot_index
-	STZ twister_top_index
+	LDA #LO(ROW_INDEX_SPEED): STA twister_row_vel_idx_speed
+	LDA #HI(ROW_INDEX_SPEED): STA twister_row_vel_idx_speed+1
+
+	LDA #LO(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame
+	LDA #HI(ROW_INDEX_FRAME): STA twister_row_vel_idx_frame+1
+
+	LDA #LO(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed
+	LDA #HI(FRAME_INDEX_SPEED): STA twister_frame_vel_idx_speed+1
+		
+	STZ twister_row_vel_idx_start
+	STZ twister_row_vel_idx_start+1
+	STZ twister_frame_vel_idx
+	STZ twister_frame_vel_idx+1
 
 	.return
 	RTS
@@ -48,11 +66,13 @@ ROT_SPEED_TOP = &0100
 	CLC
 	LDA twister_x_LO+0
 ;	ADC #LO(ROT_SPEED_TOP)
-	ADC twister_top_change,X
+	LDX twister_frame_vel_idx+1
+	ADC twister_frame_vel_LO,X
 	STA twister_x_LO+0
+
 	LDA twister_x_HI+0
-	ADC #HI(ROT_SPEED_TOP)
-	LDX twister_top_index
+;	ADC #HI(ROT_SPEED_TOP)
+	ADC twister_frame_vel_HI,X
 	STA twister_x_HI+0
 
 	AND #&7F
@@ -66,13 +86,28 @@ ROT_SPEED_TOP = &0100
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	INC twister_top_index
+	CLC
+	LDA twister_frame_vel_idx
+	ADC twister_frame_vel_idx_speed
+	STA twister_frame_vel_idx
+	LDA twister_frame_vel_idx+1
+	ADC twister_frame_vel_idx_speed+1
+	STA twister_frame_vel_idx+1
 
-	INC twister_row_rot_index
+	CLC
+	LDA twister_row_vel_idx_start
+	ADC twister_row_vel_idx_frame
+	STA twister_row_vel_idx_start
 
-	LDA twister_row_rot_index
-	STA twister_row_rot_local
+	LDA twister_row_vel_idx_start+1
+	ADC twister_row_vel_idx_frame+1
+	STA twister_row_vel_idx_start+1
 
+	LDA twister_row_vel_idx_start
+	STA twister_row_vel_idx
+	LDA twister_row_vel_idx_start+1
+	STA twister_row_vel_idx+1
+	
     RTS
 }
 
@@ -94,15 +129,18 @@ ROT_SPEED_TOP = &0100
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
+	CLC
 	LDA twister_x_LO+0
 ;	ADC #LO(ROT_SPEED_ROW)
-;	ADC twister_row_rot
-	LDY twister_row_rot_local
-	ADC twister_row_rot_change, Y
+;	ADC twister_row_vel_const
+	LDY twister_row_vel_idx+1
+	ADC twister_row_vel_LO, Y
 	STA twister_x_LO+1
+
 	LDA twister_x_HI+0
 ;	ADC #HI(ROT_SPEED_ROW)
-	ADC twister_row_rot+1
+;	ADC twister_row_vel_const+1
+	ADC twister_row_vel_HI, Y
 	STA twister_x_HI+1
 
 	AND #&7F
@@ -117,7 +155,7 @@ ROT_SPEED_TOP = &0100
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	FOR n,1,4,1
+	FOR n,1,1,1
 	NOP
 	NEXT
 
@@ -130,17 +168,28 @@ ROT_SPEED_TOP = &0100
 
 	.here
 
+;	INC twister_row_vel_idx
+	CLC
+	LDA twister_row_vel_idx
+	ADC twister_row_vel_idx_speed
+	STA twister_row_vel_idx
+	LDA twister_row_vel_idx+1
+	ADC twister_row_vel_idx_speed+1
+	STA twister_row_vel_idx+1
+	TAY
+	
 	CLC
 	LDA twister_x_LO-1,X
 ;	ADC #LO(ROT_SPEED_ROW)
-	LDY twister_row_rot_local
-	ADC twister_row_rot_change, Y
-;	ADC twister_row_rot
+;	ADC twister_row_vel_const
+;	LDY twister_row_vel_idx
+	ADC twister_row_vel_LO, Y
 	STA twister_x_LO+0,X
+
 	LDA twister_x_HI-1,X
-	INC twister_row_rot_local
 ;	ADC #HI(ROT_SPEED_ROW)
-	ADC twister_row_rot+1
+;	ADC twister_row_vel_const+1
+	ADC twister_row_vel_HI, Y
 	STA twister_x_HI+0,X
 	
 	AND #&7F
@@ -157,7 +206,7 @@ ROT_SPEED_TOP = &0100
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,20,1
+	FOR n,1,13,1
 	NOP
 	NEXT
 	
@@ -244,14 +293,35 @@ FOR n,0,255,1
 EQUB 0
 NEXT
 
-.twister_row_rot_change
+.twister_row_vel_LO			; rotation increment per row
 FOR n,0,255,1
-EQUB ABS(n-128)
+;v = 128 + ABS(n - 128)
+;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
+v = &80 * ABS(n-128)/128
+EQUB LO(v)
 NEXT
 
-.twister_top_change
+.twister_row_vel_HI			; rotation increment per row
 FOR n,0,255,1
-EQUB 128
+;EQUB ABS(n-128)
+;v = 128 + ABS(n - 128)
+;v = &400 * (SIN(n * PI / 256) * SIN(n * PI / 256))
+v = &80 * ABS(n-128)/128
+EQUB HI(v)
+NEXT
+
+.twister_frame_vel_LO			; rotation increment of top angle per frame
+FOR n,0,255,1
+;v = &400 * ABS(n-128)/128
+v = &180
+EQUB LO(v)
+NEXT
+
+.twister_frame_vel_HI			; rotation increment of top angle per frame
+FOR n,0,255,1
+;v = &400 * ABS(n-128)/128
+v = &180
+EQUB HI(v)
 NEXT
 
 PAGE_ALIGN
