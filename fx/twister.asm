@@ -3,57 +3,41 @@
 \ ******************************************************************
 
 twister_crtc_row = locals_start + 0
-twister_angle = locals_start + 1
-twister_frame_speed = locals_start + 3
-twister_prop = locals_start + 5
-twister_prop_idx = locals_start + 7
 
-twister_sine_idx = locals_start + 9
+twister_row_rot = locals_start + 1
 
-twister_amp = locals_start + 10
+twister_row_rot_index = locals_start + 3
+twister_row_rot_local = locals_start + 4
 
-twister_prop_speed = locals_start + 12
-twister_prop_step = locals_start + 14
-twister_amp_idx = locals_start + 16
+twister_top_index = locals_start + 5
+
+ROT_SPEED_ROW = &0040
+ROT_SPEED_TOP = &0100
 
 .twister_start
 
 .twister_init
 {
-	STZ twister_angle
-	STZ twister_angle+1
-	STZ twister_sine_idx
-
-	LDA #0:STA twister_amp_idx			; index into amp_table per frame
-	LDA #0:STA twister_amp_idx+1
-
-	LDA #0:STA twister_prop_idx			; index into amp_table per row
-	LDA #0:STA twister_prop_idx+1
-
-	LDA #33:STA twister_frame_speed	; twist angle increment per frame
-	LDA #3:STA twister_frame_speed+1
-
-	LDA #64:STA twister_amp				; twist amplitude for this frame (not used)
-	LDA #0:STA twister_amp+1
-
-	LDA #64:STA twister_prop_speed		; per row increment of prop_idx
-	LDA #0:STA twister_prop_speed+1
-
-	LDA #0:STA twister_prop_step		; per frame increment of twister_amp_idx (broken?)
-	LDA #1:STA twister_prop_step+1
-
     SET_ULA_MODE ULA_Mode1
 
 	LDX #LO(twister_pal)
 	LDY #HI(twister_pal)
 	JSR ula_set_palette
 
-;	LDA #20:JSR twister_set_displayed
+	LDA #20:JSR twister_set_displayed
 
 	LDX #LO(twister_screen_data)
 	LDY #HI(twister_screen_data)
     LDA #HI(screen_base_addr)
     JSR PUCRUNCH_UNPACK
+
+	LDA #LO(ROT_SPEED_ROW)
+	STA twister_row_rot
+	LDA #HI(ROT_SPEED_ROW)
+	STA twister_row_rot+1
+
+	STZ twister_row_rot_index
+	STZ twister_top_index
 
 	.return
 	RTS
@@ -61,28 +45,15 @@ twister_amp_idx = locals_start + 16
 
 .twister_update
 {
-	IF 1
 	CLC
-	LDA twister_angle
-	ADC twister_frame_speed		; speed of top line
-	STA twister_angle
-
-	LDA twister_angle+1
-	ADC twister_frame_speed+1		; speed of top line
-	STA twister_angle+1
-	ELSE
-
-	LDX twister_sine_idx
-	LDA twister_sine_table, X
-	STA twister_angle+1
-
-	INC twister_sine_idx
-	ENDIF
-
-	LDA twister_angle
-	STA twister_prop
-	LDA twister_angle+1
-	STA twister_prop+1
+	LDA twister_x_LO+0
+;	ADC #LO(ROT_SPEED_TOP)
+	ADC twister_top_change,X
+	STA twister_x_LO+0
+	LDA twister_x_HI+0
+	ADC #HI(ROT_SPEED_TOP)
+	LDX twister_top_index
+	STA twister_x_HI+0
 
 	AND #&7F
 	TAY
@@ -95,18 +66,12 @@ twister_amp_idx = locals_start + 16
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	LDA twister_amp_idx
-	CLC
-	ADC twister_prop_step
-	STA twister_amp_idx
-	LDA twister_amp_idx+1
-	ADC twister_prop_step+1
-	STA twister_amp_idx+1
+	INC twister_top_index
 
-	LDA twister_amp_idx
-	STA twister_prop_idx
-	LDA twister_amp_idx+1
-	STA twister_prop_idx+1
+	INC twister_row_rot_index
+
+	LDA twister_row_rot_index
+	STA twister_row_rot_local
 
     RTS
 }
@@ -129,24 +94,17 @@ twister_amp_idx = locals_start + 16
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-IF 0
-	LDA twister_angle
-	CLC
-	ADC twister_row_speed	; twist amount
-	TAX
-ELSE
-	LDA twister_prop
-	CLC
-	LDX twister_prop_idx+1
-	ADC twister_amp_table_LO,X
-;	ADC twister_amp
-	STA twister_prop
-	LDA twister_prop+1
-;	ADC #0
-;	ADC twister_amp+1
-	ADC twister_amp_table_HI,X
-	STA twister_prop+1
-ENDIF
+	LDA twister_x_LO+0
+;	ADC #LO(ROT_SPEED_ROW)
+;	ADC twister_row_rot
+	LDY twister_row_rot_local
+	ADC twister_row_rot_change, Y
+	STA twister_x_LO+1
+	LDA twister_x_HI+0
+;	ADC #HI(ROT_SPEED_ROW)
+	ADC twister_row_rot+1
+	STA twister_x_HI+1
+
 	AND #&7F
 	TAY
 
@@ -159,7 +117,7 @@ ENDIF
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	FOR n,1,1,1
+	FOR n,1,4,1
 	NOP
 	NEXT
 
@@ -168,36 +126,26 @@ ENDIF
 	LDA #254					; 2c
 	STA twister_crtc_row
 
+	LDX #2
+
 	.here
 
-IF 0
-	TXA
 	CLC
-	ADC twister_row_speed	; row amount
-	TAX
-ELSE
-	LDA twister_prop_idx
-	CLC
-	ADC twister_prop_speed
-	LDA twister_prop_idx+1
-	ADC twister_prop_speed+1
-	STA twister_prop_idx+1
-	TAX
-
-	LDA twister_prop
-	CLC
-;	ADC twister_amp
-	ADC twister_amp_table_LO,X ; +1c
-	STA twister_prop
-	LDA twister_prop+1
-;	ADC #0
-;	ADC twister_amp+1
-	ADC twister_amp_table_HI,X ; +1c
-	STA twister_prop+1
-ENDIF
-
+	LDA twister_x_LO-1,X
+;	ADC #LO(ROT_SPEED_ROW)
+	LDY twister_row_rot_local
+	ADC twister_row_rot_change, Y
+;	ADC twister_row_rot
+	STA twister_x_LO+0,X
+	LDA twister_x_HI-1,X
+	INC twister_row_rot_local
+;	ADC #HI(ROT_SPEED_ROW)
+	ADC twister_row_rot+1
+	STA twister_x_HI+0,X
+	
 	AND #&7F
 	TAY
+	INX
 
 	LDA #12: STA &FE00			; 2c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
@@ -209,7 +157,7 @@ ENDIF
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,19,1
+	FOR n,1,20,1
 	NOP
 	NEXT
 	
@@ -286,28 +234,25 @@ FOR n,0,127,1
 EQUB HI((&3000 + n*160)/8)
 NEXT
 
-.twister_amp_table_LO
+.twister_x_LO
 FOR n,0,255,1
-;EQUB 32 + 32 * SIN(2 * PI * n / 256)
-;EQUB n			; amplitude = 128*n/255
-;EQUB 128 - ABS(n-128)
-a = 128 + 128 * SIN(2 * PI * n / 256) * SIN(3 * 2 * PI * n / 2565)
-EQUB LO(a)
-NEXT
-
-.twister_amp_table_HI
-FOR n,0,255,1
-a = &100 * SIN(2 * PI * n / 256) * SIN(3 * 2 * PI * n / 256)
-;EQUB HI(a)
 EQUB 0
 NEXT
 
-.twister_sine_table
+.twister_x_HI
 FOR n,0,255,1
-;EQUB 128 * SIN(2 * PI * n / 256)
-EQUB n-128
+EQUB 0
 NEXT
 
+.twister_row_rot_change
+FOR n,0,255,1
+EQUB ABS(n-128)
+NEXT
+
+.twister_top_change
+FOR n,0,255,1
+EQUB 128
+NEXT
 
 PAGE_ALIGN
 .twister_screen_data

@@ -338,3 +338,7 @@ Assuming top rotates at constant speed
 If we want the Twister to have knots in it then need multiple twists
 but at different amplitudes down the string
 Amplitude would cycle from 0 (flat) to maybe &400 max and back again
+t/large = vary slowly over time
+
+Keep amp fairly constant but vary more slowly than 256 frames = 5.12 secs
+Need something in the 1000's
