@@ -5,24 +5,28 @@
 twister_crtc_row = locals_start + 0
 
 twister_spin_index = locals_start + 1		; index into spin table for top line
-twister_spin_index_step = locals_start + 3	; rate at which spin index is updated each frame
+twister_spin_step = locals_start + 3		; rate at which spin index is updated each frame
 
 twister_twist_index = locals_start + 5		; index into twist table for top line
-twister_twist_frame_step = locals_start + 7	; rate at which twist index is update each frame
-twister_twist_row_step = locals_start + 9	; rate at which twist indx is updated each row
+twister_twist_step = locals_start + 7		; rate at which twist index is update each frame
 
-twister_twist_local = locals_start + 11		; per row index into twist table
+twister_knot_index = locals_start + 9		; index into knot table for top line
+twister_knot_step = locals_start + 11		; rate at which knot index is updated each frame
 
 twister_spin_brot = locals_start + 13		; rotation amount of top line
 twister_twist_brot = locals_start + 15		; rotation amount per row
 
-TWISTER_TWIST_ROW_STEP = &0000		; if this is zero every row shares same twist
-TWISTER_TWIST_FRAME_STEP = &0000	; if this is zero then the twist amount stays same from frame-to-frame
+twister_knot_i = locals_start + 17			; per row index into knot table
+twister_knot_y = locals_start + 19			; rate at which knot index is updated vertical
 
-TWISTER_SPIN_STEP = &0000			; if this is zero then spin speed stays the same from frame-to-frame
+TWISTER_SPIN_STEP = &0000	; if this is zero then spin speed stays the same from frame-to-frame
+TWISTER_TWIST_STEP = &0000	; if this is zero then the twist amount stays same from frame-to-frame
+TWISTER_KNOT_Y = &0000		; if this is zero every row shares same twist (no knots)
+TWISTER_KNOT_STEP = &0000	; if this is zero then the amount of knots stays same from frame-to-frame
 
 TWISTER_DEFAULT_SPIN_INDEX = 0 * &100		; no spin
 TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
+TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 
 .twister_start
 
@@ -43,20 +47,26 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 
 	\\ Starting paramaters
 
-	LDA #LO(TWISTER_SPIN_STEP): STA twister_spin_index_step
-	LDA #HI(TWISTER_SPIN_STEP): STA twister_spin_index_step+1
-	
-	LDA #LO(TWISTER_TWIST_ROW_STEP): STA twister_twist_row_step
-	LDA #HI(TWISTER_TWIST_ROW_STEP): STA twister_twist_row_step+1
-
-	LDA #LO(TWISTER_TWIST_FRAME_STEP): STA twister_twist_frame_step
-	LDA #HI(TWISTER_TWIST_FRAME_STEP): STA twister_twist_frame_step+1
-
 	LDA #LO(TWISTER_DEFAULT_SPIN_INDEX): STA twister_spin_index
 	LDA #HI(TWISTER_DEFAULT_SPIN_INDEX): STA twister_spin_index+1
 	
 	LDA #LO(TWISTER_DEFAULT_TWIST_INDEX): STA twister_twist_index
 	LDA #HI(TWISTER_DEFAULT_TWIST_INDEX): STA twister_twist_index+1
+
+	LDA #LO(TWISTER_DEFAULT_KNOT_INDEX): STA twister_knot_index
+	LDA #HI(TWISTER_DEFAULT_KNOT_INDEX): STA twister_knot_index+1
+
+	LDA #LO(TWISTER_SPIN_STEP): STA twister_spin_step
+	LDA #HI(TWISTER_SPIN_STEP): STA twister_spin_step+1
+	
+	LDA #LO(TWISTER_TWIST_STEP): STA twister_twist_step
+	LDA #HI(TWISTER_TWIST_STEP): STA twister_twist_step+1
+
+	LDA #LO(TWISTER_KNOT_STEP): STA twister_knot_step
+	LDA #HI(TWISTER_KNOT_STEP): STA twister_knot_step+1
+
+	LDA #LO(TWISTER_KNOT_Y): STA twister_knot_y
+	LDA #HI(TWISTER_KNOT_Y): STA twister_knot_y+1
 
 	\\ Starting variables
 
@@ -100,43 +110,64 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 
 	CLC
 	LDA twister_spin_index
-	ADC twister_spin_index_step
+	ADC twister_spin_step
 	STA twister_spin_index
 
 	LDA twister_spin_index+1
-	ADC twister_spin_index_step+1
+	ADC twister_spin_step+1
 	STA twister_spin_index+1
 
 	\\ Update the index into the twist table
 
 	CLC
 	LDA twister_twist_index
-	ADC twister_twist_frame_step
+	ADC twister_twist_step
 	STA twister_twist_index
 
 	LDA twister_twist_index+1
-	ADC twister_twist_frame_step+1
+	ADC twister_twist_step+1
 	STA twister_twist_index+1
 
-	\\ Copy the twist index into a local variable for drawing
+	\\ Update the index into the knot table
 
-	LDA twister_twist_index
-	STA twister_twist_local
-	LDA twister_twist_index+1
-	STA twister_twist_local+1
+	CLC
+	LDA twister_knot_index
+	ADC twister_knot_step
+	STA twister_knot_index
 
-	\\ Could also compute 2nd scanline here
+	LDA twister_knot_index+1
+	ADC twister_knot_step+1
+	STA twister_knot_index+1
 
-	\\ Calculate rotation of next line by indexing twist table
+	\\ Calculate rotation of 2nd scanline by indexing twist table
 
 	CLC
 	LDA twister_spin_brot
-	LDY twister_twist_local+1
+	LDY twister_twist_index+1
 	ADC twister_twist_table_LO, Y
 	STA twister_twist_brot
 
 	LDA twister_spin_brot+1
 	ADC twister_twist_table_HI, Y
+	STA twister_twist_brot+1
+
+	\\ Copy the twist index into a local variable for drawing
+
+	LDA twister_knot_index
+	STA twister_knot_i
+	LDA twister_knot_index+1
+	STA twister_knot_i+1
+
+	\\ Add knot for second line
+
+	CLC
+	LDA twister_twist_brot
+	LDY twister_knot_i+1
+	ADC twister_knot_table_LO, Y
+	STA twister_twist_brot
+
+	LDA twister_twist_brot+1
+	ADC twister_knot_table_HI, Y
 	STA twister_twist_brot+1
 	
     RTS
@@ -188,26 +219,38 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 
 	.here
 
-	\\ Update local twist index value by incrementing by step
-
-	CLC
-	LDA twister_twist_local
-	ADC twister_twist_row_step
-	STA twister_twist_local
-	LDA twister_twist_local+1
-	ADC twister_twist_row_step+1
-	STA twister_twist_local+1
-	TAY
-
-	\\ Use the locl twist index to calculate rotation value
+	\\ Apply the (global) twist value to the row first
 
 	CLC
 	LDA twister_twist_brot
+	LDY twister_twist_index+1
 	ADC twister_twist_table_LO, Y
 	STA twister_twist_brot
 
 	LDA twister_twist_brot+1
 	ADC twister_twist_table_HI, Y
+	STA twister_twist_brot+1
+
+	\\ Update local twist index value by incrementing by step
+
+	CLC
+	LDA twister_knot_i
+	ADC twister_knot_y
+	STA twister_knot_i
+	LDA twister_knot_i+1
+	ADC twister_knot_y+1
+	STA twister_knot_i+1
+	TAY
+
+	\\ Use the local twist index to calculate additional rotation value 'knot'
+
+	CLC
+	LDA twister_twist_brot
+	ADC twister_knot_table_LO, Y
+	STA twister_twist_brot
+
+	LDA twister_twist_brot+1
+	ADC twister_knot_table_HI, Y
 	STA twister_twist_brot+1
 	
 	AND #&7F
@@ -224,7 +267,7 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	FOR n,1,17,1
+	FOR n,1,5,1
 	NOP
 	NEXT
 	
@@ -269,37 +312,49 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 
 .twister_set_spin_step_LO
 {
-	STA twister_spin_index_step
+	STA twister_spin_step
 	RTS
 }
 
 .twister_set_spin_step_HI
 {
-	STA twister_spin_index_step+1
+	STA twister_spin_step+1
 	RTS
 }
 
-.twister_set_twist_frame_step_LO
+.twister_set_twist_step_LO
 {
-	STA twister_twist_frame_step
+	STA twister_twist_step
 	RTS
 }
 
-.twister_set_twist_frame_step_HI
+.twister_set_twist_step_HI
 {
-	STA twister_twist_frame_step+1
+	STA twister_twist_step+1
 	RTS
 }
 
-.twister_set_twist_row_step_LO
+.twister_set_knot_step_LO
 {
-	STA twister_twist_row_step
+	STA twister_knot_step
 	RTS
 }
 
-.twister_set_twist_row_step_HI
+.twister_set_knot_step_HI
 {
-	STA twister_twist_row_step+1
+	STA twister_knot_step+1
+	RTS
+}
+
+.twister_set_knot_y_LO
+{
+	STA twister_knot_y
+	RTS
+}
+
+.twister_set_knot_y_HI
+{
+	STA twister_knot_y+1
 	RTS
 }
 
@@ -313,7 +368,14 @@ TWISTER_DEFAULT_TWIST_INDEX = 0 * &100		; no twist
 .twister_set_twist_index
 {
 	STA twister_twist_index+1
-	STZ twister_spin_index
+	STZ twister_twist_index
+	RTS
+}
+
+.twister_set_knot_index
+{
+	STA twister_knot_index+1
+	STZ twister_knot_index
 	RTS
 }
 
@@ -375,22 +437,36 @@ ENDMACRO
 
 \\ Vary twist over time and/or vertical
 
-.twister_twist_table_LO			; rotation increment per row of the twister
+.twister_twist_table_LO			; global rotation increment per row of the twister
 FOR n,0,255,1
 {
-	m = (128 - ABS(n-128))/128
-	t = 480 * m * m
-;	t = 720 * (ABS(n-128)/128)*(ABS(n-128)/128)
+	t = 360 * SIN(2 * PI * n / 256)
 	TWISTER_TWIST_LO t
 }
 NEXT
 
-.twister_twist_table_HI			; rotation increment per row of the twister
+.twister_twist_table_HI			; global rotation increment per row of the twister
+FOR n,0,255,1
+{
+	t = 360 * SIN(2 * PI * n / 256)
+	TWISTER_TWIST_HI t
+}
+NEXT
+
+.twister_knot_table_LO			; local rotation increment per row of the twister
 FOR n,0,255,1
 {
 	m = (128 - ABS(n-128))/128
-	t = 480 * m * m
-;	t = 720 * (ABS(n-128)/128)*(ABS(n-128)/128)
+	t = 720 * m * m
+	TWISTER_TWIST_LO t
+}
+NEXT
+
+.twister_knot_table_HI			; local rotation increment per row of the twister
+FOR n,0,255,1
+{
+	m = (128 - ABS(n-128))/128
+	t = 720 * m * m
 	TWISTER_TWIST_HI t
 }
 NEXT

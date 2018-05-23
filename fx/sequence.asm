@@ -52,32 +52,44 @@ MACRO TWISTER_SET_SPIN_STEP step
     SCRIPT_CALLV twister_set_spin_step_HI, HI(step * 256)
 ENDMACRO 
 
-MACRO TWISTER_SET_TWIST_FRAME_STEP step
-    SCRIPT_CALLV twister_set_twist_frame_step_LO, LO(step * 256)
-    SCRIPT_CALLV twister_set_twist_frame_step_HI, HI(step * 256)
+MACRO TWISTER_SET_TWIST_STEP step
+    SCRIPT_CALLV twister_set_twist_step_LO, LO(step * 256)
+    SCRIPT_CALLV twister_set_twist_step_HI, HI(step * 256)
 ENDMACRO 
 
-MACRO TWISTER_SET_TWIST_ROW_STEP step
-    SCRIPT_CALLV twister_set_twist_row_step_LO, LO(step * 256)
-    SCRIPT_CALLV twister_set_twist_row_step_HI, HI(step * 256)
+MACRO TWISTER_SET_KNOT_STEP step
+    SCRIPT_CALLV twister_set_knot_step_LO, LO(step * 256)
+    SCRIPT_CALLV twister_set_knot_step_HI, HI(step * 256)
 ENDMACRO
 
-MACRO TWISTER_SET_TWIST_PERIOD secs
-{
-    step = 256 / (secs * 50)
-    PRINT "TWIST DURATION: secs/table=", secs, " frame step=", step
-    TWISTER_SET_TWIST_FRAME_STEP step
-}
+MACRO TWISTER_SET_KNOT_Y ystep
+    SCRIPT_CALLV twister_set_knot_y_LO, LO(ystep * 256)
+    SCRIPT_CALLV twister_set_knot_y_HI, HI(ystep * 256)
 ENDMACRO
 
 MACRO TWISTER_SET_SPIN_PERIOD secs
 {
     step = 256 / (secs * 50)
     PRINT "STEP PERIOD: secs/table=", secs, " spin step=", step
-    TWISTER_SET_TWIST_SPIN_STEP step
+    TWISTER_SET_SPIN_STEP step
 }
 ENDMACRO
 
+MACRO TWISTER_SET_TWIST_PERIOD secs
+{
+    step = 256 / (secs * 50)
+    PRINT "TWIST DURATION: secs/table=", secs, " frame step=", step
+    TWISTER_SET_TWIST_STEP step
+}
+ENDMACRO
+
+MACRO TWISTER_SET_KNOT_PERIOD secs
+{
+    step = 256 / (secs * 50)
+    PRINT "KNOT PERIOD: secs/table=", secs, " knot step=", step
+    TWISTER_SET_KNOT_STEP step
+}
+ENDMACRO
 
 MACRO TWISTER_SET_NUMBER n
     SCRIPT_CALLV twister_set_displayed, n*20
@@ -99,22 +111,23 @@ SEQUENCE_WAIT_SECS 10.0
 
 MODE1_SET_COLOUR 2, PAL_yellow
 TWISTER_SET_SPIN_STEP -1.0
+TWISTER_SET_TWIST_STEP 0.0
 
-SEQUENCE_WAIT_SECS 5.12
+SEQUENCE_WAIT_SECS 10
 
 MODE1_SET_COLOUR 2, PAL_blue
-TWISTER_SET_TWIST_PERIOD 2.0
+TWISTER_SET_TWIST_PERIOD 10.0 ; 10s to cover table
 
 SEQUENCE_WAIT_SECS 10.0
 
 TWISTER_TEMP_BLANK 0.5
 TWISTER_SET_NUMBER 2
-TWISTER_SET_TWIST_ROW_STEP 0.6
+TWISTER_SET_KNOT_Y 0.6
 
 SEQUENCE_WAIT_SECS 10.0
 
 MODE1_SET_COLOUR 2, PAL_magenta
-TWISTER_SET_TWIST_ROW_STEP 0.75
+TWISTER_SET_KNOT_Y 0.75
 
 SEQUENCE_WAIT_SECS 20.0
 
