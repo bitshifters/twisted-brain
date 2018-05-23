@@ -288,3 +288,93 @@ Variations:
 - sine wavey bars, sine motion
 - alternating scanlines at different offsets for both
 - colours
+
+Twister
+~~~
+Angle of twister 0-127
+Top can spin linearly or accelerate/decelerate via sine curve
+Want energy to propagate up & down the twister in a non-linear fashion
+Row increment = 0 <- straight (each row the same)
+Row increment = 1 <- static twist
+
+Propagate line 0 delta to line 1 etc.
+This is what the accumulator code was previously
+Propogate a fraction of the twist amount to the following line
+
+PICO ex:for y = 0, 127 do
+		a = cos(t/300+y/2000)*1
+
+		x1 = 14+sin(a)*xl
+		x2 = 14+sin(a+0.25)*xl
+		x3 = 14+sin(a+0.50)*xl
+		x4 = 14+sin(a+0.75)*xl
+	
+		xm = cos((t/80)-y+20*sin(t/20000+a/(120+20*sin(t/100+y/500))))*16
+	
+		if (x1 < x2) then
+			hline (xm+0x12+x1,xm+0x12+x2,y,0x98)
+		end
+		if (x2 < x3) then
+			hline (xm+0x12+x2,xm+0x12+x3,y,0xba)
+		end
+		if (x3 < x4) then
+			hline (xm+0x12+x3,xm+0x12+x4,y,0xdc)
+		end
+		if (x4 < x1) then
+			hline (xm+0x12+x4,xm+0x12+x1,y,0xef)
+		end
+	end
+
+Amiga BASIC example - add y/amplitude
+60 LET x1=((SIN((y/amp)+ang))*100)+xoff
+
+Can also move top of Twister left & right but will be in whole bytes...
+
+Top speed = 128/256 = 0.5 brot/f
+Amp = 256/64 = 4 rows/brot
+256 rows / 4 = 64 brots = 180 degree twist from top to bottom
+
+Assuming top rotates at constant speed
+If we want the Twister to have knots in it then need multiple twists
+but at different amplitudes down the string
+Amplitude would cycle from 0 (flat) to maybe &400 max and back again
+t/large = vary slowly over time
+
+Keep amp fairly constant but vary more slowly than 256 frames = 5.12 secs
+Need something in the 1000's
+
+d=|x0 - x1|
+x1 = x0 + min(f,d)
+
+Seem to have arrived at "something" that works and is somewhat understandable.
+
+Each row has a rotation angle 0-127 (0 - 360 degrees)
+
+Top row rotation angle is updated per frame by an amount 
+'velocity' (twist) indexed from the table twister_frame_vel_LO|HI
+
+The index twister_frame_vel_idx is updated by a speed variable
+twister_frame_vel_idx_speed
+
+So if the index speed is 0 then the 'velocity' (twist) of the top row
+doesn't change frame-to-frame (it may or may not be 0 itself)
+
+The rotation angle between each row is updated by an amount
+'velocity' (twist) indexed from the table twister_row_vel_LO|HI
+
+The index twister_row_vel_idx is updated by a speed variable
+twister_row_vel_idx_frame each frame
+
+So if the index speed is 0 then the 'velocity' (twist) of the top row
+doesn't change between frames
+
+The index twister_row_vel_idx is updated by a speed variable
+twister_row_vel_idx_speed each row
+
+So if the index speed is 0 then the 'velocity' (twist) of each row
+doesn't change between rows (it may or may not be 0 itself)
+
+Might be easier to just have targets for velocity and use acceleration
+functions to reach those targets, rather than look up in a table?
+
+Table useful for enabling variable twist along the whole column
