@@ -25,10 +25,98 @@ MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+MACRO MODE1_SET_COLOUR c, p
+IF c=1
+    SCRIPT_CALLV pal_set_mode1_colour1, p
+ELIF c=2
+    SCRIPT_CALLV pal_set_mode1_colour2, p
+ELSE
+    SCRIPT_CALLV pal_set_mode1_colour3, p
+ENDIF
+ENDMACRO
+
+MACRO MODE1_SET_COLOURS p1, p2, p3
+    SCRIPT_CALLV pal_set_mode1_colour1, p1
+    SCRIPT_CALLV pal_set_mode1_colour2, p2
+    SCRIPT_CALLV pal_set_mode1_colour3, p3
+ENDMACRO
+
+MACRO TWISTER_TEMP_BLANK secs
+    MODE1_SET_COLOURS PAL_black, PAL_black, PAL_black
+    SEQUENCE_WAIT_SECS secs
+    MODE1_SET_COLOURS PAL_red, PAL_yellow, PAL_white
+ENDMACRO
+
+MACRO TWISTER_SET_SPIN_STEP step
+    SCRIPT_CALLV twister_set_spin_step_LO, LO(step * 256)
+    SCRIPT_CALLV twister_set_spin_step_HI, HI(step * 256)
+ENDMACRO 
+
+MACRO TWISTER_SET_TWIST_FRAME_STEP step
+    SCRIPT_CALLV twister_set_twist_frame_step_LO, LO(step * 256)
+    SCRIPT_CALLV twister_set_twist_frame_step_HI, HI(step * 256)
+ENDMACRO 
+
+MACRO TWISTER_SET_TWIST_ROW_STEP step
+    SCRIPT_CALLV twister_set_twist_row_step_LO, LO(step * 256)
+    SCRIPT_CALLV twister_set_twist_row_step_HI, HI(step * 256)
+ENDMACRO
+
+MACRO TWISTER_SET_TWIST_PERIOD secs
+{
+    step = 256 / (secs * 50)
+    PRINT "TWIST DURATION: secs/table=", secs, " frame step=", step
+    TWISTER_SET_TWIST_FRAME_STEP step
+}
+ENDMACRO
+
+MACRO TWISTER_SET_SPIN_PERIOD secs
+{
+    step = 256 / (secs * 50)
+    PRINT "STEP PERIOD: secs/table=", secs, " spin step=", step
+    TWISTER_SET_TWIST_SPIN_STEP step
+}
+ENDMACRO
+
+
+MACRO TWISTER_SET_NUMBER n
+    SCRIPT_CALLV twister_set_displayed, n*20
+ENDMACRO
+
 .sequence_script_start
 
 \\ TEST TEST TEST
-SEQUENCE_FX_FOR_SECS fx_Twister, 31.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 0.1
+
+TWISTER_SET_SPIN_STEP 1.0
+SEQUENCE_WAIT_SECS 5.62      ; 281 frames
+
+MODE1_SET_COLOUR 2, PAL_green
+TWISTER_SET_SPIN_STEP 0.0    ; keep spin constant (should be ~200 deg/sec)
+TWISTER_SET_TWIST_PERIOD 10.0 ; 10s to cover table
+
+SEQUENCE_WAIT_SECS 10.0
+
+MODE1_SET_COLOUR 2, PAL_yellow
+TWISTER_SET_SPIN_STEP -1.0
+
+SEQUENCE_WAIT_SECS 5.12
+
+MODE1_SET_COLOUR 2, PAL_blue
+TWISTER_SET_TWIST_PERIOD 2.0
+
+SEQUENCE_WAIT_SECS 10.0
+
+TWISTER_TEMP_BLANK 0.5
+TWISTER_SET_NUMBER 2
+TWISTER_SET_TWIST_ROW_STEP 0.6
+
+SEQUENCE_WAIT_SECS 10.0
+
+MODE1_SET_COLOUR 2, PAL_magenta
+TWISTER_SET_TWIST_ROW_STEP 0.75
+
+SEQUENCE_WAIT_SECS 20.0
 
 
 \\ Intro Pattern 1
@@ -80,24 +168,26 @@ SEQUENCE_FX_FOR_SECS fx_Text, 31.0
 
 SEQUENCE_FX_FOR_SECS fx_Parallax, 3.5
 
-SCRIPT_CALLV pal_set_mode1_colour2, PAL_yellow
+MODE1_SET_COLOUR 2, PAL_yellow
 SEQUENCE_WAIT_SECS 3.0
-SCRIPT_CALLV pal_set_mode1_colour3, PAL_white
+MODE1_SET_COLOUR 3, PAL_white
 SEQUENCE_WAIT_SECS 3.0
 
 \\ Need some sort of fade / blackout in between?
 
 SCRIPT_CALLV parallax_set_inc_x, &FE
 SCRIPT_CALLV parallax_set_wave_f, &FE
+
 SEQUENCE_WAIT_SECS 9.5
 
-SCRIPT_CALLV pal_set_mode1_colour2, PAL_cyan
+MODE1_SET_COLOUR 2, PAL_cyan
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 2
 SCRIPT_CALLV parallax_set_wave_y, 3
 
 SEQUENCE_WAIT_SECS 9.5
-SCRIPT_CALLV pal_set_mode1_colour1, PAL_blue
+
+MODE1_SET_COLOUR 1, PAL_blue
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 1
 SCRIPT_CALLV parallax_set_wave_y, 15
