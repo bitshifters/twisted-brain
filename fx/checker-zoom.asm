@@ -25,21 +25,8 @@ CHECKER_ZOOM = TRUE
 
 .checkzoom_init
 {
-    SET_ULA_MODE ULA_Mode4
+    SET_ULA_MODE ULA_Mode1
 
-    \\ Set MODE 4
-    LDA #0: STA &FE00
-    LDA #63: STA &FE01
-
-    LDA #1: STA &FE00
-    LDA #40: STA &FE01
-
-    LDA #2: STA &FE00
-    LDA #49: STA &FE01
-
-    LDA #3: STA &FE00
-    LDA #&24: STA &FE01
-    
     LDX #LO(checkzoom_pal)
     LDY #HI(checkzoom_pal)
     JSR ula_set_palette
@@ -66,18 +53,18 @@ CHECKER_ZOOM = TRUE
 {
 	EQUB &00 + (8 EOR 7)
 	EQUB &10 + (8 EOR 7)
-	EQUB &20 + (8 EOR 7)
-	EQUB &30 + (8 EOR 7)
+	EQUB &20 + PAL_red
+	EQUB &30 + PAL_red
 	EQUB &40 + (8 EOR 7)
 	EQUB &50 + (8 EOR 7)
-	EQUB &60 + (8 EOR 7)
-	EQUB &70 + (8 EOR 7)
-	EQUB &80 + (15 EOR 7)
-	EQUB &90 + (15 EOR 7)
+	EQUB &60 + PAL_red
+	EQUB &70 + PAL_red
+	EQUB &80 + PAL_yellow
+	EQUB &90 + PAL_yellow
 	EQUB &A0 + (15 EOR 7)
 	EQUB &B0 + (15 EOR 7)
-	EQUB &C0 + (15 EOR 7)
-	EQUB &D0 + (15 EOR 7)
+	EQUB &C0 + PAL_yellow
+	EQUB &D0 + PAL_yellow
 	EQUB &E0 + (15 EOR 7)
 	EQUB &F0 + (15 EOR 7)
 }
@@ -204,13 +191,13 @@ ENDIF
 
     \\ We're in the vblank so OK to set this ready for scanline 0
 
-    ORA #ULA_Mode4          ; 2c
+    ORA #ULA_Mode1          ; 2c
     STA &FE20               ; 4c
 
     \\ Now draw the checker pattern, at least one line of it
 
     LDA checkzoom_N
-    CMP #8
+    CMP #4
     BCS draw_long_lines
 
     \\ Otherwise use lookup table
@@ -225,7 +212,7 @@ ENDIF
 
     \\ (X MOD N) MOD 8 gives which pixel offset table to use
     LDA checkzoom_XmodN
-    AND #&7
+    AND #&3
     ASL A
     TAY
 
@@ -243,10 +230,10 @@ ENDIF
 
     \\ (X MOD N) DIV 8 gives byte offset to start in data
     LDA checkzoom_XmodN
-    LSR A:LSR A:LSR A
+    LSR A:LSR A
     TAX
 
-    LDY #40
+    LDY #80
     .lineloop
 
     .smRead
@@ -291,56 +278,124 @@ ENDIF
 
     \\ Always start with black
     STZ checkzoom_data
-    LDY #40
-
+IF 0
+    LDY #80
     .long_line_loop
-    CPX #8
-    BCS write_whole_byte
+    {
+        LDA checkzoom_data          ; 3c
 
-    \\ Write partial byte
-    LDA checkzoom_data
-    AND checker_left_mask, X
-    STA checkzoom_temp
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
 
-    \\ Flip our bits
-    LDA checkzoom_data
-    EOR #&FF
-    STA checkzoom_data
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        STA checkzoom_data          ; 3c
 
-    AND checker_right_mask, X
-    ORA checkzoom_temp
-    STA (writeptr)
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        STA partial_byte+1          ; 4c
 
-    SEC
-    LDA checkzoom_N
-    SBC checker_lazy_table, X
-    TAX
-    BRA next_column
-    
-    .write_whole_byte
-    LDA checkzoom_data
-    STA (writeptr)
+        SEC                         ; 2c
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        
+        .partial_byte
+        LDA #&0F
+        
+        .write_byte
+        STA (writeptr)             ; 6c
 
-    SEC
-    TXA
-    SBC #8
-    TAX
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
 
-    .next_column
-    CLC
-    LDA writeptr
-    ADC #8
-    STA writeptr
-    BCC no_carry2
-    INC writeptr+1
-    .no_carry2
+        CLC                         ; 2c
+        LDA writeptr
+        ADC #8
+        STA writeptr
+        BCC no_carry
+        INC writeptr+1
+        .no_carry
 
-    DEY
-    BNE long_line_loop
+        DEY
+        BNE long_line_loop          ; 3c
+    }
+ENDIF
+
+    FOR c,0,31,1
+    {
+        LDA checkzoom_data          ; 3c
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        STA checkzoom_data          ; 3c
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        TAY
+        SEC                         ; 2c
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        .partial_byte
+        TYA
+        .write_byte
+        STA screen_base_addr + c * 8
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+    }
+    NEXT
+    FOR c,0,31,1
+    {
+        LDA checkzoom_data          ; 3c
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        STA checkzoom_data          ; 3c
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        TAY
+        SEC                         ; 2c
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        .partial_byte
+        TYA
+        .write_byte
+        STA screen_base_addr + &100 + c * 8
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+    }
+    NEXT
+    FOR c,0,15,1
+    {
+        LDA checkzoom_data          ; 3c
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        STA checkzoom_data          ; 3c
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        TAY
+        SEC                         ; 2c
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        .partial_byte
+        TYA
+        .write_byte
+        STA screen_base_addr + &200 + c * 8
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+    }
+    NEXT
 
     RTS
 }
-
+\\ whole byte=45c per byte
+\\ partial=72
 .checkzoom_draw
 {
 	\\ We're only ever going to display this one scanline
@@ -375,13 +430,12 @@ ENDIF
 
     .here
 
-    FOR n,1,45,1    ; 98c
+    FOR n,1,47,1    ; 98c
     NOP
     NEXT
-    BIT 0
 
     LDA checkzoom_parity ; 3c
-    ORA #ULA_Mode4          ; 2c
+    ORA #ULA_Mode1          ; 2c
     STA &FE20               ; 4c
 
     INY                     ; 2c
@@ -424,34 +478,8 @@ ENDIF
 
 .checkzoom_kill
 {
+    JSR crtc_reset
     SET_ULA_MODE ULA_Mode2
-
-    \\ Unset MODE 
-    \\ Don't call crtc_reset as we need to select order of registers to beat raster
-    LDX #2: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #0: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #9: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #1: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #3: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #4: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #6: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
-    LDX #7: STX &FE00
-    LDA crtc_regs_high, X: STA &FE01
-
 	JMP ula_pal_reset
 }
 
@@ -459,23 +487,23 @@ MACRO CHECKER_DATA N
 {
     data_start=P%+16
     .table
-    FOR off,0,7,1
+    FOR off,0,3,1
         EQUW data_start + off*N
     NEXT
     .data
-    FOR off,0,7,1
+    FOR off,0,3,1
     PRINT "N=",N,"offset=",off
-    FOR bit,0,N*8-1,8
+    FOR bit,0,N*4-1,4
         b7=((off+bit+0) DIV N) MOD 2
         b6=((off+bit+1) DIV N) MOD 2
         b5=((off+bit+2) DIV N) MOD 2
         b4=((off+bit+3) DIV N) MOD 2
-        b3=((off+bit+4) DIV N) MOD 2
-        b2=((off+bit+5) DIV N) MOD 2
-        b1=((off+bit+6) DIV N) MOD 2
-        b0=((off+bit+7) DIV N) MOD 2
+;        b3=((off+bit+4) DIV N) MOD 2
+;        b2=((off+bit+5) DIV N) MOD 2
+;        b1=((off+bit+6) DIV N) MOD 2
+;        b0=((off+bit+7) DIV N) MOD 2
     ;    PRINT "%",b7,b6,b5,b4,b3,b2,b1,b0
-        EQUB (b7<<7)OR(b6<<6)OR(b5<<5)OR(b4<<4)OR(b3<<3)OR(b2<<2)OR(b1<<1)OR(b0<<0)
+        EQUB (b7<<7)OR(b6<<6)OR(b5<<5)OR(b4<<4)OR(b7<<3)OR(b6<<2)OR(b5<<1)OR(b4<<0)
     NEXT
     NEXT
 }
@@ -501,46 +529,26 @@ CHECKER_DATA 3
 .checker_4
 CHECKER_DATA 4
 
-.checker_5
-CHECKER_DATA 5
-
-.checker_6
-CHECKER_DATA 6
-
-.checker_7
-CHECKER_DATA 7
-
 .checker_table
 EQUW checker_1
 EQUW checker_2
 EQUW checker_3
 EQUW checker_4
-EQUW checker_5
-EQUW checker_6
-EQUW checker_7
 
 .checker_left_mask
 EQUB %00000000
-EQUB %10000000
-EQUB %11000000
-EQUB %11100000
-EQUB %11110000
-EQUB %11111000
-EQUB %11111100
-EQUB %11111110
+EQUB %10001000
+EQUB %11001100
+EQUB %11101110
 
 .checker_right_mask
 EQUB %11111111
-EQUB %01111111
-EQUB %00111111
-EQUB %00011111
-EQUB %00001111
-EQUB %00000111
-EQUB %00000011
-EQUB %00000001
+EQUB %01110111
+EQUB %00110011
+EQUB %00010001
 
 .checker_lazy_table
-EQUB 8,7,6,5,4,3,2,1
+EQUB 4,3,2,1
 
 .fx_particles_table
 FOR n,0,&13F,1

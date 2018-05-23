@@ -6,7 +6,7 @@
 
 PAGE_ALIGN
 .picture_pu_data
-INCBIN "data/brain.pu"
+;INCBIN "data/brain.pu"
 
 .picture_init
 {
