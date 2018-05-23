@@ -74,7 +74,8 @@ fx_Copper = 7
 fx_Plasma = 8
 fx_Logo = 9
 fx_Text = 10
-fx_MAX = 11
+fx_Picture = 11
+fx_MAX = 12
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -126,7 +127,7 @@ INCLUDE "lib/exomiser.h.asm"
 \ *	CODE START
 \ ******************************************************************
 
-ORG &E00	      					; code origin (like P%=&2000)
+ORG &1900	      				; code origin (like P%=&2000)
 GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .start
@@ -567,11 +568,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
+	EQUW picture_init,    do_nothing,        do_nothing,      do_nothing
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6		; need something better here?
+	EQUB 4, 4, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4		; need something better here?
 }
 
 .data_end
@@ -634,7 +636,9 @@ GUARD &C000
 PAGE_ALIGN
 INCLUDE "fx/kefrens.asm"
 PAGE_ALIGN
-INCLUDE "fx/twister.asm"
+INCLUDE "fx/checker-zoom.asm"
+PAGE_ALIGN
+INCLUDE "fx/picture.asm"
 
 .bank0_end
 
@@ -648,7 +652,8 @@ PRINT "------"
 PRINT "BANK 0"
 PRINT "------"
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
-PRINT "TWISTER size =", ~twister_end-twister_start
+PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
+PRINT "PICTURE size =", ~picture_end-picture_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -665,11 +670,11 @@ GUARD &C000
 \ ******************************************************************
 
 PAGE_ALIGN
+INCLUDE "fx/twister.asm"
+PAGE_ALIGN
 INCLUDE "fx/boxrot.asm"
 PAGE_ALIGN
 INCLUDE "fx/parallax.asm"
-PAGE_ALIGN
-INCLUDE "fx/checker-zoom.asm"
 PAGE_ALIGN
 INCLUDE "fx/vblinds.asm"
 PAGE_ALIGN
@@ -686,9 +691,9 @@ SAVE "Bank1", bank1_start, bank1_end
 PRINT "------"
 PRINT "BANK 1"
 PRINT "------"
+PRINT "TWISTER size =", ~twister_end-twister_start
 PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
-PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
 PRINT "COPPER size =", ~copper_end-copper_start
 PRINT "------"
@@ -780,4 +785,6 @@ PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
 ;PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
 PUTBASIC "basic/twist.bas", "TWIST"
+PUTFILE "data/nova-mode1.bin", "NOVA", &3000
+PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
 ENDIF
