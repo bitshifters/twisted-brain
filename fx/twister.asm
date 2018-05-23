@@ -440,7 +440,13 @@ ENDMACRO
 .twister_twist_table_LO			; global rotation increment per row of the twister
 FOR n,0,255,1
 {
-	t = 360 * SIN(2 * PI * n / 256)
+;	t = 360 * SIN(2 * PI * n / 256)
+	IF n < 128
+	m = (64 - ABS(n-64))/64
+	ELSE
+	m = -(64 - ABS(n-192))/64
+	ENDIF
+	t = 480 * m
 	TWISTER_TWIST_LO t
 }
 NEXT
@@ -448,7 +454,13 @@ NEXT
 .twister_twist_table_HI			; global rotation increment per row of the twister
 FOR n,0,255,1
 {
-	t = 360 * SIN(2 * PI * n / 256)
+;	t = 360 * SIN(2 * PI * n / 256)
+	IF n < 128
+	m = (64 - ABS(n-64))/64
+	ELSE
+	m = -(64 - ABS(n-192))/64
+	ENDIF
+	t = 480 * m
 	TWISTER_TWIST_HI t
 }
 NEXT

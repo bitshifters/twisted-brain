@@ -69,7 +69,11 @@ ENDMACRO
 
 MACRO TWISTER_SET_SPIN_PERIOD secs
 {
+    IF secs = 0
+    step = 0
+    ELSE
     step = 256 / (secs * 50)
+    ENDIF
     PRINT "STEP PERIOD: secs/table=", secs, " spin step=", step
     TWISTER_SET_SPIN_STEP step
 }
@@ -77,7 +81,11 @@ ENDMACRO
 
 MACRO TWISTER_SET_TWIST_PERIOD secs
 {
+    IF secs = 0
+    step = 0
+    ELSE
     step = 256 / (secs * 50)
+    ENDIF
     PRINT "TWIST DURATION: secs/table=", secs, " frame step=", step
     TWISTER_SET_TWIST_STEP step
 }
@@ -85,10 +93,27 @@ ENDMACRO
 
 MACRO TWISTER_SET_KNOT_PERIOD secs
 {
+    IF secs = 0
+    step = 0
+    ELSE
     step = 256 / (secs * 50)
+    ENDIF
     PRINT "KNOT PERIOD: secs/table=", secs, " knot step=", step
     TWISTER_SET_KNOT_STEP step
 }
+ENDMACRO
+
+MACRO TWISTER_START spin, twist, knot, y
+    SCRIPT_CALLV twister_set_spin_index, spin
+    SCRIPT_CALLV twister_set_twist_index, twist
+    SCRIPT_CALLV twister_set_knot_index, knot
+    TWISTER_SET_KNOT_Y y
+ENDMACRO
+
+MACRO TWISTER_SET_PARAMS spin, twist, knot
+    TWISTER_SET_SPIN_PERIOD spin
+    TWISTER_SET_TWIST_PERIOD twist
+    TWISTER_SET_KNOT_PERIOD knot
 ENDMACRO
 
 MACRO TWISTER_SET_NUMBER n
@@ -96,41 +121,6 @@ MACRO TWISTER_SET_NUMBER n
 ENDMACRO
 
 .sequence_script_start
-
-\\ TEST TEST TEST
-SEQUENCE_FX_FOR_SECS fx_Twister, 0.1
-
-TWISTER_SET_SPIN_STEP 1.0
-SEQUENCE_WAIT_SECS 5.62      ; 281 frames
-
-MODE1_SET_COLOUR 2, PAL_green
-TWISTER_SET_SPIN_STEP 0.0    ; keep spin constant (should be ~200 deg/sec)
-TWISTER_SET_TWIST_PERIOD 10.0 ; 10s to cover table
-
-SEQUENCE_WAIT_SECS 10.0
-
-MODE1_SET_COLOUR 2, PAL_yellow
-TWISTER_SET_SPIN_STEP -1.0
-TWISTER_SET_TWIST_STEP 0.0
-
-SEQUENCE_WAIT_SECS 10
-
-MODE1_SET_COLOUR 2, PAL_blue
-TWISTER_SET_TWIST_PERIOD 10.0 ; 10s to cover table
-
-SEQUENCE_WAIT_SECS 10.0
-
-TWISTER_TEMP_BLANK 0.5
-TWISTER_SET_NUMBER 2
-TWISTER_SET_KNOT_Y 0.6
-
-SEQUENCE_WAIT_SECS 10.0
-
-MODE1_SET_COLOUR 2, PAL_magenta
-TWISTER_SET_KNOT_Y 0.75
-
-SEQUENCE_WAIT_SECS 20.0
-
 
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
@@ -167,7 +157,47 @@ SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
 \\ Long bit A 1:20 - 1:51 = 31s
 \\ BETTER FX ONE
 
-SEQUENCE_FX_FOR_SECS fx_Twister, 31.0
+SEQUENCE_FX_FOR_SECS fx_Twister, 0.1
+
+\\ PART #1
+; Start spinning from rest
+TWISTER_SET_PARAMS 5.12, 0, 0
+SEQUENCE_WAIT_SECS 282/50
+MODE1_SET_COLOUR 2, PAL_green
+; keep spin constant (should be ~200 deg/sec)
+; 10s to wind & unwind in one direction
+TWISTER_SET_PARAMS 0, 10.0, 0
+SEQUENCE_WAIT_SECS 5.02        
+MODE1_SET_COLOUR 2, PAL_yellow
+; 10s to wind & unwind in other direction
+SEQUENCE_WAIT_SECS 5.6
+
+TWISTER_TEMP_BLANK 0.75
+
+\\ PART #2
+; a knot
+MODE1_SET_COLOUR 2, PAL_green
+TWISTER_SET_KNOT_Y 1.0
+TWISTER_SET_PARAMS 10.0, 0, 0
+SCRIPT_CALLV twister_set_twist_index, 0
+SEQUENCE_WAIT_SECS 10.0
+; move the knot
+;TWISTER_TEMP_BLANK 0.75
+MODE1_SET_COLOUR 2, PAL_blue
+TWISTER_SET_KNOT_PERIOD 5.0
+SEQUENCE_WAIT_SECS 10.0
+
+TWISTER_TEMP_BLANK 0.75
+
+\\ PART #3
+; go mental aka flump mode
+TWISTER_SET_NUMBER 4
+MODE1_SET_COLOUR 2, PAL_magenta
+TWISTER_SET_KNOT_Y 2.3
+TWISTER_SET_PARAMS 10, 40, 2.56
+
+SEQUENCE_WAIT_SECS 20.0
+
 
 \\ Long bit B 1:51 - 2:22 = 31s
 \\ Slightly repetitive middle part so run text?
