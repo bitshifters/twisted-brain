@@ -378,3 +378,29 @@ Might be easier to just have targets for velocity and use acceleration
 functions to reach those targets, rather than look up in a table?
 
 Table useful for enabling variable twist along the whole column
+
+More sensible naming convention: spin / twist / knot
+
+Text
+~~~
+Prefered interface: define block of text with a simple data format
+E.g.
+EQUS x, y, "text", 0
+EQUS x, y, "text", 0
+EQUB &FF
+
+Then specify which block required by enum in sequence
+Also specify how the block appears max 1x glyph per frame?
+To do this would need to define entire screens, so
+
+.screen1
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+
+As would then increment the x,y over update fn.

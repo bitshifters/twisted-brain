@@ -30,15 +30,23 @@ MODE1_P2_C3=MODE1_C3 << 1
 MODE1_P3_C3=MODE1_C3 << 0
 
 TEXT_MAX_GLYPHS = 60	;90
-TEXT_GLYPH_WIDTH_BYTES = 4
-TEXT_GLYPH_HEIGHT = 32	;25
+TEXT_GLYPH_WIDTH_BYTES = 2
+TEXT_GLYPH_HEIGHT = 15	;25
 TEXT_GLYPH_SIZE = TEXT_GLYPH_WIDTH_BYTES * TEXT_GLYPH_HEIGHT
+
+TEXT_BLOCK_WIDTH = 18
+TEXT_BLOCK_HEIGHT = 14
+TEXT_BLOCK_SIZE = TEXT_BLOCK_WIDTH * TEXT_BLOCK_HEIGHT
 
 text_temp = locals_start + 0
 text_yco = locals_start + 1
 text_storeptr = locals_start + 2
 text_pattern = locals_start + 4
 text_scroll = locals_start + 6
+
+text_block_ptr = locals_start + 7
+text_block_index = locals_start + 9
+text_pattern_ptr = locals_start + 10
 
 .text_start
 
@@ -62,6 +70,7 @@ text_scroll = locals_start + 6
 	LDA #HI(text_map_1bpp_to_2bpp_line_A)
 	STA text_pattern+1
 	
+IF 0
 	LDA #LO(&4E00+20*8)
 	STA writeptr
 	LDA #HI(&4E00+20*8)
@@ -77,8 +86,17 @@ text_scroll = locals_start + 6
 	LDX #LO(text_string_2)
 	LDY #HI(text_string_2)
 	JSR text_plot_string
+ENDIF
 
 	STZ text_scroll
+
+	LDA #LO(text_block_0):STA text_block_ptr
+	LDA #HI(text_block_0):STA text_block_ptr+1
+	STZ text_block_index
+
+	LDA #LO(text_pattern_0):STA text_pattern_ptr
+	LDA #HI(text_pattern_0):STA text_pattern_ptr+1
+
 
 	RTS
 }
@@ -113,14 +131,47 @@ text_scroll = locals_start + 6
   rts
 }
 
-.text_string_1
-EQUS "HELLO",0
-.text_string_2
-EQUS "WORLD",0
-
 .text_update
 {
 	INC text_scroll
+
+	LDA text_block_ptr+1
+	BEQ return
+
+	\\ Update text pattern
+
+	\\ Get writeptr
+	LDY #0
+	LDA (text_pattern_ptr), Y
+	STA writeptr
+	INY
+	LDA (text_pattern_ptr), Y
+	STA writeptr+1
+
+	\\ Update pattern ptr
+	CLC
+	LDA text_pattern_ptr
+	ADC #2
+	STA text_pattern_ptr
+	LDA text_pattern_ptr+1
+	ADC #0
+	STA text_pattern_ptr+1
+
+	\\ Get glpyh
+	LDY text_block_index
+	LDA (text_block_ptr), Y
+	JSR text_plot_glyph
+
+	LDA text_block_index
+	INC A
+	STA text_block_index
+	CMP #TEXT_BLOCK_SIZE
+	BCC return
+
+	\\ Finished
+	STZ text_block_ptr+1
+
+	.return
 	RTS
 }
 
@@ -208,10 +259,10 @@ EQUS "WORLD",0
 
 	.loop
 	LDA &FFFF, X
-	BEQ done
+	BMI done
 
-	SEC
-	SBC #' '
+;	SEC
+;	SBC #' '
 	CMP #TEXT_MAX_GLYPHS
 	BCS skip
 
@@ -398,6 +449,81 @@ ENDIF
 NEXT
 
 .text_font_data
-INCBIN "data\font_replic.bin"
+INCBIN "data\font_razor.bin"
+
+MACRO TEXT_PATTERN_ADDR x, y
+EQUW screen_base_addr + (y+1) * 2 * 640 + (x+1) * 4 * 8
+ENDMACRO
+
+.text_pattern_0	; top-to-bottom, left-to-right
+FOR y,0,TEXT_BLOCK_HEIGHT-1,1
+FOR x,0,TEXT_BLOCK_WIDTH-1,1
+	TEXT_PATTERN_ADDR x, y
+NEXT
+NEXT
+
+IF 0
+.text_pattern_1	; spiral
+TEXT_PATTERN_ROW 0, 0,TEXT_BLOCK_WIDTH-1
+TEXT_PATTERN_COL TEXT_PATTERN_WIDTH-1, 1,TEXT_BLOCK_HEIGHT-1
+TEXT_PATTERN_ROW TEXT_BLOCK_HEIGHT-1, TEXT_PATTERN_WIDTH-1,0
+TEXT_PATTERN_COL 0, TEXT_BLOCK_HEIGHT-1,1
+
+TEXT_PATTERN_ROW 1, 1,TEXT_PATTERN_WIDTH-2
+TEXT_PATTERN_COL TEXT_PATTERN_WIDTH-2, 2,TEXT_BLOCK_HEIGHT-2
+TEXT_PATTERN_ROW TEXT_BLOCK_HEIGHT-2, TEXT_PATTERN_WIDTH-2,1
+TEXT_PATTERN_COL 1, TEXT_BLOCK_HEIGHT-2,2
+ENDIF
+
+.text_block_table
+EQUW text_block_0
+
+MAPCHAR 'A', 'Z', 0
+MAPCHAR 'a', 'z', 0
+MAPCHAR '0', '9', 26
+MAPCHAR '-', 36
+MAPCHAR '.', 37
+MAPCHAR '/', 38
+MAPCHAR '!', 39
+MAPCHAR '"', 40
+MAPCHAR '$', 41
+MAPCHAR '%', 42
+MAPCHAR '&', 43
+MAPCHAR ':', 44
+MAPCHAR ';', 45
+MAPCHAR ''', 46
+MAPCHAR '(', 47
+MAPCHAR ')', 48
+MAPCHAR '=', 49
+MAPCHAR '@', 50	; star
+MAPCHAR '+', 51
+MAPCHAR '?', 52
+MAPCHAR ',', 53
+MAPCHAR '#', 54	; rzr
+MAPCHAR ' ', 59
+
+.text_string_1
+EQUS "ABCDEFGHIJKLM",&FF
+.text_string_2
+EQUS "@@@@@@@@@@@@@",&FF
+
+.text_block_0
+\\    012345567901234567
+EQUS "@@@@@@@@@@@@@@@@@@"
+EQUS "@                @"
+EQUS "@  BITSHIFTERS   @"
+EQUS "@   PRESENTS     @"
+EQUS "@                @"
+EQUS "@   A NEW DEMO   @"
+EQUS "@    FOR THE     @"
+EQUS "@   BBC MASTER   @"
+EQUS "@                @"
+EQUS "@ TWISTED BRAIN  @"
+EQUS "@                @"
+EQUS "@   NOVA 2018    @"
+EQUS "@                @"
+EQUS "@@@@@@@@@@@@@@@@@@"
+
+ASCII_MAPCHAR
 
 .text_end
