@@ -5,11 +5,15 @@
 textPattern_Horizontal = 0
 textPattern_Vertical = 1
 textPattern_Spiral = 2
-textPattern_MAX = 3
+textPattern_Snake = 3
+textPattern_MAX = 4
 
 textBlock_Title = 0
 textBlock_Credits = 1
-textBlock_MAX = 2
+textBlock_Thanks = 2
+textBlock_Greets = 3
+textBlock_Specs = 4
+textBlock_MAX = 5
 
 MACRO TEXT_MAPCHAR
 MAPCHAR 'A', 'Z', 0

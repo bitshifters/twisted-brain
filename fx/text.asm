@@ -214,6 +214,13 @@ text_pattern_ptr = locals_start + 10
     RTS
 }
 
+.text_kill
+{
+	SET_ULA_MODE ULA_Mode2
+	JSR crtc_reset
+	JMP ula_pal_reset
+}
+
 .text_clear_palette
 {
 	LDA #&00 + PAL_magenta
@@ -468,6 +475,7 @@ NEXT
 	EQUW text_pattern_0		; textPattern_Horizontal
 	EQUW text_pattern_1		; textPattern_Vertical
 	EQUW text_pattern_2		; textPattern_Spiral
+	EQUW text_pattern_3		; textPattern_Snake
 }
 
 MACRO TEXT_PATTERN_ADDR x, y
@@ -515,5 +523,15 @@ TEXT_PATTERN_SPIRAL 3,3,12,8
 TEXT_PATTERN_SPIRAL 4,4,10,6
 TEXT_PATTERN_SPIRAL 5,5,8,4
 TEXT_PATTERN_SPIRAL 6,6,6,2
+
+.text_pattern_3	; top-to-bottom, left-to-right
+FOR y,0,TEXT_BLOCK_HEIGHT-1,2
+FOR x,0,TEXT_BLOCK_WIDTH-1,1
+	TEXT_PATTERN_ADDR x, y
+NEXT
+FOR x,TEXT_BLOCK_WIDTH-1,0,-1
+	TEXT_PATTERN_ADDR x, y+1
+NEXT
+NEXT
 
 .text_end

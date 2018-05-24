@@ -227,10 +227,12 @@ ENDIF
 
     ; DEBUG CODE
     ; check for N key pressed to skip segment
+    IF _DEBUG
     lda #&81:ldx #LO(-86):ldy #&FF:jsr &FFF4
     tya:beq nopress:lda debounce:bne nopress
     lda #0:sta script_segment_duration+0:sta script_segment_duration+1
     lda #1:.nopress sta debounce
+    ENDIF
 
 
     rts

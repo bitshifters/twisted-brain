@@ -14,7 +14,7 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
-_DEBUG = TRUE
+_DEBUG = FALSE
 _HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
@@ -568,7 +568,7 @@ INCLUDE "fx/sequence.asm"
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
-	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
+	EQUW text_init,       text_update,       text_draw,       text_kill
 	EQUW picture_init,    do_nothing,        do_nothing,      do_nothing
 }
 
