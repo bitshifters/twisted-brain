@@ -119,8 +119,9 @@ GUARD &90
 
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
+INCLUDE "fx/text_blocks.h.asm"
 
-.locals_start			SKIP 16		; guarantee 16 locals
+.locals_start			SKIP 32		; guarantee 16 locals
 .locals_top
 
 \ ******************************************************************
@@ -579,6 +580,12 @@ INCLUDE "fx/sequence.asm"
 .data_end
 
 \ ******************************************************************
+\ *	Text and strings
+\ ******************************************************************
+
+INCLUDE "fx/text_blocks.asm"
+
+\ ******************************************************************
 \ *	End address to be saved
 \ ******************************************************************
 
@@ -614,6 +621,7 @@ PRINT "------"
 PRINT "HELPERS size =",~helpers_end-helpers_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "DATA size =",~data_end-data_start
+PRINT "TEXT BLOCKS size =",~text_blocks_end-text_blocks_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~screen_base_addr-P%

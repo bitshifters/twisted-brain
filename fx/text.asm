@@ -34,10 +34,6 @@ TEXT_GLYPH_WIDTH_BYTES = 2
 TEXT_GLYPH_HEIGHT = 15	;25
 TEXT_GLYPH_SIZE = TEXT_GLYPH_WIDTH_BYTES * TEXT_GLYPH_HEIGHT
 
-TEXT_BLOCK_WIDTH = 18
-TEXT_BLOCK_HEIGHT = 14
-TEXT_BLOCK_SIZE = TEXT_BLOCK_WIDTH * TEXT_BLOCK_HEIGHT
-
 text_temp = locals_start + 0
 text_yco = locals_start + 1
 text_storeptr = locals_start + 2
@@ -70,33 +66,15 @@ text_pattern_ptr = locals_start + 10
 	LDA #HI(text_map_1bpp_to_2bpp_line_A)
 	STA text_pattern+1
 	
-IF 0
-	LDA #LO(&4E00+20*8)
-	STA writeptr
-	LDA #HI(&4E00+20*8)
-	STA writeptr+1
-	LDX #LO(text_string_1)
-	LDY #HI(text_string_1)
-	JSR text_plot_string
-
-	LDA #LO(&5800+20*8)
-	STA writeptr
-	LDA #HI(&5800+20*8)
-	STA writeptr+1
-	LDX #LO(text_string_2)
-	LDY #HI(text_string_2)
-	JSR text_plot_string
-ENDIF
-
 	STZ text_scroll
-
-	LDA #LO(text_block_0):STA text_block_ptr
-	LDA #HI(text_block_0):STA text_block_ptr+1
 	STZ text_block_index
 
-	LDA #LO(text_pattern_0):STA text_pattern_ptr
-	LDA #HI(text_pattern_0):STA text_pattern_ptr+1
+	\\ Starts with no text block
+	STZ text_block_ptr+1
 
+	\\ But default pattern
+	LDA #textPattern_Horizontal
+	JSR text_set_pattern
 
 	RTS
 }
@@ -135,30 +113,22 @@ ENDIF
 {
 	INC text_scroll
 
+	\\ Do we have a text block to display?
+
 	LDA text_block_ptr+1
 	BEQ return
 
-	\\ Update text pattern
-
 	\\ Get writeptr
-	LDY #0
+	LDY text_block_index
 	LDA (text_pattern_ptr), Y
+	TAX
+	LDA text_block_addr_LO, X
 	STA writeptr
-	INY
-	LDA (text_pattern_ptr), Y
+	LDA text_block_addr_HI, X
 	STA writeptr+1
 
-	\\ Update pattern ptr
-	CLC
-	LDA text_pattern_ptr
-	ADC #2
-	STA text_pattern_ptr
-	LDA text_pattern_ptr+1
-	ADC #0
-	STA text_pattern_ptr+1
-
-	\\ Get glpyh
-	LDY text_block_index
+	\\ Get glyph
+	TXA:TAY
 	LDA (text_block_ptr), Y
 	JSR text_plot_glyph
 
@@ -166,10 +136,13 @@ ENDIF
 	INC A
 	STA text_block_index
 	CMP #TEXT_BLOCK_SIZE
-	BCC return
+	BCC not_finished
 
 	\\ Finished
 	STZ text_block_ptr+1
+	RTS
+
+	.not_finished
 
 	.return
 	RTS
@@ -362,6 +335,31 @@ ENDIF
 	RTS
 }
 
+.text_set_pattern
+{
+	PHX
+	ASL A:TAX
+	LDA text_pattern_table, X
+	STA text_pattern_ptr
+	LDA text_pattern_table+1, X
+	STA text_pattern_ptr+1
+	PLX
+	RTS
+}
+
+.text_set_block
+{
+	PHX
+	ASL A:TAX
+	LDA text_block_table, X
+	STA text_block_ptr
+	LDA text_block_table+1, X
+	STA text_block_ptr+1
+	STZ text_block_index
+	PLX
+	RTS
+}
+
 .text_pal
 {
 	EQUB &00 + PAL_black
@@ -451,8 +449,30 @@ NEXT
 .text_font_data
 INCBIN "data\font_razor.bin"
 
+.text_block_addr_LO
+FOR y,0,TEXT_BLOCK_HEIGHT-1,1
+FOR x,0,TEXT_BLOCK_WIDTH-1,1
+	EQUB LO(screen_base_addr + (y+1) * 2 * 640 + (x+1) * 4 * 8)
+NEXT
+NEXT
+
+.text_block_addr_HI
+FOR y,0,TEXT_BLOCK_HEIGHT-1,1
+FOR x,0,TEXT_BLOCK_WIDTH-1,1
+	EQUB HI(screen_base_addr + (y+1) * 2 * 640 + (x+1) * 4 * 8)
+NEXT
+NEXT
+
+.text_pattern_table
+{
+	EQUW text_pattern_0		; textPattern_Horizontal
+	EQUW text_pattern_1		; textPattern_Vertical
+	EQUW text_pattern_2		; textPattern_Spiral
+}
+
 MACRO TEXT_PATTERN_ADDR x, y
-EQUW screen_base_addr + (y+1) * 2 * 640 + (x+1) * 4 * 8
+;EQUW screen_base_addr + (y+1) * 2 * 640 + (x+1) * 4 * 8
+EQUB y*TEXT_BLOCK_WIDTH + x
 ENDMACRO
 
 .text_pattern_0	; top-to-bottom, left-to-right
@@ -462,68 +482,38 @@ FOR x,0,TEXT_BLOCK_WIDTH-1,1
 NEXT
 NEXT
 
-IF 0
-.text_pattern_1	; spiral
-TEXT_PATTERN_ROW 0, 0,TEXT_BLOCK_WIDTH-1
-TEXT_PATTERN_COL TEXT_PATTERN_WIDTH-1, 1,TEXT_BLOCK_HEIGHT-1
-TEXT_PATTERN_ROW TEXT_BLOCK_HEIGHT-1, TEXT_PATTERN_WIDTH-1,0
-TEXT_PATTERN_COL 0, TEXT_BLOCK_HEIGHT-1,1
+.text_pattern_1	; left-to-right, top-to-bottom
+FOR x,0,TEXT_BLOCK_WIDTH-1,2
+FOR y,0,TEXT_BLOCK_HEIGHT-1,1
+	TEXT_PATTERN_ADDR x, y
+NEXT
+FOR y,TEXT_BLOCK_HEIGHT-1,0,-1
+	TEXT_PATTERN_ADDR x+1, y
+NEXT
+NEXT
 
-TEXT_PATTERN_ROW 1, 1,TEXT_PATTERN_WIDTH-2
-TEXT_PATTERN_COL TEXT_PATTERN_WIDTH-2, 2,TEXT_BLOCK_HEIGHT-2
-TEXT_PATTERN_ROW TEXT_BLOCK_HEIGHT-2, TEXT_PATTERN_WIDTH-2,1
-TEXT_PATTERN_COL 1, TEXT_BLOCK_HEIGHT-2,2
-ENDIF
+MACRO TEXT_PATTERN_SPIRAL l, t, w, h
+	FOR x,l,l+w-1
+		TEXT_PATTERN_ADDR x, t
+	NEXT
+	FOR y,t+1,t+h-1
+		TEXT_PATTERN_ADDR l+w-1, y
+	NEXT
+	FOR x,l+w-2,l,-1
+		TEXT_PATTERN_ADDR x, t+h-1
+	NEXT
+	FOR y,t+h-2,t+1,-1
+		TEXT_PATTERN_ADDR l, y
+	NEXT
+ENDMACRO
 
-.text_block_table
-EQUW text_block_0
-
-MAPCHAR 'A', 'Z', 0
-MAPCHAR 'a', 'z', 0
-MAPCHAR '0', '9', 26
-MAPCHAR '-', 36
-MAPCHAR '.', 37
-MAPCHAR '/', 38
-MAPCHAR '!', 39
-MAPCHAR '"', 40
-MAPCHAR '$', 41
-MAPCHAR '%', 42
-MAPCHAR '&', 43
-MAPCHAR ':', 44
-MAPCHAR ';', 45
-MAPCHAR ''', 46
-MAPCHAR '(', 47
-MAPCHAR ')', 48
-MAPCHAR '=', 49
-MAPCHAR '@', 50	; star
-MAPCHAR '+', 51
-MAPCHAR '?', 52
-MAPCHAR ',', 53
-MAPCHAR '#', 54	; rzr
-MAPCHAR ' ', 59
-
-.text_string_1
-EQUS "ABCDEFGHIJKLM",&FF
-.text_string_2
-EQUS "@@@@@@@@@@@@@",&FF
-
-.text_block_0
-\\    012345567901234567
-EQUS "@@@@@@@@@@@@@@@@@@"
-EQUS "@                @"
-EQUS "@  BITSHIFTERS   @"
-EQUS "@   PRESENTS     @"
-EQUS "@                @"
-EQUS "@   A NEW DEMO   @"
-EQUS "@    FOR THE     @"
-EQUS "@   BBC MASTER   @"
-EQUS "@                @"
-EQUS "@ TWISTED BRAIN  @"
-EQUS "@                @"
-EQUS "@   NOVA 2018    @"
-EQUS "@                @"
-EQUS "@@@@@@@@@@@@@@@@@@"
-
-ASCII_MAPCHAR
+.text_pattern_2	; spiral
+TEXT_PATTERN_SPIRAL 0,0,18,14
+TEXT_PATTERN_SPIRAL 1,1,16,12
+TEXT_PATTERN_SPIRAL 2,2,14,10
+TEXT_PATTERN_SPIRAL 3,3,12,8
+TEXT_PATTERN_SPIRAL 4,4,10,6
+TEXT_PATTERN_SPIRAL 5,5,8,4
+TEXT_PATTERN_SPIRAL 6,6,6,2
 
 .text_end

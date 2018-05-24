@@ -128,7 +128,16 @@ ENDMACRO
 
 SEQUENCE_FX_FOR_SECS fx_Logo, 1.5
 
-SEQUENCE_FX_FOR_SECS fx_Text, 31.0
+SEQUENCE_FX_FOR_SECS fx_Text, 1.0
+
+SCRIPT_CALLV text_set_block, textBlock_Title
+
+SEQUENCE_WAIT_SECS 6.0
+
+SCRIPT_CALLV text_set_pattern, textPattern_Spiral
+SCRIPT_CALLV text_set_block, textBlock_Credits
+
+SEQUENCE_WAIT_SECS 7.0
 
 SEQUENCE_FX_FOR_SECS fx_CheckerZoom, 20.0
 
