@@ -18,6 +18,7 @@ checkzoom_delay = locals_start + 14
 checkzoom_temp = locals_start + 15
 
 MAX_CHECK_SIZE = 255
+MIN_CHECK_SIZE = 4
 CHECKZOOM_DELAY = 1
 CHECKER_ZOOM = TRUE
 
@@ -72,26 +73,24 @@ CHECKER_ZOOM = TRUE
 .checkzoom_update
 {
 	\\ X = 40 + sin(iy) / 4
+    CLC
 	LDY checkzoom_idx
 	LDA fx_particles_table, Y
 	ADC #128
 	STA checkzoom_xoff
 
 	\\ Y = 37 + cos(iy) / 4
+    CLC
 	LDY checkzoom_idy
 	LDA fx_particles_table_cos, Y
 	ADC #128
 	STA checkzoom_yoff
 
     \\ Update indices
-    CLC
-    LDA checkzoom_idx
-    ADC #2
-    STA checkzoom_idx
-    CLC
-    LDA checkzoom_idy
-    ADC #1
-    STA checkzoom_idy
+    INC checkzoom_idx
+    INC checkzoom_idx
+
+    INC checkzoom_idy
 
 IF CHECKER_ZOOM
     {
@@ -117,7 +116,7 @@ IF CHECKER_ZOOM
         .shrink
         CLC
         ADC checkzoom_N
-        CMP #2
+        CMP #MIN_CHECK_SIZE+1
         BCS ok
 
         LDX #1
@@ -201,7 +200,7 @@ ENDIF
     BCS draw_long_lines
 
     \\ Otherwise use lookup table
-
+IF 0
     ASL A:TAX
 
     \\ Addresss is checker_table + N*16 + offset*2
@@ -260,16 +259,11 @@ ENDIF
 
     DEY
     BNE lineloop
-
+ENDIF
      .return
     RTS
 
     .draw_long_lines
-    LDA #LO(screen_base_addr)
-    STA writeptr
-    LDA #HI(screen_base_addr)
-    STA writeptr+1
-
     \\ How many pixels to start with
     SEC
     LDA checkzoom_N
@@ -277,75 +271,84 @@ ENDIF
     TAX
 
     \\ Always start with black
-    STZ checkzoom_data
-IF 0
-    LDY #80
-    .long_line_loop
-    {
-        LDA checkzoom_data          ; 3c
-
-        CPX #4                      ; 2c
-        BCS write_byte              ; 3c
-
-        \\ Flip our bits
-        EOR #&FF                    ; 2c
-        STA checkzoom_data          ; 3c
-
-        \\ Write partial byte
-        EOR checker_left_mask, X    ; 4c
-        STA partial_byte+1          ; 4c
-
-        SEC                         ; 2c
-        LDA checkzoom_N             ; 3c
-        SBC checker_lazy_table, X   ; 4c
-        TAX                         ; 2c
-        
-        .partial_byte
-        LDA #&0F
-        
-        .write_byte
-        STA (writeptr)             ; 6c
-
-        .next_column
-        DEX:DEX:DEX:DEX             ; 8c
-
-        CLC                         ; 2c
-        LDA writeptr
-        ADC #8
-        STA writeptr
-        BCC no_carry
-        INC writeptr+1
-        .no_carry
-
-        DEY
-        BNE long_line_loop          ; 3c
-    }
-ENDIF
+    LDA #0
 
     FOR c,0,31,1
     {
-        LDA checkzoom_data          ; 3c
         CPX #4                      ; 2c
         BCS write_byte              ; 3c
         \\ Flip our bits
         EOR #&FF                    ; 2c
-        STA checkzoom_data          ; 3c
+        TAY                         ; 2c
         \\ Write partial byte
         EOR checker_left_mask, X    ; 4c
-        TAY
-        SEC                         ; 2c
+        STA screen_base_addr + c * 8    ; 4c
+        ; carry clear
         LDA checkzoom_N             ; 3c
         SBC checker_lazy_table, X   ; 4c
         TAX                         ; 2c
         .partial_byte
-        TYA
+        TYA                         ; 2c
+        BRA done                    ; 3c
         .write_byte
-        STA screen_base_addr + c * 8
+        STA screen_base_addr + c * 8    ; 4c
         .next_column
         DEX:DEX:DEX:DEX             ; 8c
+        .done
     }
     NEXT
+    \\ Long = 30c Short = 17c -> worst case = 80x30 = 2400c = 18 scanlines
     FOR c,0,31,1
+    {
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        TAY                         ; 2c
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        STA screen_base_addr + &100 + c * 8    ; 4c
+        ; carry clear
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        .partial_byte
+        TYA                         ; 2c
+        BRA done                    ; 3c
+        .write_byte
+        STA screen_base_addr + &100 + c * 8     ; 4c
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+        .done
+    }
+    NEXT
+
+    FOR c,0,15,1
+    {
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        TAY                         ; 2c
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        STA screen_base_addr + &200 + c * 8    ; 4c
+        ; carry clear
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        .partial_byte
+        TYA                         ; 2c
+        BRA done                    ; 3c
+        .write_byte
+        STA screen_base_addr + &200 + c * 8     ; 4c
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+        .done
+    }
+    NEXT
+
+IF 0
     {
         LDA checkzoom_data          ; 3c
         CPX #4                      ; 2c
@@ -356,9 +359,9 @@ ENDIF
         \\ Write partial byte
         EOR checker_left_mask, X    ; 4c
         TAY
-        SEC                         ; 2c
-        LDA checkzoom_N             ; 3c
-        SBC checker_lazy_table, X   ; 4c
+        TXA
+        ; carry clear
+        ADC checkzoom_N
         TAX                         ; 2c
         .partial_byte
         TYA
@@ -367,35 +370,12 @@ ENDIF
         .next_column
         DEX:DEX:DEX:DEX             ; 8c
     }
-    NEXT
-    FOR c,0,15,1
-    {
-        LDA checkzoom_data          ; 3c
-        CPX #4                      ; 2c
-        BCS write_byte              ; 3c
-        \\ Flip our bits
-        EOR #&FF                    ; 2c
-        STA checkzoom_data          ; 3c
-        \\ Write partial byte
-        EOR checker_left_mask, X    ; 4c
-        TAY
-        SEC                         ; 2c
-        LDA checkzoom_N             ; 3c
-        SBC checker_lazy_table, X   ; 4c
-        TAX                         ; 2c
-        .partial_byte
-        TYA
-        .write_byte
-        STA screen_base_addr + &200 + c * 8
-        .next_column
-        DEX:DEX:DEX:DEX             ; 8c
-    }
-    NEXT
+    \\ Long = 39c Short = 20c
+ENDIF
 
     RTS
 }
-\\ whole byte=45c per byte
-\\ partial=72
+
 .checkzoom_draw
 {
 	\\ We're only ever going to display this one scanline
@@ -517,23 +497,23 @@ ENDMACRO
 \\ Scale factor will be 256 / (D+N*S) where D=128 probably
 \\ Still need to figure out variable size table compilation
 
-.checker_1
-CHECKER_DATA 1
+;.checker_1
+;CHECKER_DATA 1
 
-.checker_2
-CHECKER_DATA 2
+;.checker_2
+;CHECKER_DATA 2
 
-.checker_3
-CHECKER_DATA 3
+;.checker_3
+;CHECKER_DATA 3
 
-.checker_4
-CHECKER_DATA 4
+;.checker_4
+;CHECKER_DATA 4
 
-.checker_table
-EQUW checker_1
-EQUW checker_2
-EQUW checker_3
-EQUW checker_4
+;.checker_table
+;EQUW checker_1
+;EQUW checker_2
+;EQUW checker_3
+;EQUW checker_4
 
 .checker_left_mask
 EQUB %00000000
@@ -541,14 +521,15 @@ EQUB %10001000
 EQUB %11001100
 EQUB %11101110
 
-.checker_right_mask
-EQUB %11111111
-EQUB %01110111
-EQUB %00110011
-EQUB %00010001
+;.checker_right_mask
+;EQUB %11111111
+;EQUB %01110111
+;EQUB %00110011
+;EQUB %00010001
 
 .checker_lazy_table
-EQUB 4,3,2,1
+EQUB 3,2,1,0
+;EQUB 4,3,2,1
 
 .fx_particles_table
 FOR n,0,&13F,1
@@ -558,3 +539,48 @@ NEXT
 fx_particles_table_cos = fx_particles_table + 64
 
 .checkzoom_end
+
+IF 0
+    LDY #80
+    .long_line_loop
+    {
+        LDA checkzoom_data          ; 3c
+
+        CPX #4                      ; 2c
+        BCS write_byte              ; 3c
+
+        \\ Flip our bits
+        EOR #&FF                    ; 2c
+        STA checkzoom_data          ; 3c
+
+        \\ Write partial byte
+        EOR checker_left_mask, X    ; 4c
+        STA partial_byte+1          ; 4c
+
+        SEC                         ; 2c
+        LDA checkzoom_N             ; 3c
+        SBC checker_lazy_table, X   ; 4c
+        TAX                         ; 2c
+        \\ This must be wrong now? Need to skip 4x DEX?
+        
+        .partial_byte
+        LDA #&0F
+        
+        .write_byte
+        STA (writeptr)             ; 6c
+
+        .next_column
+        DEX:DEX:DEX:DEX             ; 8c
+
+        CLC                         ; 2c
+        LDA writeptr
+        ADC #8
+        STA writeptr
+        BCC no_carry
+        INC writeptr+1
+        .no_carry
+
+        DEY
+        BNE long_line_loop          ; 3c
+    }
+ENDIF
