@@ -142,31 +142,51 @@ ELSE
 	LDA kefrens_addr_table_HI, Y	; 4c
 	STA writeptr+1					; 3c
 
-	LDA # PIXEL_LEFT_0 OR PIXEL_RIGHT_1			; red
+	TYA:LSR A
+	BCS right
+
+	;2c
+	\\ Left
+	LDA # PIXEL_LEFT_7 OR PIXEL_RIGHT_3
 	LDY #0:STA (writeptr), Y		; 8c
-	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	LDA # PIXEL_LEFT_6 OR PIXEL_RIGHT_2
 	LDY #8:STA (writeptr), Y
-	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1
 	LDY #16:STA (writeptr), Y
-	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
+	LDY #24:
+
+	LDA (writeptr),Y		; 6c
+	AND #&55				; 2c
+	ORA #PIXEL_LEFT_4		; 2c
+	STA (writeptr), Y
+
+	BRA continue ;3c
+
+	.right	;3c
+	\\ Left
+	LDY #0
+	LDA (writeptr),Y		; 6c
+	AND #&AA				; 2c
+	ORA #PIXEL_RIGHT_7		; 2c
+	STA (writeptr), Y
+
+	LDA # PIXEL_LEFT_3 OR PIXEL_RIGHT_6			; yellow/cyan
+	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_2 OR PIXEL_RIGHT_5			; green/magenta
+	LDY #16:STA (writeptr), Y
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_4			; red/blue
 	LDY #24:STA (writeptr), Y
-	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
-	LDY #32:STA (writeptr), Y
-	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
-	LDY #40:STA (writeptr), Y
-	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
-	LDY #48:STA (writeptr), Y
-	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_0			; red
-	LDY #56:STA (writeptr), Y
-	INC kefrens_bar_index
+	NOP
+	
+	.continue
+	INC kefrens_bar_index	; not used!
 	\\ 8*10c = 80c
 
-	FOR n,1,4,1
+	FOR n,1,16,1
 	NOP
 	NEXT
 	BIT 0
 
-	.continue
 	INX								; 2c
 
 ENDIF
@@ -311,19 +331,20 @@ PAGE_ALIGN
 
 PAGE_ALIGN
 .kefrens_addr_table_LO
-FOR x,0,79,1
-EQUB LO(screen_base_addr + x*8)
+FOR x,0,159,1
+EQUB LO(screen_base_addr + (x DIV 2)*8)
 NEXT
 
+PAGE_ALIGN
 .kefrens_addr_table_HI
-FOR x,0,79,1
-EQUB HI(screen_base_addr + x*8)
+FOR x,0,159,1
+EQUB HI(screen_base_addr + (x DIV 2)*8)
 NEXT
 
 PAGE_ALIGN
 .kefrens_sine_table
 FOR y,0,255,1
-x=INT(36 + 30 * SIN(y * 2 * PI / 255))
+x=INT(80 + 76 * SIN(y * 2 * PI / 256))
 EQUB x
 NEXT
 
