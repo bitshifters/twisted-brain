@@ -574,7 +574,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 4, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4		; need something better here?
+	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4		; need something better here?
 }
 
 .data_end
@@ -641,8 +641,6 @@ GUARD &C000
 \ *	FX
 \ ******************************************************************
 
-PAGE_ALIGN
-INCLUDE "fx/kefrens.asm"
 PAGE_ALIGN
 INCLUDE "fx/checker-zoom.asm"
 PAGE_ALIGN
@@ -725,6 +723,8 @@ PAGE_ALIGN
 INCLUDE "fx/logo.asm"
 PAGE_ALIGN
 INCLUDE "fx/text.asm"
+PAGE_ALIGN
+INCLUDE "fx/kefrens.asm"
 
 .bank2_end
 

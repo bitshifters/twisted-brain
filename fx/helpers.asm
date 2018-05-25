@@ -165,11 +165,11 @@ ENDIF
   rts
 }
 
-.screen_clear_line0
+.screen_clear_line_0X
 {
 	LDA #0
 	FOR n,0,79
-	STA screen_base_addr + n * 8
+	STA screen_base_addr + n * 8, X
 	NEXT
 	RTS
 }

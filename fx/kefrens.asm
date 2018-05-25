@@ -4,6 +4,8 @@
 
 kefrens_dummy = locals_start + 0
 kefrens_index_offset = locals_start + 1
+kefrens_crtc_row = locals_start + 2
+kefrens_bar_index = locals_start + 3
 
 .kefrens_start
 
@@ -46,7 +48,11 @@ kefrens_index_offset = locals_start + 1
 .kefrens_update
 {
 	INC kefrens_index_offset
-	JMP screen_clear_line0
+	LDX #0
+	JSR screen_clear_line_0X
+	LDX #1
+	JSR screen_clear_line_0X
+	RTS
 }
 
 \ ******************************************************************
@@ -74,9 +80,9 @@ kefrens_index_offset = locals_start + 1
 	LDA #13: STA &FE00
 	LDA #LO(screen_base_addr/8): STA &FE01
 
-	\\ R9=0 - character row = 1 scanline
+	\\ R9=0 - character row = 2 scanline
 	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	LDA #1:	STA &FE01
 
 	\\ R4=0 - CRTC cycle is one row
 	LDA #4: STA &FE00
@@ -90,46 +96,29 @@ kefrens_index_offset = locals_start + 1
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	FOR n,1,14,1
-	NOP
-	NEXT
+;	FOR n,1,14,1
+;	NOP
+;	NEXT
 
-	LDX #2					; 2c
-	LDY kefrens_index_offset
+	JSR cycles_wait_128
+
+	LDA #126
+	STA kefrens_crtc_row
+
+	STZ kefrens_bar_index
+	LDX kefrens_index_offset
 
 	.here
 
-	\\ 8x6c = 48c
 IF 0
-	LDA #PIXEL_LEFT_1 + PIXEL_RIGHT_1: STA &3140
-	LDA #PIXEL_LEFT_2 + PIXEL_RIGHT_2: STA &3148
-	LDA #PIXEL_LEFT_3 + PIXEL_RIGHT_3: STA &3150
-	LDA #PIXEL_LEFT_4 + PIXEL_RIGHT_4: STA &3158
-	LDA #PIXEL_LEFT_5 + PIXEL_RIGHT_5: STA &3160
-	LDA #PIXEL_LEFT_6 + PIXEL_RIGHT_6: STA &3168
-	LDA #PIXEL_LEFT_7 + PIXEL_RIGHT_7: STA &3170
-	LDA #PIXEL_LEFT_8 + PIXEL_RIGHT_8: STA &3178
-
-	\\ Need 80-10 more cycles
-
-	FOR n,1,35,1	; 
-	NOP
-	NEXT
-	INC dummy		; 5c
-
-ELSE
-;	TXA
-;	AND #&3F
-;	TAY				; 6c
-
 	LDA kefrens_code_table_LO, Y		; 4c
 	STA jump_command+1			; 4c
 	LDA kefrens_code_table_HI, Y		; 4c
 	STA jump_command+2			; 4c
 
 	INY
-	TXA
-;	LDA #PIXEL_LEFT_1 + PIXEL_RIGHT_1	;2c
+	;TXA
+	LDA kefrens_colour_lookup_A, X		; 4c-2c
 
 	.jump_command
 	JSR &FFFF					; 6c
@@ -137,22 +126,74 @@ ELSE
 	\\ 16+2+6 = 24c + 8c loop = 32c fn must take 96c including RTS
 
 	BIT 0						; 3c
+ELSE
+
+	LDA kefrens_sine_table, X		; 4c
+	TAY								; 2c
+\	CPY #40							; 2c
+\	BCC left_side_nop_later
+									; 2c
+	\\ Right side NOP first
+\	FOR n,1,13,1
+\	NOP
+\	NEXT
+
+	.left_side_nop_later
+	LDA kefrens_addr_table_LO, Y	; 4c
+	STA writeptr					; 3c
+	LDA kefrens_addr_table_HI, Y	; 4c
+	STA writeptr+1					; 3c
+
+	LDY kefrens_bar_index			; 3c
+	LDA kefrens_colour_lookup_A, Y	; 4c
+	LDY #0:STA (writeptr), Y		; 8c
+	LDY #8:STA (writeptr), Y
+	LDY #16:STA (writeptr), Y
+	LDY #24:STA (writeptr), Y
+	LDY #32:STA (writeptr), Y
+	LDY #40:STA (writeptr), Y
+	LDY #48:STA (writeptr), Y
+	LDY #56:STA (writeptr), Y
+	\\ 8*8c = 64c
+
+	LDY kefrens_bar_index			; 3c
+	LDA kefrens_colour_lookup_B, Y	; 4c
+	LDY #1:STA (writeptr), Y		; 8c
+	LDY #9:STA (writeptr), Y
+	LDY #17:STA (writeptr), Y
+	LDY #25:STA (writeptr), Y
+	LDY #33:STA (writeptr), Y
+	LDY #41:STA (writeptr), Y
+	LDY #49:STA (writeptr), Y
+	LDY #57:STA (writeptr), Y
+	INC kefrens_bar_index
+	\\ 8*8c = 64c
+
+	FOR n,1,37,1
+	NOP
+	NEXT
+	BIT 0
+
+	.continue
+	INX								; 2c
+
 ENDIF
-	
-	INX				; 2c
-	BNE here		; 3c
 
-	\\ R9=7 - character row = 8 scanlines
+	DEC kefrens_crtc_row
+	BEQ done
+	JMP here		; 3c
+	.done
+	\\ R9=0 - character row = 2 scanlines
 	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
+	LDA #2-1:	STA &FE01		; 2 scanline
 
-	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
+	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #28-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 28 rows
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
 	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #12+1: STA &FE01			; 280 - 256 = 24 scanlines = 12 rows
 
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
@@ -161,13 +202,15 @@ ENDIF
     RTS
 }
 
-NUM_NOPS=28
+NUM_NOPS=27
 
+IF 0
 .kefrens_code_gen
 FOR x,0,79,1
 {
 	\\ Code must take 96c including RTS = 6c = 90c total
-	N%=x DIV 2
+	;N%=x DIV 2
+	N%=0
 	PRINT N%
 	IF N% < 1
 	; no NOPs	
@@ -215,11 +258,79 @@ addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
 EQUB LO(addr)
 NEXT
 
+PAGE_ALIGN
 .kefrens_code_table_HI
 FOR y,0,255,1
 x=INT(36+30*SIN(y * 2 * PI / 255))
 addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
 EQUB HI(addr)
+NEXT
+ENDIF
+
+PAGE_ALIGN
+.kefrens_colour_lookup_A
+{
+	FOR n,0,15,1
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_0			; 0 = black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_0			; 1 = red/black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; 2 = red/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_1			; 3 = yellow/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_3			; 4 = yellow/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_3			; 5 = green/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_2			; 6 = green/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_2			; 7 = cyan/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_6			; 8 = cyan/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_6			; 9 = blue/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_4			;10 = blue/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_4			;11 = magenta/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			;12 = magenta/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_5			;13 = white/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_7			;14 = white/white
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_7			;15 = black/white
+	\\ Or can wrap around to red again
+	NEXT
+}
+
+PAGE_ALIGN
+.kefrens_colour_lookup_B
+{
+	FOR n,0,15,1
+	EQUB PIXEL_RIGHT_0 OR PIXEL_LEFT_0			; 0 = black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_0			; 1 = red/black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_1			; 2 = red/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_1			; 3 = yellow/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_3			; 4 = yellow/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_3			; 5 = green/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_2			; 6 = green/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_2			; 7 = cyan/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_6			; 8 = cyan/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_6			; 9 = blue/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_4			;10 = blue/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_4			;11 = magenta/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_5			;12 = magenta/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_5			;13 = white/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_7			;14 = white/white
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_7			;15 = black/white
+	\\ Or can wrap around to red again
+	NEXT
+}
+
+PAGE_ALIGN
+.kefrens_addr_table_LO
+FOR x,0,79,1
+EQUB LO(screen_base_addr + x*8)
+NEXT
+
+.kefrens_addr_table_HI
+FOR x,0,79,1
+EQUB HI(screen_base_addr + x*8)
+NEXT
+
+PAGE_ALIGN
+.kefrens_sine_table
+FOR y,0,255,1
+x=INT(36 + 30 * SIN(y * 2 * PI / 255))
+EQUB x
 NEXT
 
 .kefrens_end
