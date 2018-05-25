@@ -142,23 +142,29 @@ ELSE
 	LDA kefrens_addr_table_HI, Y	; 4c
 	STA writeptr+1					; 3c
 
-	LDY kefrens_bar_index			; 3c
-	LDA kefrens_colour_lookup_A, Y	; 4c
+	LDA # PIXEL_LEFT_0 OR PIXEL_RIGHT_1			; red
 	LDY #0:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
 	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
 	LDY #16:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
 	LDY #24:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
 	LDY #32:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
 	LDY #40:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
 	LDY #48:STA (writeptr), Y
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_0			; red
 	LDY #56:STA (writeptr), Y
 	INC kefrens_bar_index
-	\\ 8*8c = 64c
+	\\ 8*10c = 80c
 
-	FOR n,1,10,1
+	FOR n,1,4,1
 	NOP
 	NEXT
-;	BIT 0
+	BIT 0
 
 	.continue
 	INX								; 2c
