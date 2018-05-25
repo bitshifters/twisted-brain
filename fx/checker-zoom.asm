@@ -75,14 +75,14 @@ CHECKER_ZOOM = TRUE
 	\\ X = 40 + sin(iy) / 4
     CLC
 	LDY checkzoom_idx
-	LDA fx_particles_table, Y
+	LDA checkzoom_table_sin, Y
 	ADC #128
 	STA checkzoom_xoff
 
 	\\ Y = 37 + cos(iy) / 4
     CLC
 	LDY checkzoom_idy
-	LDA fx_particles_table_cos, Y
+	LDA checkzoom_table_cos, Y
 	ADC #128
 	STA checkzoom_yoff
 
@@ -531,12 +531,12 @@ EQUB %11101110
 EQUB 3,2,1,0
 ;EQUB 4,3,2,1
 
-.fx_particles_table
+.checkzoom_table_sin
 FOR n,0,&13F,1
-EQUB 127 * SIN(2 * PI * n / 255)	; 255 or 256?
+EQUB 127 * SIN(2 * PI * n / 256)	; 255 or 256?
 NEXT
 
-fx_particles_table_cos = fx_particles_table + 64
+checkzoom_table_cos = checkzoom_table_sin + 64
 
 .checkzoom_end
 

@@ -6,6 +6,7 @@ kefrens_dummy = locals_start + 0
 kefrens_index_offset = locals_start + 1
 kefrens_crtc_row = locals_start + 2
 kefrens_bar_index = locals_start + 3
+kefrens_row_index = locals_start + 4
 
 .kefrens_start
 
@@ -27,6 +28,7 @@ kefrens_bar_index = locals_start + 3
 .kefrens_init
 {
     STZ kefrens_index_offset
+	STZ kefrens_bar_index
 	RTS
 }
 
@@ -50,8 +52,8 @@ kefrens_bar_index = locals_start + 3
 	INC kefrens_index_offset
 	LDX #0
 	JSR screen_clear_line_0X
-;	LDX #1
-;	JSR screen_clear_line_0X
+
+	INC kefrens_bar_index
 	RTS
 }
 
@@ -102,8 +104,7 @@ kefrens_bar_index = locals_start + 3
 
 	LDA #254
 	STA kefrens_crtc_row
-
-	STZ kefrens_bar_index
+	STZ kefrens_row_index
 	LDX kefrens_index_offset
 
 	.here
@@ -126,8 +127,18 @@ IF 0
 	BIT 0						; 3c
 ELSE
 
-	LDA kefrens_sine_table, X		; 4c
-	TAY								; 2c
+	LDY kefrens_bar_index	; actually our angle
+	LDA fx_particles_table, y		; SIN(y)/2
+;	CLC
+;	ADC fx_particles_table_cos, Y	; COS(y)
+	TAY
+	LDA kefrens_sine_table, Y
+
+	CLC
+	LDY kefrens_row_index
+	ADC kefrens_add_table, Y
+	TAY
+
 \	CPY #40							; 2c
 \	BCC left_side_nop_later
 									; 2c
@@ -179,13 +190,14 @@ ELSE
 	NOP
 	
 	.continue
-	INC kefrens_bar_index	; not used!
+	INC kefrens_bar_index
+	INC kefrens_row_index
 	\\ 8*10c = 80c
 
-	FOR n,1,16,1
+	FOR n,1,6,1
 	NOP
 	NEXT
-	BIT 0
+;	BIT 0
 
 	INX								; 2c
 
@@ -331,21 +343,26 @@ PAGE_ALIGN
 
 PAGE_ALIGN
 .kefrens_addr_table_LO
-FOR x,0,159,1
-EQUB LO(screen_base_addr + (x DIV 2)*8)
+FOR x,0,255,1
+EQUB LO(screen_base_addr + ((x-48-2) DIV 2)*8)
 NEXT
 
 PAGE_ALIGN
 .kefrens_addr_table_HI
-FOR x,0,159,1
-EQUB HI(screen_base_addr + (x DIV 2)*8)
+FOR x,0,255,1
+EQUB HI(screen_base_addr + ((x-48-2) DIV 2)*8)
 NEXT
 
 PAGE_ALIGN
 .kefrens_sine_table
 FOR y,0,255,1
-x=INT(80 + 76 * SIN(y * 2 * PI / 256))
+x=INT(128 + 76 * SIN(y * 2 * PI / 256))
 EQUB x
+NEXT
+
+.kefrens_add_table
+FOR y,0,255,1
+EQUB 30 * SIN(y * 2 * PI / 256)
 NEXT
 
 .kefrens_bar_pixels
@@ -359,5 +376,12 @@ NEXT
 	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
 	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
 }
+
+.fx_particles_table
+FOR n,0,&13F,1
+EQUB 127 * SIN(2 * PI * n / 256)	; 255 or 256?
+NEXT
+
+fx_particles_table_cos = fx_particles_table + 64
 
 .kefrens_end
