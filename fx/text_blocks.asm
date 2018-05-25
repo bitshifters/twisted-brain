@@ -15,6 +15,7 @@ TEXT_BLOCK_SIZE = TEXT_BLOCK_WIDTH * TEXT_BLOCK_HEIGHT
     EQUW text_block_thanks      ; textBlock_Thanks
     EQUW text_block_greets      ; textBlock_Greets
     EQUW text_block_specs       ; textBlock_Specs
+    EQUW text_block_music       ; textBlock_Music
 }
 
 TEXT_MAPCHAR
@@ -40,25 +41,25 @@ EQUS "@@@@@@@@@@@@@@@@@@"
 .text_block_credits
 \\ Each text block must be 18 x 14 characters
 \\    012345567901234567
-EQUS "@@@@@@@@@@@@@@@@@@"
-EQUS "@                @"
-EQUS "@ CODE & FX BY   @"
+EQUS "@@@@ CREDITS  @@@@"
+EQUS "@    -------     @"
+EQUS "@ CODE & FX      @"
 EQUS "@       KIERANHJ @"
 EQUS "@                @"
 EQUS "@ MUSIC CODE     @"
-EQUS "@      BY HENLEY @"
+EQUS "@         HENLEY @"
 EQUS "@                @"
-EQUS "@ ARTWORK BY     @"
+EQUS "@ ARTWORK        @"
 EQUS "@       DETHMUNK @"
 EQUS "@                @"
-EQUS "@ MUSIC BY       @"
-EQUS "@        MAD MAX @"
+EQUS "@ FONT      RZR# @"
+EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
 \\ Anyone who helped out along the way
 .text_block_thanks
 \\ Each text block must be 18 x 14 characters
-\\    012345567901234567
+\\    012345678901234567
 EQUS "@@@ THANKS TO @@@@"
 EQUS "@   ---------    @"
 EQUS "@ INVERSE PHASE  @"
@@ -70,8 +71,8 @@ EQUS "@   SARAH WALKER @"
 EQUS "@ HORSENBURGER   @"
 EQUS "@         PUPPEH @"
 EQUS "@ RAWLES         @"
-EQUS "@   STARDOT CREW @"
-EQUS "@ REBELS       # @"
+EQUS "@           RC55 @"
+EQUS "@ STARDOT CREW   @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
 \\ Specifically people/groups at the party!
@@ -79,7 +80,7 @@ EQUS "@@@@@@@@@@@@@@@@@@"
 \\ And the party server!  Alphabetical order.
 .text_block_greets
 \\ Each text block must be 18 x 14 characters
-\\    012345567901234567
+\\    012345678901234567
 EQUS "@@ BITSHIFTERS @@@"
 EQUS "@    GREETZ      @"
 EQUS "@    ------      @"
@@ -87,29 +88,47 @@ EQUS "@ CRTC           @"
 EQUS "@         DESIRE @"
 EQUS "@ LOGICOMA       @"
 EQUS "@     SLIPSTREAM @"
+EQUS "@ REBELS         @"
 EQUS "@                @"
 EQUS "@                @"
 EQUS "@                @"
-EQUS "@                @"
-EQUS "@                @"
-EQUS "@                @"
+EQUS "@ EVERYONE AT    @"
+EQUS "@     THE PARTY! @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
 .text_block_specs
 \\ Each text block must be 18 x 14 characters
-\\    012345567901234567
+\\    012345678901234567
 EQUS "@@@ BBC MASTER @@@"
-EQUS "@                @"
+EQUS "@   ----------   @"
 EQUS "@ 2MHZ 6502      @"
 EQUS "@       128K RAM @"
 EQUS "@ 6845 CRTC      @"
 EQUS "@        SN76489 @"
 EQUS "@                @"
-EQUS "@ THIS MAY BREAK @"
-EQUS "@ YOUR EMULATOR! @"
+EQUS "@ NO TELETEXT    @"
+EQUS "@  JUST RASTERS! @"
 EQUS "@                @"
 EQUS "@ BITSHIFTERS.   @"
 EQUS "@      GITHUB.IO @"
+EQUS "@                @"
+EQUS "@@@@@@@@@@@@@@@@@@"
+
+.text_block_music
+\\ Each text block must be 18 x 14 characters
+\\    012345678901234567
+EQUS "@@@@@ MUSIC @@@@@@"
+EQUS "@     -----      @"
+EQUS "@ THERE ARE MANY @"
+EQUS "@ SHEEP IN OUTER @"
+EQUS "@ MONGOLIA       @"
+EQUS "@     BY MAD MAX @"
+EQUS "@                @"
+EQUS "@ PORTED FROM    @"
+EQUS "@       ATARI ST @"
+EQUS "@ YM2149F TO     @"
+EQUS "@    BBC SN76489 @"
+EQUS "@ BY HENLEY      @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 

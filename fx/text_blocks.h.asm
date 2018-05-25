@@ -13,7 +13,8 @@ textBlock_Credits = 1
 textBlock_Thanks = 2
 textBlock_Greets = 3
 textBlock_Specs = 4
-textBlock_MAX = 5
+textBlock_Music = 5
+textBlock_MAX = 6
 
 MACRO TEXT_MAPCHAR
 MAPCHAR 'A', 'Z', 0
@@ -24,6 +25,7 @@ MAPCHAR '.', 37
 MAPCHAR '/', 38
 MAPCHAR '!', 39
 MAPCHAR '"', 40
+MAPCHAR '`', 40
 MAPCHAR '$', 41
 MAPCHAR '%', 42
 MAPCHAR '&', 43

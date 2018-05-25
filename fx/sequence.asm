@@ -135,6 +135,11 @@ SEQUENCE_WAIT_SECS 5.06
 
 SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Credits
+SEQUENCE_WAIT_SECS 5.06
+
+MODE1_SET_COLOUR 1, PAL_black
+MODE1_SET_COLOUR 2, PAL_black
+SCRIPT_CALLV text_set_block, textBlock_Music
 
 SEQUENCE_WAIT_SECS 7.0
 
