@@ -50,8 +50,8 @@ kefrens_bar_index = locals_start + 3
 	INC kefrens_index_offset
 	LDX #0
 	JSR screen_clear_line_0X
-	LDX #1
-	JSR screen_clear_line_0X
+;	LDX #1
+;	JSR screen_clear_line_0X
 	RTS
 }
 
@@ -80,9 +80,9 @@ kefrens_bar_index = locals_start + 3
 	LDA #13: STA &FE00
 	LDA #LO(screen_base_addr/8): STA &FE01
 
-	\\ R9=0 - character row = 2 scanline
+	\\ R9=0 - character row = 1 scanline
 	LDA #9: STA &FE00
-	LDA #1:	STA &FE01
+	LDA #0:	STA &FE01
 
 	\\ R4=0 - CRTC cycle is one row
 	LDA #4: STA &FE00
@@ -100,9 +100,7 @@ kefrens_bar_index = locals_start + 3
 ;	NOP
 ;	NEXT
 
-	JSR cycles_wait_128
-
-	LDA #126
+	LDA #254
 	STA kefrens_crtc_row
 
 	STZ kefrens_bar_index
@@ -154,25 +152,13 @@ ELSE
 	LDY #40:STA (writeptr), Y
 	LDY #48:STA (writeptr), Y
 	LDY #56:STA (writeptr), Y
-	\\ 8*8c = 64c
-
-	LDY kefrens_bar_index			; 3c
-	LDA kefrens_colour_lookup_B, Y	; 4c
-	LDY #1:STA (writeptr), Y		; 8c
-	LDY #9:STA (writeptr), Y
-	LDY #17:STA (writeptr), Y
-	LDY #25:STA (writeptr), Y
-	LDY #33:STA (writeptr), Y
-	LDY #41:STA (writeptr), Y
-	LDY #49:STA (writeptr), Y
-	LDY #57:STA (writeptr), Y
 	INC kefrens_bar_index
 	\\ 8*8c = 64c
 
-	FOR n,1,37,1
+	FOR n,1,10,1
 	NOP
 	NEXT
-	BIT 0
+;	BIT 0
 
 	.continue
 	INX								; 2c
@@ -182,23 +168,25 @@ ENDIF
 	DEC kefrens_crtc_row
 	BEQ done
 	JMP here		; 3c
-	.done
-	\\ R9=0 - character row = 2 scanlines
-	LDA #9: STA &FE00
-	LDA #2-1:	STA &FE01		; 2 scanline
 
-	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
+	.done
+
+	\\ R9=7 - character row = 8 scanlines
+	LDA #9: STA &FE00
+	LDA #1-1:	STA &FE01		; 1 scanline
+
+	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
-	LDA #28-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 28 rows
+	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
 	LDA #7:	STA &FE00
-	LDA #12+1: STA &FE01			; 280 - 256 = 24 scanlines = 12 rows
+	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
 
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-	
+
     RTS
 }
 
@@ -332,5 +320,17 @@ FOR y,0,255,1
 x=INT(36 + 30 * SIN(y * 2 * PI / 255))
 EQUB x
 NEXT
+
+.kefrens_bar_pixels
+{
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
+}
 
 .kefrens_end
