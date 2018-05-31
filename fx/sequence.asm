@@ -18,9 +18,28 @@ MACRO SEQUENCE_WAIT_SECS secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+MACRO SEQUENCE_WAIT_FRAMES frames
+    SCRIPT_SEGMENT_START frames/50
+    ; just wait
+    SCRIPT_SEGMENT_END
+ENDMACRO
+
+MACRO SEQUENCE_WAIT_UNTIL frame_time
+    SCRIPT_SEGMENT_UNTIL frame_time
+    ; just wait
+    SCRIPT_SEGMENT_END
+ENDMACRO
+
 MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
     SCRIPT_CALLV main_set_fx, fxenum
     SCRIPT_SEGMENT_START secs
+    ; just wait
+    SCRIPT_SEGMENT_END
+ENDMACRO
+
+MACRO SEQUENCE_FX_UNTIL fxenum, frame_time
+    SCRIPT_CALLV main_set_fx, fxenum
+    SCRIPT_SEGMENT_UNTIL frame_time
     ; just wait
     SCRIPT_SEGMENT_END
 ENDMACRO
@@ -126,78 +145,84 @@ ENDMACRO
 \\ 0:00 - 0:19 = 19s
 \\ BITSHIFTERS PRESENTS DEMO NAME
 
-SEQUENCE_FX_FOR_SECS fx_Kefrens, 30.0
+\\ Wait for first few bars
 
-SEQUENCE_FX_FOR_SECS fx_Logo, 1.5
+SEQUENCE_WAIT_FRAMES 181
 
-SEQUENCE_FX_FOR_SECS fx_Text, 0.02
-SCRIPT_CALLV text_set_pattern, textPattern_Spiral
-SCRIPT_CALLV text_set_block, textBlock_Title    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 5.06
+\ ******************************************************************
+\\ **** TELETEXT LOGO ****
+\ ******************************************************************
 
-SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
-SCRIPT_CALLV text_set_block, textBlock_Credits
-SEQUENCE_WAIT_SECS 5.06
+SEQUENCE_FX_UNTIL fx_Logo, &237
 
-MODE1_SET_COLOUR 1, PAL_black
-MODE1_SET_COLOUR 2, PAL_black
-SCRIPT_CALLV text_set_block, textBlock_Music
+\ ******************************************************************
+\\ **** WIBBLY LOGO ****
+\ ******************************************************************
 
-SEQUENCE_WAIT_SECS 7.0
-
-SEQUENCE_FX_FOR_SECS fx_CheckerZoom, 20.0
-
-SEQUENCE_FX_FOR_SECS fx_Text, 0.02
-SCRIPT_CALLV text_set_pattern, textPattern_Snake
-SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
-SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
-
-SEQUENCE_FX_FOR_SECS fx_Picture, 10.0
-
-SEQUENCE_FX_FOR_SECS fx_Text, 0.02
-SCRIPT_CALLV text_set_pattern, textPattern_Vertical
-SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
+;SCRIPT_CALLV main_set_fx, fx_Logo
+;SEQUENCE_WAIT_SECS 0.02
+SCRIPT_CALLV logo_set_anim, 1
+SEQUENCE_WAIT_UNTIL &372
 
 \\ Intro Pattern 2
 \\ 0:19 - 0:34 = 15s
 \\ THINGS START TO GO RASTERY
 
-SCRIPT_CALLV main_set_fx, fx_Logo
-SEQUENCE_WAIT_SECS 0.02
-SCRIPT_CALLV logo_set_anim, 1
-SEQUENCE_WAIT_SECS 15.2
+\ ******************************************************************
+\\ **** TITLE TEXT ****
+\ ******************************************************************
+
+SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+SCRIPT_CALLV text_set_pattern, textPattern_Spiral
+SCRIPT_CALLV text_set_block, textBlock_Title    ; takes 252 frames = 5.04s
+SEQUENCE_WAIT_SECS 8.0
+
+\ ******************************************************************
+\\ **** BRAIN DRAIN PICTURE ****
+\ ******************************************************************
+
+SEQUENCE_FX_FOR_SECS fx_Picture, 7.0
 
 \\ Drums kick in 0:34 - 0:42 = 8s
 \\ KICK FX OFF WITH HIGH ENERGY
+
+\ ******************************************************************
+\\ **** CHECKERBOARD ZOOM ****
+\ ******************************************************************
 
 SEQUENCE_FX_FOR_SECS fx_CheckerZoom, 7.8
 
 \\ Pattern 3 0:42 - 0:57 = 15s
 \\ SIMPLE FX ONE
 
-SEQUENCE_FX_FOR_SECS fx_VBlinds, 15.0
-
 \\ Pattern 4 0:57 - 1:12 = 15s
 \\ SIMPLE FX TWO
+
+\ ******************************************************************
+\\ **** KEFRENS BARS ****
+\ ******************************************************************
 
 SEQUENCE_FX_FOR_SECS fx_Kefrens, 15.2
 
 \\ Chord change 1:12 - 1:20 = 8s
 
-SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
+SEQUENCE_WAIT_SECS 7.0
+
+;SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
 
 \\ Long bit A 1:20 - 1:51 = 31s
 \\ BETTER FX ONE
+
+\ ******************************************************************
+\\ **** TWISTER ****
+\ ******************************************************************
 
 SEQUENCE_FX_FOR_SECS fx_Twister, 0.1
 
 \\ PART #1
 ; Start spinning from rest
 TWISTER_SET_PARAMS 5.12, 0, 0
-SEQUENCE_WAIT_SECS 282/50
+SEQUENCE_WAIT_FRAMES 282
 MODE1_SET_COLOUR 2, PAL_green
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
@@ -205,7 +230,7 @@ TWISTER_SET_PARAMS 0, 10.0, 0
 SEQUENCE_WAIT_SECS 5.02        
 MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
-SEQUENCE_WAIT_SECS 5.6
+SEQUENCE_WAIT_SECS 5.02
 
 TWISTER_TEMP_BLANK 0.75
 
@@ -215,12 +240,12 @@ MODE1_SET_COLOUR 2, PAL_green
 TWISTER_SET_KNOT_Y 1.0
 TWISTER_SET_PARAMS 10.0, 0, 0
 SCRIPT_CALLV twister_set_twist_index, 0
-SEQUENCE_WAIT_SECS 10.0
+SEQUENCE_WAIT_SECS 5.0
 ; move the knot
 ;TWISTER_TEMP_BLANK 0.75
 MODE1_SET_COLOUR 2, PAL_blue
 TWISTER_SET_KNOT_PERIOD 5.0
-SEQUENCE_WAIT_SECS 10.0
+SEQUENCE_WAIT_SECS 5.0
 
 TWISTER_TEMP_BLANK 0.75
 
@@ -231,18 +256,56 @@ MODE1_SET_COLOUR 2, PAL_magenta
 TWISTER_SET_KNOT_Y 2.3
 TWISTER_SET_PARAMS 10, 40, 2.56
 
-SEQUENCE_WAIT_SECS 20.0
+SEQUENCE_WAIT_SECS 10.0
 
 
 \\ Long bit B 1:51 - 2:22 = 31s
 \\ Slightly repetitive middle part so run text?
-\\ SPECS, CREDITS, GREETZ, THANX?
 
-SEQUENCE_FX_FOR_SECS fx_Text, 31.0
+\ ******************************************************************
+\\ **** CREDITS ****
+\ ******************************************************************
+
+SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
+SCRIPT_CALLV text_set_block, textBlock_Credits
+SEQUENCE_WAIT_SECS 6.0
+
+;MODE1_SET_COLOUR 1, PAL_black
+;MODE1_SET_COLOUR 2, PAL_black
+SCRIPT_CALLV text_set_block, textBlock_Music
+SEQUENCE_WAIT_SECS 6.0
+
+\ ******************************************************************
+\\ **** THANX & GREETZ ****
+\ ******************************************************************
+
+;SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+SCRIPT_CALLV text_set_pattern, textPattern_Snake
+SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
+SEQUENCE_WAIT_SECS 6.0
+SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
+SEQUENCE_WAIT_SECS 6.0
+
+\ ******************************************************************
+\\ **** SPECS ****
+\ ******************************************************************
+
+;SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+SCRIPT_CALLV text_set_pattern, textPattern_Vertical
+SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
+SEQUENCE_WAIT_SECS 7.0
+
+\\ Put another picture here?
+
 
 \\ Drums disappear 2:22 - 3:00 = 38s
 \\ Building energy here
 \\ BETTER FX TWO
+
+\ ******************************************************************
+\\ **** PARALLAX ****
+\ ******************************************************************
 
 SEQUENCE_FX_FOR_SECS fx_Parallax, 3.5
 
@@ -275,16 +338,30 @@ SEQUENCE_WAIT_SECS 9.5
 \\ Drums kick in again 3:00 - 3:31 = 31s
 \\ Crescendo of demo - best FX!
 
+\ ******************************************************************
+\\ **** PLASMA ****
+\ ******************************************************************
+
 SEQUENCE_FX_FOR_SECS fx_Plasma, 31.0
 
 \\ Final chords 3:31 - 3:33 = 2s + silence
 \\ Finish with wonder :)
 
+\ ******************************************************************
+\\ **** COPPER ****
+\ ******************************************************************
+
 SEQUENCE_FX_FOR_SECS fx_Copper, 10.0
 
+\ ******************************************************************
+\\ **** END ****
+\ ******************************************************************
 
 
 
+\ ******************************************************************
+\\ **** UNUSED ****
+\ ******************************************************************
 
 \\ Test whether all FX are keeping sync with timer
 \\ AKA epilepsy mode
@@ -299,6 +376,12 @@ SEQUENCE_FX_FOR_SECS fx_Twister, 0.5
 SEQUENCE_FX_FOR_SECS fx_Copper, 0.5
 NEXT
 ENDIF
+
+\ ******************************************************************
+\\ **** VERTICAL BLINDS ****
+\ ******************************************************************
+;SEQUENCE_FX_FOR_SECS fx_VBlinds, 8.0
+
 
 SCRIPT_END
 

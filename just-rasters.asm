@@ -141,6 +141,12 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .main
 {
+	\\ Clear RAM on BREAK as things are going to get messy
+	
+	LDA #200
+	LDX #3
+	JSR osbyte
+
 	\\ Reset stack
 
 	LDX #&FF					; X=11111111
