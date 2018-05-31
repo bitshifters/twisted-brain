@@ -18,7 +18,7 @@ checkzoom_delay = locals_start + 14
 checkzoom_temp = locals_start + 15
 
 MAX_CHECK_SIZE = 255
-MIN_CHECK_SIZE = 4
+MIN_CHECK_SIZE = 8
 CHECKZOOM_DELAY = 1
 CHECKER_ZOOM = TRUE
 

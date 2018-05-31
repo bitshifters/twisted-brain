@@ -37,6 +37,13 @@ MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+MACRO SEQUENCE_FX_FOR_FRAMES fxenum, frames
+    SCRIPT_CALLV main_set_fx, fxenum
+    SCRIPT_SEGMENT_START frames/50
+    ; just wait
+    SCRIPT_SEGMENT_END
+ENDMACRO
+
 MACRO SEQUENCE_FX_UNTIL fxenum, frame_time
     SCRIPT_CALLV main_set_fx, fxenum
     SCRIPT_SEGMENT_UNTIL frame_time
@@ -162,7 +169,7 @@ SEQUENCE_FX_UNTIL fx_Logo, &237
 ;SCRIPT_CALLV main_set_fx, fx_Logo
 ;SEQUENCE_WAIT_SECS 0.02
 SCRIPT_CALLV logo_set_anim, 1
-SEQUENCE_WAIT_UNTIL &372
+SEQUENCE_WAIT_UNTIL &3AE
 
 \\ Intro Pattern 2
 \\ 0:19 - 0:34 = 15s
@@ -172,27 +179,29 @@ SEQUENCE_WAIT_UNTIL &372
 \\ **** TITLE TEXT ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Spiral
 SCRIPT_CALLV text_set_block, textBlock_Title    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 8.0
+SEQUENCE_WAIT_UNTIL &4F8
 
 \ ******************************************************************
 \\ **** BRAIN DRAIN PICTURE ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Picture, 7.0
+SEQUENCE_FX_UNTIL fx_Picture, &668
 
 \\ Drums kick in 0:34 - 0:42 = 8s
+\\ Drums arrive ~ frame &668
 \\ KICK FX OFF WITH HIGH ENERGY
 
 \ ******************************************************************
 \\ **** CHECKERBOARD ZOOM ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_CheckerZoom, 7.8
+SEQUENCE_FX_UNTIL fx_CheckerZoom, &7EB
 
 \\ Pattern 3 0:42 - 0:57 = 15s
+\\ Pattern 3 starts ~ frame &7EB
 \\ SIMPLE FX ONE
 
 \\ Pattern 4 0:57 - 1:12 = 15s
@@ -202,11 +211,14 @@ SEQUENCE_FX_FOR_SECS fx_CheckerZoom, 7.8
 \\ **** KEFRENS BARS ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Kefrens, 15.2
+SEQUENCE_FX_UNTIL fx_Kefrens, &AEB
+
+\\ Trigger next variation
+\\ And probably another one
+
+SEQUENCE_WAIT_UNTIL &DD3
 
 \\ Chord change 1:12 - 1:20 = 8s
-
-SEQUENCE_WAIT_SECS 7.0
 
 ;SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
 
@@ -214,10 +226,19 @@ SEQUENCE_WAIT_SECS 7.0
 \\ BETTER FX ONE
 
 \ ******************************************************************
+\\ **** CREDITS ****
+\ ******************************************************************
+
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
+SCRIPT_CALLV text_set_block, textBlock_Credits
+SEQUENCE_WAIT_SECS 7.0
+
+\ ******************************************************************
 \\ **** TWISTER ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Twister, 0.1
+SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
 
 \\ PART #1
 ; Start spinning from rest
@@ -227,15 +248,21 @@ MODE1_SET_COLOUR 2, PAL_green
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
 TWISTER_SET_PARAMS 0, 10.0, 0
-SEQUENCE_WAIT_SECS 5.02        
+SEQUENCE_WAIT_FRAMES 251
 MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
-SEQUENCE_WAIT_SECS 5.02
+SEQUENCE_WAIT_FRAMES 251
 
-TWISTER_TEMP_BLANK 0.75
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_block, textBlock_Music
+SEQUENCE_WAIT_SECS 7.0
+
+;TWISTER_TEMP_BLANK 0.75
+SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
 
 \\ PART #2
 ; a knot
+TWISTER_SET_NUMBER 2
 MODE1_SET_COLOUR 2, PAL_green
 TWISTER_SET_KNOT_Y 1.0
 TWISTER_SET_PARAMS 10.0, 0, 0
@@ -247,7 +274,13 @@ MODE1_SET_COLOUR 2, PAL_blue
 TWISTER_SET_KNOT_PERIOD 5.0
 SEQUENCE_WAIT_SECS 5.0
 
-TWISTER_TEMP_BLANK 0.75
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_pattern, textPattern_Snake
+SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
+SEQUENCE_WAIT_SECS 6.0
+
+;TWISTER_TEMP_BLANK 0.75
+SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
 
 \\ PART #3
 ; go mental aka flump mode
@@ -256,48 +289,31 @@ MODE1_SET_COLOUR 2, PAL_magenta
 TWISTER_SET_KNOT_Y 2.3
 TWISTER_SET_PARAMS 10, 40, 2.56
 
-SEQUENCE_WAIT_SECS 10.0
-
+SEQUENCE_WAIT_SECS 9.0
 
 \\ Long bit B 1:51 - 2:22 = 31s
 \\ Slightly repetitive middle part so run text?
 
 \ ******************************************************************
-\\ **** CREDITS ****
-\ ******************************************************************
-
-SEQUENCE_FX_FOR_SECS fx_Text, 0.02
-SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
-SCRIPT_CALLV text_set_block, textBlock_Credits
-SEQUENCE_WAIT_SECS 6.0
-
-;MODE1_SET_COLOUR 1, PAL_black
-;MODE1_SET_COLOUR 2, PAL_black
-SCRIPT_CALLV text_set_block, textBlock_Music
-SEQUENCE_WAIT_SECS 6.0
-
-\ ******************************************************************
 \\ **** THANX & GREETZ ****
 \ ******************************************************************
 
-;SEQUENCE_FX_FOR_SECS fx_Text, 0.02
-SCRIPT_CALLV text_set_pattern, textPattern_Snake
-SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 6.0
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 6.0
+SEQUENCE_WAIT_SECS 7.0
 
 \ ******************************************************************
 \\ **** SPECS ****
 \ ******************************************************************
 
-;SEQUENCE_FX_FOR_SECS fx_Text, 0.02
+;SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Vertical
 SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
 SEQUENCE_WAIT_SECS 7.0
 
 \\ Put another picture here?
 
+\\ High bit starts ~frame &1B23
 
 \\ Drums disappear 2:22 - 3:00 = 38s
 \\ Building energy here
@@ -310,9 +326,9 @@ SEQUENCE_WAIT_SECS 7.0
 SEQUENCE_FX_FOR_SECS fx_Parallax, 3.5
 
 MODE1_SET_COLOUR 2, PAL_yellow
-SEQUENCE_WAIT_SECS 3.0
+SEQUENCE_WAIT_SECS 2.0
 MODE1_SET_COLOUR 3, PAL_white
-SEQUENCE_WAIT_SECS 3.0
+SEQUENCE_WAIT_SECS 2.0
 
 \\ Need some sort of fade / blackout in between?
 
@@ -342,7 +358,7 @@ SEQUENCE_WAIT_SECS 9.5
 \\ **** PLASMA ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Plasma, 31.0
+SEQUENCE_FX_UNTIL fx_Plasma, &2810
 
 \\ Final chords 3:31 - 3:33 = 2s + silence
 \\ Finish with wonder :)
