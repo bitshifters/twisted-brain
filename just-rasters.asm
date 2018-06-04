@@ -329,6 +329,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 IF 1
 	{
+		JSR music_poll_if_vsync
+
 		lda #&42
 		sta &FE4D	\ clear vsync & timer 1 flags
 
@@ -339,6 +341,8 @@ IF 1
 		bit &FE4D
 		beq waitTimer1
 		sta &FE4D
+
+		JSR music_poll_if_vsync
 	}
 ENDIF
 
@@ -350,6 +354,8 @@ ENDIF
 	\\ We don't know how long the init took so resync to timer 1
 
 	{
+		JSR music_poll_if_vsync
+
 		lda #&42
 		sta &FE4D	\ clear vsync & timer 1 flags
 
