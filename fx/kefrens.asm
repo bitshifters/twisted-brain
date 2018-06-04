@@ -228,6 +228,11 @@ ENDIF
     RTS
 }
 
+.kefrens_kill
+{
+	JMP crtc_reset_from_single
+}
+
 NUM_NOPS=27
 
 IF 0

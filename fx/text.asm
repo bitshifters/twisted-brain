@@ -377,12 +377,12 @@ text_pattern_ptr = locals_start + 10
 	EQUB &50 + PAL_black
 	EQUB &60 + PAL_red
 	EQUB &70 + PAL_red
-	EQUB &80 + PAL_blue
-	EQUB &90 + PAL_blue
+	EQUB &80 + PAL_black
+	EQUB &90 + PAL_black
 	EQUB &A0 + PAL_white
 	EQUB &B0 + PAL_white
-	EQUB &C0 + PAL_blue
-	EQUB &D0 + PAL_blue
+	EQUB &C0 + PAL_black
+	EQUB &D0 + PAL_black
 	EQUB &E0 + PAL_white
 	EQUB &F0 + PAL_white
 }
@@ -438,9 +438,9 @@ PAGE_ALIGN
 .text_bg_table
 FOR n,0,255,1
 IF ((n DIV 32) AND 1) = 1
-EQUB &00 + PAL_magenta
+EQUB &20 + PAL_magenta
 ELSE
-EQUB &00 + PAL_black
+EQUB &20 + PAL_green
 ENDIF
 NEXT
 

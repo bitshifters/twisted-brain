@@ -115,8 +115,8 @@ logo_scroll = locals_start + 1
 .logo_kill
 {
     \\ Will need a kill fn if in MODE 0
+	JSR crtc_reset_from_single
     SET_ULA_MODE ULA_Mode2
-	JSR crtc_reset
     JMP ula_pal_reset
 }
 

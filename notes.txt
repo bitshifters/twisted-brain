@@ -404,3 +404,20 @@ EQUS "0123456789"
 EQUS "0123456789"
 
 As would then increment the x,y over update fn.
+
+OK
+9590 : STA FE01      >r crtc
+    CRTC registers :
+    Index=9
+    R0 =7F  R1 =50  R2 =62  R3 =28  R4 =26  R5 =00  R6 =20  R7 =23  R8 =30
+    R9 =07  R10=20  R11=08  R12=06  R13=50  R14=29  R15=B8  R16=00  R17=00
+    VC=0 SC=0 HC=7 MA=0657 scrx=384 scry=32
+
+Parallax breaks on real HW if Kefrens comes before it
+Behaviour is same as if put a 1 scanline delay at the start of the draw
+So suggests that draw timer is coming 1 line late after Kefrens
+Maybe the theory about latching in CRTC is correct, so because it's a single
+scanline "frame" setting R4 is ignored for that row/frame so we're getting
+an extra scanline = 313
+In theory just need to remove the +1's from the end of the draw fn in Kefrens
+(And see all the other fx...)

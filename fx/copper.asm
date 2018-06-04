@@ -106,6 +106,11 @@ ENDIF
 
 	.here
 
+	\\ Moving wait here so R12/R13 not being set on scanline 0 fixes glitch on real HW
+
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	
 	JSR copper_accumulate	; 36c
 	JSR copper_set_charrow	; 172c
 
@@ -115,9 +120,6 @@ ENDIF
 	NOP
 	NEXT
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
-	
 	DEX							; 2c
 	BNE here
 

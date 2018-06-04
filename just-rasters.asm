@@ -106,8 +106,9 @@ TimerValue = 32*64 - 2*64 - 2 - 22
 ORG &0
 GUARD &90
 
+INCLUDE "lib/script.h.asm"
+
 \\ Vars used by main system routines
-.vsync_counter			SKIP 2		; counts up with each vsync
 .delta_time				SKIP 1
 .main_fx_enum			SKIP 1		; which FX are we running?
 .main_new_fx			SKIP 1		; which FX do we want?
@@ -116,6 +117,10 @@ GUARD &90
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
 .writeptr				SKIP 2		; generic write ptr
+
+IF _DEBUG
+.vsync_counter			SKIP 2		; counts up with each vsync
+ENDIF
 
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
@@ -197,14 +202,16 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	\\ Initalise system vars
 
+	IF _DEBUG
 	LDA #0
 	STA vsync_counter
 	STA vsync_counter+1
+	ENDIF
 
 	LDA #0				; initial FX
 	STA main_new_fx
 
-	LDA #1
+	LDA #0
 	STA delta_time
 	
 	\\ Initialise music player
@@ -341,8 +348,6 @@ IF 1
 		bit &FE4D
 		beq waitTimer1
 		sta &FE4D
-
-		JSR music_poll_if_vsync
 	}
 ENDIF
 
@@ -390,13 +395,14 @@ ENDIF
 .main_loop
 
 	\\  Do useful work during vblank (vsync will occur at some point)
-
+	IF _DEBUG
 	{
 		INC vsync_counter
 		BNE no_carry
 		INC vsync_counter+1
 		.no_carry
 	}
+	ENDIF
 
 	\\ Service music player (move to music module?)
 
@@ -412,6 +418,10 @@ ENDIF
 	\\ Update the scripting system
 
 	JSR script_update
+
+	\\ Music player will update this
+
+	STZ delta_time
 
 	\\ FX update callback here!
 
@@ -571,7 +581,7 @@ INCLUDE "fx/sequence.asm"
 \\ FX initialise, update, draw and kill functions
 \\ 
 	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
-	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    crtc_reset
+	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    kefrens_kill
 	EQUW twister_init,    twister_update,    twister_draw,    twister_kill
 	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill

@@ -98,15 +98,6 @@ ENDMACRO
 
 
 
-.script_time              EQUW 0    ; elapsed time in 1/50th secs
-.script_ptr               EQUW 0    ; current command ptr in the script
-.script_segment_ptr       EQUW 0    ; ptr to the first command in the current segment that is processing
-.script_segment_time      EQUW 0    ; elapsed time in the current segment
-.script_segment_duration  EQUW 0    ; duration of the current segment
-.script_segment_id        EQUB 0    ; id of the current segment (was mainly for debugging)
-.script_value             EQUB 0    ; value passed in A to a called function
-
-
 ; Setup new script to run
 ; On entry, X/Y contain ptr to sequence data (lsb/msb)
 .script_init

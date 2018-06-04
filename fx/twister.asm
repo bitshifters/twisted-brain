@@ -295,7 +295,7 @@ TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 
 .twister_kill
 {
-	JSR crtc_reset
+	JSR crtc_reset_from_single
     SET_ULA_MODE ULA_Mode2
     JMP ula_pal_reset
 }

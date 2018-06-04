@@ -12,6 +12,8 @@ _DONT_HIDE_SCREEN = FALSE		; for debugging FX init
 
 .crtc_reset
 {
+IF 1
+
 	LDX #13
 	.crtcloop
 	STX &FE00
@@ -19,6 +21,76 @@ _DONT_HIDE_SCREEN = FALSE		; for debugging FX init
 	STA &FE01
 	DEX
 	BPL crtcloop
+	RTS
+
+ELSE
+
+	LDX #9:STX &FE00:LDA #7:STA &FE01
+	LDX #4:STX &FE00:LDA #38:STA &FE01
+	LDX #6:STX &FE00:LDA #32:STA &FE01
+	LDX #7:STX &FE00:LDA #35:STA &FE01
+	LDX #8:STX &FE00:LDA #&30:STA &FE01
+	LDX #5:STX &FE00:LDA #0:STA &FE01
+	LDX #12:STX &FE00:LDA #HI(screen_base_addr/8):STA &FE01
+	LDX #13:STX &FE00:LDA #LO(screen_base_addr/8):STA &FE01
+	LDX #0:STX &FE00:LDA #127:STA &FE01
+	LDX #1:STX &FE00:LDA #80:STA &FE01
+	LDX #2:STX &FE00:LDA #98:STA &FE01
+	LDX #3:STX &FE00:LDA #&28:STA &FE01
+	RTS
+
+ENDIF
+}
+
+.crtc_reset_from_single
+{
+	\\ We lose a scanline here because R4=0
+
+	\\ R9=7 - character row = 8 scanlines
+	LDA #9: STA &FE00
+	LDA #6:	STA &FE01		; 7 scanlines?
+
+	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
+	LDA #4: STA &FE00
+	LDA #38: STA &FE01		; 312
+
+	\\ R7=3 - vsync is at row 35 = 280 scanlines
+	LDA #7:	STA &FE00
+	LDA #35: STA &FE01		; 280 - 256 = 24 scanlines - was +1
+	
+	\\ R6=1 - got to display just one row
+	LDA #6: STA &FE00
+	LDA #32: STA &FE01			; was +1
+	
+	\\ Wait 7 scanlines so next character row
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+
+	\\ R9=7 - character row = 8 scanlines
+	LDA #9: STA &FE00
+	LDA #7:	STA &FE01		; 8 scanlines?
+
+	LDA #12: STA &FE00
+	LDA #HI(screen_base_addr/8): STA &FE01
+	LDA #13: STA &FE00
+	LDA #LO(screen_base_addr/8): STA &FE01
+
+	\\ Horizontal values
+	LDA #0: STA &FE00
+	LDA #127: STA &FE01
+
+	LDA #1: STA &FE00
+	LDA #80: STA &FE01
+
+	LDA #2: STA &FE00
+	LDA #98: STA &FE01
+
 	RTS
 }
 
