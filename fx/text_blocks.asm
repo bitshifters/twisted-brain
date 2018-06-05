@@ -16,6 +16,7 @@ TEXT_BLOCK_SIZE = TEXT_BLOCK_WIDTH * TEXT_BLOCK_HEIGHT
     EQUW text_block_greets      ; textBlock_Greets
     EQUW text_block_specs       ; textBlock_Specs
     EQUW text_block_music       ; textBlock_Music
+    EQUW text_block_return      ; textBlock_Return
 }
 
 TEXT_MAPCHAR
@@ -28,12 +29,12 @@ EQUS "@                @"
 EQUS "@  BITSHIFTERS   @"
 EQUS "@   PRESENTS     @"
 EQUS "@                @"
+EQUS "@ TWISTED BRAIN  @"
+EQUS "@                @"
 EQUS "@   A NEW DEMO   @"
 EQUS "@    FOR THE     @"
 EQUS "@   BBC MASTER   @"
-EQUS "@                @"
-EQUS "@ TWISTED BRAIN  @"
-EQUS "@      AT        @"
+EQUS "@       AT       @"
 EQUS "@   NOVA 2018    @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
@@ -52,7 +53,7 @@ EQUS "@                @"
 EQUS "@ ARTWORK        @"
 EQUS "@       DETHMUNK @"
 EQUS "@                @"
-EQUS "@ FONT      RZR# @"
+EQUS "@ FONT    RAZOR# @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
@@ -60,20 +61,20 @@ EQUS "@@@@@@@@@@@@@@@@@@"
 .text_block_thanks
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
-EQUS "@@@ THANKS TO @@@@"
-EQUS "@   ---------    @"
-EQUS "@ INVERSE PHASE  @"
-EQUS "@   MATT GODBOLT @"
-EQUS "@ RICH-TW        @"
-EQUS "@         TRICKY @"
-EQUS "@ TOM SEDDON     @"
-EQUS "@   SARAH WALKER @"
-EQUS "@ HORSENBURGER   @"
-EQUS "@         PUPPEH @"
-EQUS "@ RAWLES         @"
-EQUS "@           RC55 @"
-EQUS "@ STARDOT CREW   @"
-EQUS "@@@@@@@@@@@@@@@@@@"
+EQUS "^^^ THANKS TO ^^^^"
+EQUS "^   ---------    ^"
+EQUS "^ INVERSE PHASE  ^"
+EQUS "^   MATT GODBOLT ^"
+EQUS "^ RICH-TW        ^"
+EQUS "^         TRICKY ^"
+EQUS "^ TOM SEDDON     ^"
+EQUS "^   SARAH WALKER ^"
+EQUS "^ HORSENBURGER   ^"
+EQUS "^         PUPPEH ^"
+EQUS "^ RC55           ^"
+EQUS "^      PIXELBLIP ^"
+EQUS "^ RICK KELSALL   ^"
+EQUS "^^^^^^^^^^^^^^^^^^"
 
 \\ Specifically people/groups at the party!
 \\ Get list from last year's compo results
@@ -81,20 +82,20 @@ EQUS "@@@@@@@@@@@@@@@@@@"
 .text_block_greets
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
-EQUS "@@ BITSHIFTERS @@@"
-EQUS "@    GREETZ      @"
-EQUS "@    ------      @"
-EQUS "@ CRTC           @"
-EQUS "@         DESIRE @"
-EQUS "@ LOGICOMA       @"
-EQUS "@     SLIPSTREAM @"
-EQUS "@ REBELS         @"
-EQUS "@                @"
-EQUS "@                @"
-EQUS "@                @"
-EQUS "@ EVERYONE AT    @"
-EQUS "@     THE PARTY! @"
-EQUS "@@@@@@@@@@@@@@@@@@"
+EQUS "^^ BITSHIFTERS ^^^"
+EQUS "^    GREETZ      ^"
+EQUS "^    ------      ^"
+EQUS "^ CRTC           ^"
+EQUS "^         DESIRE ^"
+EQUS "^ LOGICOMA       ^"
+EQUS "^     SLIPSTREAM ^"
+EQUS "^ VIRGILL        ^"
+EQUS "^  UKSCENE ALL@S ^"
+EQUS "^                ^"
+EQUS "^   STARDOT CREW ^"
+EQUS "^ EVERYONE AT    ^"
+EQUS "^     THE PARTY! ^"
+EQUS "^^^^^^^^^^^^^^^^^^"
 
 .text_block_specs
 \\ Each text block must be 18 x 14 characters
@@ -109,8 +110,8 @@ EQUS "@                @"
 EQUS "@ NO TELETEXT    @"
 EQUS "@  JUST RASTERS! @"
 EQUS "@                @"
-EQUS "@ BITSHIFTERS.   @"
-EQUS "@      GITHUB.IO @"
+EQUS "@ INSPIRED BY    @"
+EQUS "@     ^ REBELS ^ @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
@@ -129,6 +130,24 @@ EQUS "@       ATARI ST @"
 EQUS "@ YM2149F TO     @"
 EQUS "@    BBC SN76489 @"
 EQUS "@ BY HENLEY      @"
+EQUS "@                @"
+EQUS "@@@@@@@@@@@@@@@@@@"
+
+.text_block_return
+\\ Each text block must be 18 x 14 characters
+\\    012345678901234567
+EQUS "@@@@@@@@@@@@@@@@@@"
+EQUS "@                @"
+EQUS "@  BITSHIFTERS   @"
+EQUS "@      WILL      @"
+EQUS "@    RETURN!     @"
+EQUS "@                @"
+EQUS "@ ^ THANKS FOR ^ @"
+EQUS "@  ^ WATCHING ^  @"
+EQUS "@                @"
+EQUS "@ HTTPS://       @"
+EQUS "@ BITSHIFTERS.   @"
+EQUS "@      GITHUB.IO @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 

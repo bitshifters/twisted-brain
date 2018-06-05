@@ -14,7 +14,8 @@ textBlock_Thanks = 2
 textBlock_Greets = 3
 textBlock_Specs = 4
 textBlock_Music = 5
-textBlock_MAX = 6
+textBlock_Return = 6
+textBlock_MAX = 7
 
 MACRO TEXT_MAPCHAR
 MAPCHAR 'A', 'Z', 0
@@ -40,5 +41,6 @@ MAPCHAR '+', 51
 MAPCHAR '?', 52
 MAPCHAR ',', 53
 MAPCHAR '#', 54	; rzr
+MAPCHAR '^', 55	; heart
 MAPCHAR ' ', 59
 ENDMACRO

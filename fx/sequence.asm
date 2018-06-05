@@ -154,7 +154,7 @@ ENDMACRO
 
 \\ Wait for first few bars
 
-SEQUENCE_WAIT_FRAMES 181
+;SEQUENCE_WAIT_FRAMES 181
 
 \ ******************************************************************
 \\ **** TELETEXT LOGO ****
@@ -188,7 +188,7 @@ SEQUENCE_WAIT_UNTIL &4F8
 \\ **** BRAIN DRAIN PICTURE ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Picture, &668
+SEQUENCE_FX_UNTIL fx_Picture, &6C8
 
 \\ Drums kick in 0:34 - 0:42 = 8s
 \\ Drums arrive ~ frame &668
@@ -198,7 +198,7 @@ SEQUENCE_FX_UNTIL fx_Picture, &668
 \\ **** CHECKERBOARD ZOOM ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_CheckerZoom, &7EB
+SEQUENCE_FX_UNTIL fx_CheckerZoom, &84D
 
 \\ Pattern 3 0:42 - 0:57 = 15s
 \\ Pattern 3 starts ~ frame &7EB
@@ -299,6 +299,7 @@ SEQUENCE_WAIT_SECS 9.0
 \ ******************************************************************
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
 SEQUENCE_WAIT_SECS 7.0
 
@@ -368,6 +369,11 @@ SEQUENCE_FX_UNTIL fx_Plasma, &2810
 \ ******************************************************************
 
 SEQUENCE_FX_FOR_SECS fx_Copper, 10.0
+
+SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
+
+SEQUENCE_WAIT_SECS 10.0
 
 \ ******************************************************************
 \\ **** END ****

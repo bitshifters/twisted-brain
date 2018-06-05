@@ -113,6 +113,7 @@ INCLUDE "lib/script.h.asm"
 .main_fx_enum			SKIP 1		; which FX are we running?
 .main_new_fx			SKIP 1		; which FX do we want?
 .first_frame			SKIP 1		; have we completed the first frame of FX?
+.first_fx				SKIP 1		; have we initialised our first FX?
 
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
@@ -208,11 +209,9 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	STA vsync_counter+1
 	ENDIF
 
-	LDA #0				; initial FX
-	STA main_new_fx
-
-	LDA #0
-	STA delta_time
+	STZ main_new_fx
+	STZ first_fx
+	STZ delta_time
 	
 	\\ Initialise music player
 
@@ -510,6 +509,7 @@ ENDIF
 	\\ If this is the first frame we can show the screen
 
 	DEC A:STA first_frame
+	STA first_fx
 	JSR crtc_show_screen
 
 	\\ Loop as fast as possible
