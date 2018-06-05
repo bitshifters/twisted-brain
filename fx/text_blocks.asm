@@ -73,7 +73,7 @@ EQUS "^ HORSENBURGER   ^"
 EQUS "^         PUPPEH ^"
 EQUS "^ RC55           ^"
 EQUS "^      PIXELBLIP ^"
-EQUS "^ RICK KELSALL   ^"
+EQUS "^ STEW BADGER    ^"
 EQUS "^^^^^^^^^^^^^^^^^^"
 
 \\ Specifically people/groups at the party!
