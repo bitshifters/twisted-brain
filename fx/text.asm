@@ -29,6 +29,11 @@ MODE1_P1_C3=MODE1_C3 << 2
 MODE1_P2_C3=MODE1_C3 << 1
 MODE1_P3_C3=MODE1_C3 << 0
 
+MODE1_COL0=&00
+MODE1_COL1=&20
+MODE1_COL2=&80
+MODE1_COL3=&A0
+
 TEXT_MAX_GLYPHS = 60	;90
 TEXT_GLYPH_WIDTH_BYTES = 2
 TEXT_GLYPH_HEIGHT = 15	;25
@@ -371,20 +376,20 @@ text_pattern_ptr = locals_start + 10
 {
 	EQUB &00 + PAL_black
 	EQUB &10 + PAL_black
-	EQUB &20 + PAL_red
-	EQUB &30 + PAL_red
+	EQUB &20 + PAL_black;PAL_red
+	EQUB &30 + PAL_black;PAL_red
 	EQUB &40 + PAL_black
 	EQUB &50 + PAL_black
-	EQUB &60 + PAL_red
-	EQUB &70 + PAL_red
+	EQUB &60 + PAL_black;PAL_red
+	EQUB &70 + PAL_black;PAL_red
 	EQUB &80 + PAL_black
 	EQUB &90 + PAL_black
-	EQUB &A0 + PAL_white
-	EQUB &B0 + PAL_white
+	EQUB &A0 + PAL_black;PAL_white
+	EQUB &B0 + PAL_black;PAL_white
 	EQUB &C0 + PAL_black
 	EQUB &D0 + PAL_black
-	EQUB &E0 + PAL_white
-	EQUB &F0 + PAL_white
+	EQUB &E0 + PAL_black;PAL_white
+	EQUB &F0 + PAL_black;PAL_white
 }
 
 TEXT_LINE_A_FG = (MODE1_P0_C1 OR MODE1_P1_C3 OR MODE1_P2_C1 OR MODE1_P3_C3)
@@ -436,22 +441,67 @@ ALIGN 32
 
 PAGE_ALIGN
 .text_bg_table
-FOR n,0,255,1
-IF ((n DIV 32) AND 1) = 1
-EQUB &20 + PAL_magenta
+IF 0
+	FOR n,0,255,1
+	IF ((n DIV 32) AND 1) = 1
+	EQUB MODE1_COL1 + PAL_magenta
+	ELSE
+	EQUB MODE1_COL1 + PAL_green
+	ENDIF
+	NEXT
 ELSE
-EQUB &20 + PAL_green
+	FOR n,1,43,1
+	EQUB MODE1_COL1 + PAL_red
+	NEXT
+	FOR n,1,42,1
+	EQUB MODE1_COL1 + PAL_magenta
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL1 + PAL_blue
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL1 + PAL_cyan
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL1 + PAL_green
+	NEXT
+	FOR n,1,42,1
+	EQUB MODE1_COL1 + PAL_yellow
+	NEXT
 ENDIF
-NEXT
 
 .text_fg_table
-FOR n,0,255,1
-IF ((n DIV 32) AND 1) = 1
-EQUB &A0 + PAL_yellow
+IF 0
+	FOR n,0,255,1
+	IF ((n DIV 32) AND 1) = 1
+	EQUB MODE1_COL3 + PAL_white;PAL_yellow
+	ELSE
+	EQUB MODE1_COL3 + PAL_white
+	ENDIF
+	NEXT
 ELSE
-EQUB &A0 + PAL_white
+	FOR n,1,21,1
+	EQUB MODE1_COL3 + PAL_red
+	NEXT
+	FOR n,1,42,1
+	EQUB MODE1_COL3 + PAL_magenta
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_blue
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_cyan
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_green
+	NEXT
+	FOR n,1,42,1
+	EQUB MODE1_COL3 + PAL_yellow
+	NEXT
+	FOR n,1,22,1
+	EQUB MODE1_COL3 + PAL_red
+	NEXT
 ENDIF
-NEXT
 
 .text_font_data
 INCBIN "data\font_razor.bin"
@@ -484,8 +534,18 @@ EQUB y*TEXT_BLOCK_WIDTH + x
 ENDMACRO
 
 .text_pattern_0	; top-to-bottom, left-to-right
-FOR y,0,TEXT_BLOCK_HEIGHT-1,1
 FOR x,0,TEXT_BLOCK_WIDTH-1,1
+	TEXT_PATTERN_ADDR x, 0
+NEXT
+FOR y,1,TEXT_BLOCK_HEIGHT-2,1
+	TEXT_PATTERN_ADDR 0, y
+	TEXT_PATTERN_ADDR TEXT_BLOCK_WIDTH-1, y
+NEXT
+FOR x,TEXT_BLOCK_WIDTH-1,0,-1
+	TEXT_PATTERN_ADDR x, TEXT_BLOCK_HEIGHT-1
+NEXT
+FOR y,1,TEXT_BLOCK_HEIGHT-2,1
+FOR x,1,TEXT_BLOCK_WIDTH-2,1
 	TEXT_PATTERN_ADDR x, y
 NEXT
 NEXT
