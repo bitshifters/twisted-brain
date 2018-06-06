@@ -1,1 +1,1 @@
-..\..\Bin\beebasm.exe -i just-rasters.asm -do just-rasters.ssd -boot TestRas -v > compile.txt
+..\..\Bin\beebasm.exe -i test-rasters.asm -do test-rasters.ssd -boot TestRas -v > compile.txt

@@ -16,7 +16,6 @@ INCLUDE "lib/bbc.h.asm"
 
 _DEBUG = TRUE
 _HEARTBEAT_CHAR = FALSE
-_NO_MUSIC = TRUE
 
 \ ******************************************************************
 \ *	MACROS
@@ -46,23 +45,9 @@ MACRO CYCLES_WAIT cycles
 }
 ENDMACRO
 
-MACRO SCREEN_ADDR_ROW row
-	EQUW ((screen_base_addr + row*640) DIV 8)
-ENDMACRO
-
-MACRO SCREEN_ADDR_LO row
-	EQUB LO((screen_base_addr + row*640) DIV 8)
-ENDMACRO
-
-MACRO SCREEN_ADDR_HI row
-	EQUB HI((screen_base_addr + row*640) DIV 8)
-ENDMACRO
-
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************
-
-SLOT_MUSIC = 7
 
 fx_Null = 0
 fx_Single = 1
@@ -105,16 +90,9 @@ INCLUDE "lib/script.h.asm"
 .main_fx_enum			SKIP 1		; which FX are we running?
 .main_new_fx			SKIP 1		; which FX do we want?
 
-\\ Generic vars that can be shared (volatile)
-.readptr				SKIP 2		; generic read ptr
-.writeptr				SKIP 2		; generic write ptr
-
 IF _DEBUG
 .vsync_counter			SKIP 2		; counts up with each vsync
 ENDIF
-
-.locals_start			SKIP 32		; guarantee 16 locals
-.locals_top
 
 \ ******************************************************************
 \ *	CODE START
