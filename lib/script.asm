@@ -331,7 +331,7 @@ ENDIF
     bne command_play
 
     jsr script_fetch_byte   ; SWR slot id
-    jsr swr_select_slot
+    BRK;    jsr swr_select_slot
     jsr script_call
     jmp command_loop 
 
@@ -427,7 +427,7 @@ ENDIF
     cmp #SCRIPTID_SLOT
     bne command_unknown
     jsr script_fetch_byte   ; SWR slot id
-    jsr swr_select_slot
+    BRK ;jsr swr_select_slot
     jmp command_loop
 
 .command_unknown

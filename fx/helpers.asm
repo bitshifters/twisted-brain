@@ -2,8 +2,6 @@
 \ *	FX Helper functions
 \ ******************************************************************
 
-_DONT_HIDE_SCREEN = FALSE		; for debugging FX init
-
 .helpers_start
 
 \\ During script update a new FX was requested so we're being killed
@@ -12,8 +10,6 @@ _DONT_HIDE_SCREEN = FALSE		; for debugging FX init
 
 .crtc_reset
 {
-IF 1
-
 	LDX #13
 	.crtcloop
 	STX &FE00
@@ -22,29 +18,14 @@ IF 1
 	DEX
 	BPL crtcloop
 	RTS
-
-ELSE
-
-	LDX #9:STX &FE00:LDA #7:STA &FE01
-	LDX #4:STX &FE00:LDA #38:STA &FE01
-	LDX #6:STX &FE00:LDA #32:STA &FE01
-	LDX #7:STX &FE00:LDA #35:STA &FE01
-	LDX #8:STX &FE00:LDA #&30:STA &FE01
-	LDX #5:STX &FE00:LDA #0:STA &FE01
-	LDX #12:STX &FE00:LDA #HI(screen_base_addr/8):STA &FE01
-	LDX #13:STX &FE00:LDA #LO(screen_base_addr/8):STA &FE01
-	LDX #0:STX &FE00:LDA #127:STA &FE01
-	LDX #1:STX &FE00:LDA #80:STA &FE01
-	LDX #2:STX &FE00:LDA #98:STA &FE01
-	LDX #3:STX &FE00:LDA #&28:STA &FE01
-	RTS
-
-ENDIF
 }
 
 .crtc_reset_from_single
 {
-	\\ We lose a scanline here because R4=0
+IF 1
+	JMP crtc_reset
+ELSE
+	\\ Create a 311 line frame one time only...
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
@@ -92,6 +73,7 @@ ENDIF
 	LDA #98: STA &FE01
 
 	RTS
+ENDIF
 }
 
 .crtc_regs_high
@@ -104,30 +86,12 @@ ENDIF
 	EQUB 0				; R5  vertical total adjust
 	EQUB 32				; R6  vertical displayed
 	EQUB 35				; R7  vertical position; 35=top of screen
-	EQUB &30			; R8  interlace = HIDE SCREEN
+	EQUB 0				; R8  interlace
 	EQUB 7				; R9  scanlines per row
 	EQUB 32				; R10 cursor start
 	EQUB 8				; R11 cursor end
 	EQUB HI(screen_base_addr/8)		; R12 screen start address, high
 	EQUB LO(screen_base_addr/8)		; R13 screen start address, low
-}
-
-.crtc_hide_screen
-{
-IF _DONT_HIDE_SCREEN=FALSE
-	LDA #8:STA &FE00
-	LDA #&30:STA &FE01
-ENDIF
-	RTS
-}
-
-.crtc_show_screen
-{
-IF _DONT_HIDE_SCREEN=FALSE
-	LDA #8:STA &FE00
-	LDA #0:STA &FE01
-ENDIF
-	RTS
 }
 
 .wait_vsync
@@ -142,26 +106,7 @@ ENDIF
 
 .music_poll_if_vsync
 {
-	PHA
-
-	lda #2
-	.vsync1
-	bit &FE4D
-	beq return
-	sta &FE4D \ 4(stretched), ack vsync
-
-	LDA &F4:PHA
-
-	LDA #SLOT_MUSIC:JSR swr_select_slot
-
-	PHX:PHY
-	JSR vgm_poll_player
-	PLY:PLX
-
-	PLA:JSR swr_select_slot
-
-	.return
-	PLA
+	\\ Removed
 	rts	
 }
 
@@ -253,29 +198,5 @@ ENDIF
 	NEXT				; = 116c
 	RTS					; 6c
 }						; = 128c
-
-.pal_set_mode1_colour2
-	ORA #&80
-	BRA pal_set_mode1
-
-.pal_set_mode1_colour3
-	ORA #&A0
-	BRA pal_set_mode1
-
-.pal_set_mode1_colour1
-	ORA #&20
-	\\ fall through
-	
-.pal_set_mode1
-{
-	STA &FE21
-	EOR #&10
-	STA &FE21
-	EOR #&40
-	STA &FE21
-	EOR #&10
-	STA &FE21
-	RTS
-}
 
 .helpers_end
