@@ -48,12 +48,6 @@
 	rts	
 }
 
-.music_poll_if_vsync
-{
-	\\ Removed
-	rts	
-}
-
 .ula_pal_reset
 {
 	LDX #LO(ula_pal_defaults)
@@ -118,8 +112,6 @@
   iny
   bne loop
   inc loop+2
-
-  JSR music_poll_if_vsync
 
   dex
   bne loop
