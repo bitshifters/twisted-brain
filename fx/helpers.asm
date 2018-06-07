@@ -3,6 +3,7 @@
 \ ******************************************************************
 
 _DONT_HIDE_SCREEN = FALSE		; for debugging FX init
+_REAL_HARDWARE = FALSE			; emu
 
 .helpers_start
 
@@ -48,7 +49,11 @@ ENDIF
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
+IF _REAL_HARDWARE
 	LDA #6:	STA &FE01		; 7 scanlines?
+ELSE
+	LDA #7:	STA &FE01		; 8 scanlines?
+ENDIF
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00

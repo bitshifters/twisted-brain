@@ -3,10 +3,11 @@
 \ ******************************************************************
 
 kefrens_dummy = locals_start + 0
-kefrens_index_offset = locals_start + 1
-kefrens_crtc_row = locals_start + 2
-kefrens_bar_index = locals_start + 3
-kefrens_row_index = locals_start + 4
+kefrens_crtc_row = locals_start + 1
+kefrens_top_angle = locals_start + 2
+kefrens_row_angle = locals_start + 3
+kefrens_top_add = locals_start + 4
+kefrens_add_index = locals_start + 5
 
 .kefrens_start
 
@@ -27,8 +28,9 @@ kefrens_row_index = locals_start + 4
 
 .kefrens_init
 {
-    STZ kefrens_index_offset
-	STZ kefrens_bar_index
+	STZ kefrens_top_angle
+	STZ kefrens_top_add
+	
 	RTS
 }
 
@@ -49,11 +51,17 @@ kefrens_row_index = locals_start + 4
 
 .kefrens_update
 {
-	INC kefrens_index_offset
 	LDX #0
 	JSR screen_clear_line_0X
 
-	INC kefrens_bar_index
+	DEC kefrens_top_angle
+	LDA kefrens_top_angle
+	STA kefrens_row_angle
+
+;	INC kefrens_top_add
+	LDA kefrens_top_add
+	STA kefrens_add_index
+
 	RTS
 }
 
@@ -104,38 +112,21 @@ kefrens_row_index = locals_start + 4
 
 	LDA #254
 	STA kefrens_crtc_row
-	STZ kefrens_row_index
-	LDX kefrens_index_offset
+;	STZ kefrens_add_index
+	BIT 0
+	BIT 0
 
 	.here
 
-IF 0
-	LDA kefrens_code_table_LO, Y		; 4c
-	STA jump_command+1			; 4c
-	LDA kefrens_code_table_HI, Y		; 4c
-	STA jump_command+2			; 4c
-
-	INY
-	;TXA
-	LDA kefrens_colour_lookup_A, X		; 4c-2c
-
-	.jump_command
-	JSR &FFFF					; 6c
-
-	\\ 16+2+6 = 24c + 8c loop = 32c fn must take 96c including RTS
-
-	BIT 0						; 3c
-ELSE
-
-	LDY kefrens_bar_index	; actually our angle
-	LDA fx_particles_table, y		; SIN(y)/2
+	LDY kefrens_row_angle	; actually our angle
+	LDA fx_particles_table, y		; SIN(y)
 ;	CLC
 ;	ADC fx_particles_table_cos, Y	; COS(y)
 	TAY
 	LDA kefrens_sine_table, Y
 
 	CLC
-	LDY kefrens_row_index
+	LDY kefrens_add_index
 	ADC kefrens_add_table, Y
 	TAY
 
@@ -190,22 +181,18 @@ ELSE
 	NOP
 	
 	.continue
-	INC kefrens_bar_index
-	INC kefrens_row_index
+	INC kefrens_row_angle
+	INC kefrens_add_index ;-5c
 	\\ 8*10c = 80c
 
-	FOR n,1,6,1
+	FOR n,1,7,1
 	NOP
 	NEXT
-;	BIT 0
 
 	INX								; 2c
 
-ENDIF
-
 	DEC kefrens_crtc_row
-	BEQ done
-	JMP here		; 3c
+	BNE here
 
 	.done
 
@@ -232,71 +219,6 @@ ENDIF
 {
 	JMP crtc_reset_from_single
 }
-
-NUM_NOPS=27
-
-IF 0
-.kefrens_code_gen
-FOR x,0,79,1
-{
-	\\ Code must take 96c including RTS = 6c = 90c total
-	;N%=x DIV 2
-	N%=0
-	PRINT N%
-	IF N% < 1
-	; no NOPs	
-	ELIF N% < NUM_NOPS
-	FOR i,1,N%,1
-	NOP
-	NEXT
-	ELSE
-	FOR i,1,NUM_NOPS,1
-	NOP
-	NEXT
-	ENDIF
-	STA &3000 + x * 8
-	STA &3008 + x * 8
-	STA &3010 + x * 8
-	STA &3018 + x * 8
-	STA &3020 + x * 8
-	STA &3028 + x * 8
-	STA &3030 + x * 8
-	STA &3038 + x * 8
-	\\ 8x 4c = 32c
-	M%=NUM_NOPS-N%
-	PRINT M%
-	IF M% < 1
-	; no NOPs
-	ELIF M% < NUM_NOPS
-	FOR i,1,M%,1
-	NOP
-	NEXT
-	ELSE
-	FOR i,1,NUM_NOPS,1
-	NOP
-	NEXT
-	ENDIF
-	\\ 30 NOPs = 60c
-	RTS		; 6c
-}
-NEXT
-
-PAGE_ALIGN
-.kefrens_code_table_LO
-FOR y,0,255,1
-x=INT(36+30*SIN(y * 2 * PI / 255))
-addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
-EQUB LO(addr)
-NEXT
-
-PAGE_ALIGN
-.kefrens_code_table_HI
-FOR y,0,255,1
-x=INT(36+30*SIN(y * 2 * PI / 255))
-addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
-EQUB HI(addr)
-NEXT
-ENDIF
 
 PAGE_ALIGN
 .kefrens_colour_lookup_A
@@ -361,13 +283,14 @@ NEXT
 PAGE_ALIGN
 .kefrens_sine_table
 FOR y,0,255,1
-x=INT(128 + 76 * SIN(y * 2 * PI / 256))
+x=INT(128 + 76 * SIN(y * 2 * PI / 256) * SIN(y * 4 * PI / 256))
 EQUB x
 NEXT
 
 .kefrens_add_table
 FOR y,0,255,1
-EQUB 30 * SIN(y * 2 * PI / 256)
+;EQUB 10 * SIN(SIN(y * 2 * PI / 256) * 2 * PI)
+EQUB 10 * SIN(y * 2 * PI / 256)
 NEXT
 
 .kefrens_bar_pixels
