@@ -148,19 +148,42 @@ ENDMACRO
 
 .sequence_script_start
 
+SEQUENCE_FX_FOR_SECS fx_Kefrens, 0.02
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALLV kefrens_set_speed, 1
+SCRIPT_CALLV kefrens_set_add, 1
+SCRIPT_CALLV kefrens_set_width, 1
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALLV kefrens_set_speed, 2
+SCRIPT_CALLV kefrens_set_add, 2
+SCRIPT_CALLV kefrens_set_width, 0
+
+SEQUENCE_WAIT_SECS 5.0
+
+SCRIPT_CALLV kefrens_set_width, 1
+
+SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV kefrens_set_anim, 1
+SEQUENCE_WAIT_SECS 5.0
+SCRIPT_CALLV kefrens_set_anim, &FF
+SEQUENCE_WAIT_SECS 50.0
+
+
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
 \\ BITSHIFTERS PRESENTS DEMO NAME
-
-\\ Wait for first few bars
-
-;SEQUENCE_WAIT_FRAMES 181
 
 \ ******************************************************************
 \\ **** TELETEXT LOGO ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Logo, &237
+SEQUENCE_FX_UNTIL fx_Logo, &CB
+
+\\ THINGS START TO GO RASTERY
 
 \ ******************************************************************
 \\ **** WIBBLY LOGO ****
@@ -169,11 +192,10 @@ SEQUENCE_FX_UNTIL fx_Logo, &237
 ;SCRIPT_CALLV main_set_fx, fx_Logo
 ;SEQUENCE_WAIT_SECS 0.02
 SCRIPT_CALLV logo_set_anim, 1
-SEQUENCE_WAIT_UNTIL &3AE
+SEQUENCE_WAIT_UNTIL &300;   &237        ; &3AE
 
 \\ Intro Pattern 2
 \\ 0:19 - 0:34 = 15s
-\\ THINGS START TO GO RASTERY
 
 \ ******************************************************************
 \\ **** TITLE TEXT ****
@@ -188,7 +210,9 @@ SEQUENCE_WAIT_UNTIL &4F8
 \\ **** BRAIN DRAIN PICTURE ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Picture, &6C8
+SEQUENCE_FX_FOR_SECS fx_Picture, 2.5
+SCRIPT_CALLV picture_set_anim, 1
+SEQUENCE_WAIT_UNTIL &6C8
 
 \\ Drums kick in 0:34 - 0:42 = 8s
 \\ Drums arrive ~ frame &668

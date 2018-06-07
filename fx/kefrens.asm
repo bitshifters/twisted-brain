@@ -9,6 +9,8 @@ kefrens_row_angle = locals_start + 3
 kefrens_top_add = locals_start + 4
 kefrens_add_index = locals_start + 5
 
+kefrens_add_anim = locals_start + 6
+
 .kefrens_start
 
 \ ******************************************************************
@@ -30,6 +32,7 @@ kefrens_add_index = locals_start + 5
 {
 	STZ kefrens_top_angle
 	STZ kefrens_top_add
+	STZ kefrens_add_anim
 	
 	RTS
 }
@@ -58,7 +61,11 @@ kefrens_add_index = locals_start + 5
 	LDA kefrens_top_angle
 	STA kefrens_row_angle
 
-;	INC kefrens_top_add
+	CLC
+	LDA kefrens_top_add
+	ADC kefrens_add_anim
+	STA kefrens_top_add
+
 	LDA kefrens_top_add
 	STA kefrens_add_index
 
@@ -115,19 +122,22 @@ kefrens_add_index = locals_start + 5
 ;	STZ kefrens_add_index
 	BIT 0
 	BIT 0
-
-	.here
+}
+.kefrens_draw_here
 
 	LDY kefrens_row_angle	; actually our angle
-	LDA fx_particles_table, y		; SIN(y)
+.kefrens_draw_sine_table_sm
+	LDA kefrens_speed_table_1, y		; SIN(y)
 ;	CLC
-;	ADC fx_particles_table_cos, Y	; COS(y)
+;	ADC kefrens_cos_table, Y	; COS(y)
 	TAY
-	LDA kefrens_sine_table, Y
+.kefrens_draw_width_table_sm
+	LDA kefrens_width_table_1, Y
 
 	CLC
 	LDY kefrens_add_index
-	ADC kefrens_add_table, Y
+.kefrens_draw_add_table_sm
+	ADC kefrens_add_table_1, Y
 	TAY
 
 \	CPY #40							; 2c
@@ -138,6 +148,7 @@ kefrens_add_index = locals_start + 5
 \	NOP
 \	NEXT
 
+	{
 	.left_side_nop_later
 	LDA kefrens_addr_table_LO, Y	; 4c
 	STA writeptr					; 3c
@@ -192,9 +203,8 @@ kefrens_add_index = locals_start + 5
 	INX								; 2c
 
 	DEC kefrens_crtc_row
-	BNE here
-
-	.done
+	}
+	BNE kefrens_draw_here
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
@@ -213,11 +223,47 @@ kefrens_add_index = locals_start + 5
 	LDA #1: STA &FE01
 
     RTS
-}
+\}
 
 .kefrens_kill
 {
 	JMP crtc_reset_from_single
+}
+
+.kefrens_set_anim
+{
+	STA kefrens_add_anim
+	RTS
+}
+
+.kefrens_set_width
+{
+	PHX
+	TAX
+	LDA kefrens_width_table, X
+	STA kefrens_draw_width_table_sm+2
+	PLX
+	RTS
+}
+
+.kefrens_set_add
+{
+	PHX
+	TAX
+	LDA kefrens_add_table, X
+	STA kefrens_draw_add_table_sm+2
+	PLX
+	RTS
+}
+
+.kefrens_set_speed
+{
+	PHX
+	TAX
+	LDA kefrens_speed_table, X
+	STA kefrens_draw_sine_table_sm+2
+	PLX
+	RTS
 }
 
 PAGE_ALIGN
@@ -281,17 +327,76 @@ EQUB HI(screen_base_addr + ((x-48-2) DIV 2)*8)
 NEXT
 
 PAGE_ALIGN
-.kefrens_sine_table
+.kefrens_width_table_1
 FOR y,0,255,1
-x=INT(128 + 76 * SIN(y * 2 * PI / 256) * SIN(y * 4 * PI / 256))
+x=INT(128 + 76 * SIN(y * 2 * PI / 256))			\\ config 1
 EQUB x
 NEXT
 
-.kefrens_add_table
+PAGE_ALIGN
+.kefrens_width_table_2
 FOR y,0,255,1
-;EQUB 10 * SIN(SIN(y * 2 * PI / 256) * 2 * PI)
-EQUB 10 * SIN(y * 2 * PI / 256)
+x=INT(128 + 48 * SIN(y * 2 * PI / 256))			\\ config 2
+EQUB x
 NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_1
+FOR y,0,255,1
+EQUB 30 * SIN(y * 2 * PI / 256)				\\ config 1
+NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_2
+FOR y,0,255,1
+EQUB 10 * SIN(SIN(y * 2 * PI / 256) * 2 * PI)	\\ config 2
+NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_3
+FOR y,0,255,1
+EQUB 10 * SIN(y * 2 * PI / 256)				\\ config 3
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_1
+FOR n,0,&FF,1			; &13F for COS
+EQUB 127 * SIN(2 * PI * n / 256)				\\ config 1
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_2
+FOR n,0,&FF,1			; &13F for COS
+EQUB 64 * SIN(2 * PI * n / 256)					\\ config 2
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_3
+FOR n,0,&FF,1			; &13F for COS
+EQUB 32 * SIN(2 * PI * n / 256)					\\ config 3
+NEXT
+
+\kefrens_cos_table = kefrens_speed_table + 64
+
+.kefrens_width_table
+{
+	EQUB HI(kefrens_width_table_1)
+	EQUB HI(kefrens_width_table_2)
+}
+
+.kefrens_add_table
+{
+	EQUB HI(kefrens_add_table_1)
+	EQUB HI(kefrens_add_table_2)
+	EQUB HI(kefrens_add_table_3)
+}
+
+.kefrens_speed_table
+{
+	EQUB HI(kefrens_speed_table_1)
+	EQUB HI(kefrens_speed_table_2)
+	EQUB HI(kefrens_speed_table_3)
+}
 
 .kefrens_bar_pixels
 {
@@ -304,12 +409,5 @@ NEXT
 	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
 	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
 }
-
-.fx_particles_table
-FOR n,0,&13F,1
-EQUB 127 * SIN(2 * PI * n / 256)	; 255 or 256?
-NEXT
-
-fx_particles_table_cos = fx_particles_table + 64
 
 .kefrens_end

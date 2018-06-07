@@ -4,7 +4,7 @@
 
 picture_y = locals_start + 0
 picture_dir = locals_start + 1
-picture_done = locals_start + 2
+picture_anim = locals_start + 2
 picture_pal_index = locals_start + 3
 picture_pal_delay = locals_start + 4
 
@@ -37,6 +37,12 @@ INCBIN "data/brain-mask.pu"
     RTS
 }
 
+.picture_set_anim
+{
+    STA picture_anim
+    RTS
+}
+
 .picture_init
 {
 	\ Ensure MAIN RAM is writeable
@@ -48,7 +54,8 @@ INCBIN "data/brain-mask.pu"
     JSR PUCRUNCH_UNPACK
 
     STZ picture_y
-    STZ picture_done
+    STZ picture_anim
+
     LDA #1
     STA picture_dir
 
@@ -91,8 +98,8 @@ INCBIN "data/brain-mask.pu"
     ENDIF
     .not_yet
 
-    LDA picture_done
-    BNE return
+    LDA picture_anim
+    BEQ return
 
     LDX picture_y
     JSR picture_copy_line_X
@@ -142,7 +149,7 @@ ELSE
     INC picture_y
     BNE return
     LDA #&FF
-    STA picture_done
+    STA picture_anim
 ENDIF
     .return
     RTS
