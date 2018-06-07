@@ -148,8 +148,6 @@ ENDMACRO
 
 .sequence_script_start
 
-SEQUENCE_FX_UNTIL fx_Kefrens, &AEB
-
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
 \\ BITSHIFTERS PRESENTS DEMO NAME
