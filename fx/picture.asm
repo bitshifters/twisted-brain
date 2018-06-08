@@ -43,6 +43,12 @@ INCBIN "data/brain-mask.pu"
     RTS
 }
 
+.picture_set_delay
+{
+    STA picture_pal_delay
+    RTS
+}
+
 .picture_init
 {
 	\ Ensure MAIN RAM is writeable
@@ -60,7 +66,7 @@ INCBIN "data/brain-mask.pu"
     STA picture_dir
 
     STZ picture_pal_index
-    LDA #PICTURE_DELAY
+    LDA #0;PICTURE_DELAY
     STA picture_pal_delay
 
     RTS

@@ -105,7 +105,7 @@ PLASMA_MAX_OFFSET = 160
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
-	FOR n,1,38,1
+	FOR n,1,49,1
 	NOP
 	NEXT
 

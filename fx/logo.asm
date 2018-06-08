@@ -3,7 +3,9 @@
 \ ******************************************************************
 
 logo_charrow = locals_start + 0
-logo_scroll = locals_start + 1
+logo_bottom_scanline = locals_start + 1
+logo_scroll = locals_start + 2
+logo_speed = locals_start + 3
 
 .logo_start
 
@@ -24,15 +26,62 @@ logo_scroll = locals_start + 1
 	LDA #0
 	JSR logo_set_anim
 
+	LDA #255
+	STA logo_bottom_scanline
+
     RTS
 }
 
 .logo_update
 {
+	\\ Which line in the table is the bottom?
+
+	LDX logo_bottom_scanline
+	INX
+	STX logo_bottom_scanline
+
+	\\ Update our index into sine table
+
+	CLC
+	LDA logo_scroll
+	ADC logo_speed
+	STA logo_scroll
+	BCC no_carry
+
+	\\ Larger than one page
+
+	INC logo_set_charrow_smLO+2
+	INC logo_set_charrow_smHI+2
+
+	\\ Wrap table
+
+	LDA logo_set_charrow_smLO+2
+	CMP #HI(logo_sinewave_HI)
+	BCC no_carry
+
+	\\ Reset to beginning
+
+	LDA #HI(logo_sinewave_LO)
+	STA logo_set_charrow_smLO+2
+	LDA #HI(logo_sinewave_HI)
+	STA logo_set_charrow_smHI+2
+
+	.no_carry
+
+	\\ Take new entry from sine table and move bottom scanline
+
+	LDY logo_scroll
+	.logo_set_charrow_smLO
+	LDA logo_sinewave_LO, Y
+	STA logo_scanline_offset_LO, X
+	.logo_set_charrow_smHI
+	LDA logo_sinewave_HI, Y
+	STA logo_scanline_offset_HI, X
+	
 \\ Set the address & palette for first screen row
 
-	INC logo_scroll
-	LDA logo_scroll
+	LDA logo_bottom_scanline
+	INC A
 	STA logo_charrow
 
 	LDX #0
@@ -137,29 +186,32 @@ logo_scroll = locals_start + 1
 }	\\ Total time = 12c + 14c + 40c = 66c
 \\ Fall through!
 .logo_set_charrow
+{
 	LDY logo_charrow				; 3c
 
 	CLC							; 2c
 
 	LDA #13: STA &FE00				; 6c
     LDA logo_default_LO, X			; 4c
-.logo_set_charrow_smLO
-	ADC &FFFF, Y				; 4c
+	ADC logo_scanline_offset_LO, Y				; 4c
 	STA &FE01						; 4c
 
 	\\ Set screen row to this
    	LDA #12: STA &FE00				; 6c
     LDA logo_default_HI, X			; 4c
-.logo_set_charrow_smHI
-	ADC &FFFF, Y				; 4c
+	ADC logo_scanline_offset_HI, Y				; 4c
 	STA &FE01						; 4c
 
 	RTS
 	\\ Total time = 12c + 6c + 14c + 14c = 46c
-
+}
 
 .logo_set_anim
 {
+	STA logo_speed
+	RTS
+
+IF 0
 	ASL A:ASL A
 	TAX
 
@@ -174,6 +226,7 @@ logo_scroll = locals_start + 1
 	STA logo_set_charrow_smHI+2
 
 	RTS
+ENDIF
 }
 
 .logo_pal
@@ -264,7 +317,7 @@ NEXT
 .logo_sinewave_LO
 {
 	FOR n,0,255,1
-	x = INT(20 * SIN(2 * PI * n / 256))
+	x = INT(10 * SIN(4 * PI * n / 256))
 	IF (x AND 1) = 1
 		IF x < 0
 		a = &500 - ((x-1) DIV 2)
@@ -276,10 +329,39 @@ NEXT
 	ENDIF
 	EQUB LO(a)
 	NEXT
+
+	FOR n,0,255,1
+	x = INT(20 * SIN(2 * PI * n / 256))
+	IF (x AND 1) = 1
+		IF x < 0
+		a = &500 - ((x-1) DIV 2)
+		ELSE
+		a = &500 - (x DIV 2)
+		ENDIF
+	ELSE
+	a = -(x DIV 2)
+	ENDIF
+	EQUB LO(a)
+	NEXT	
 }
 
 .logo_sinewave_HI
 {
+	FOR n,0,255,1
+	x = INT(10 * SIN(4 * PI * n / 256))
+	IF (x AND 1) = 1
+		IF x < 0
+		a = &500 - ((x-1) DIV 2)
+		ELSE
+		a = &500 - (x DIV 2)
+		ENDIF
+	ELSE
+	a = -(x DIV 2)
+	ENDIF
+	PRINT "x=",x," a=",~a
+	EQUB HI(a)
+	NEXT
+
 	FOR n,0,255,1
 	x = INT(20 * SIN(2 * PI * n / 256))
 	IF (x AND 1) = 1
@@ -293,6 +375,20 @@ NEXT
 	ENDIF
 	PRINT "x=",x," a=",~a
 	EQUB HI(a)
+	NEXT
+}
+
+.logo_scanline_offset_LO
+{
+	FOR n,0,255,1
+	EQUB 0
+	NEXT
+}
+
+.logo_scanline_offset_HI
+{
+	FOR n,0,255,1
+	EQUB 0
 	NEXT
 }
 

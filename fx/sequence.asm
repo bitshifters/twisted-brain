@@ -148,31 +148,6 @@ ENDMACRO
 
 .sequence_script_start
 
-SEQUENCE_FX_FOR_SECS fx_Kefrens, 0.02
-
-SEQUENCE_WAIT_SECS 5.0
-
-SCRIPT_CALLV kefrens_set_speed, 1
-SCRIPT_CALLV kefrens_set_add, 1
-SCRIPT_CALLV kefrens_set_width, 1
-
-SEQUENCE_WAIT_SECS 5.0
-
-SCRIPT_CALLV kefrens_set_speed, 2
-SCRIPT_CALLV kefrens_set_add, 2
-SCRIPT_CALLV kefrens_set_width, 0
-
-SEQUENCE_WAIT_SECS 5.0
-
-SCRIPT_CALLV kefrens_set_width, 1
-
-SEQUENCE_WAIT_SECS 5.0
-SCRIPT_CALLV kefrens_set_anim, 1
-SEQUENCE_WAIT_SECS 5.0
-SCRIPT_CALLV kefrens_set_anim, &FF
-SEQUENCE_WAIT_SECS 50.0
-
-
 \\ Intro Pattern 1
 \\ 0:00 - 0:19 = 19s
 \\ BITSHIFTERS PRESENTS DEMO NAME
@@ -181,7 +156,7 @@ SEQUENCE_WAIT_SECS 50.0
 \\ **** TELETEXT LOGO ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Logo, &CB
+SEQUENCE_FX_UNTIL fx_Logo, &C8
 
 \\ THINGS START TO GO RASTERY
 
@@ -192,7 +167,11 @@ SEQUENCE_FX_UNTIL fx_Logo, &CB
 ;SCRIPT_CALLV main_set_fx, fx_Logo
 ;SEQUENCE_WAIT_SECS 0.02
 SCRIPT_CALLV logo_set_anim, 1
-SEQUENCE_WAIT_UNTIL &300;   &237        ; &3AE
+
+SEQUENCE_WAIT_UNTIL &2C0;   &237        ; &3AE
+SCRIPT_CALLV logo_set_anim, 0
+
+SEQUENCE_WAIT_UNTIL &3BA;   &237        ; &3AE
 
 \\ Intro Pattern 2
 \\ 0:19 - 0:34 = 15s
@@ -202,17 +181,19 @@ SEQUENCE_WAIT_UNTIL &300;   &237        ; &3AE
 \ ******************************************************************
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
-SCRIPT_CALLV text_set_pattern, textPattern_Spiral
+SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Title    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_UNTIL &4F8
+SEQUENCE_WAIT_UNTIL &52A    ;&4F8
 
 \ ******************************************************************
 \\ **** BRAIN DRAIN PICTURE ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Picture, 2.5
+SEQUENCE_FX_FOR_SECS fx_Picture, 2.0
 SCRIPT_CALLV picture_set_anim, 1
-SEQUENCE_WAIT_UNTIL &6C8
+SEQUENCE_WAIT_UNTIL &600
+SCRIPT_CALLV picture_set_delay, 1
+SEQUENCE_WAIT_UNTIL &6d0
 
 \\ Drums kick in 0:34 - 0:42 = 8s
 \\ Drums arrive ~ frame &668
@@ -235,9 +216,29 @@ SEQUENCE_FX_UNTIL fx_CheckerZoom, &84D
 \\ **** KEFRENS BARS ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Kefrens, &AEB
+SEQUENCE_FX_FOR_FRAMES fx_Kefrens, 1
+
+SCRIPT_CALLV kefrens_set_speed, 2
+SCRIPT_CALLV kefrens_set_add, 2
+
+SEQUENCE_WAIT_UNTIL &9CC
 
 \\ Trigger next variation
+
+SCRIPT_CALLV kefrens_set_speed, 1
+SCRIPT_CALLV kefrens_set_add, 1
+SCRIPT_CALLV kefrens_set_width, 1
+
+SEQUENCE_WAIT_UNTIL &B4E
+
+\\ And  another one
+
+SCRIPT_CALLV kefrens_set_speed, 0
+SCRIPT_CALLV kefrens_set_add, 0
+SCRIPT_CALLV kefrens_set_width, 0
+
+SEQUENCE_WAIT_UNTIL &CCE
+
 \\ And probably another one
 
 SEQUENCE_WAIT_UNTIL &DD3
@@ -267,7 +268,7 @@ SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
 \\ PART #1
 ; Start spinning from rest
 TWISTER_SET_PARAMS 5.12, 0, 0
-SEQUENCE_WAIT_FRAMES 282
+SEQUENCE_WAIT_FRAMES 153    ; 281
 MODE1_SET_COLOUR 2, PAL_green
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
@@ -296,12 +297,12 @@ SEQUENCE_WAIT_SECS 5.0
 ;TWISTER_TEMP_BLANK 0.75
 MODE1_SET_COLOUR 2, PAL_blue
 TWISTER_SET_KNOT_PERIOD 5.0
-SEQUENCE_WAIT_SECS 5.0
+SEQUENCE_WAIT_SECS 6.0
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 6.0
+SEQUENCE_WAIT_SECS 7.0
 
 ;TWISTER_TEMP_BLANK 0.75
 SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
@@ -334,15 +335,13 @@ SEQUENCE_WAIT_SECS 7.0
 ;SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Vertical
 SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
-
-\\ Put another picture here?
-
-\\ High bit starts ~frame &1B23
+SEQUENCE_WAIT_UNTIL &1BB3
 
 \\ Drums disappear 2:22 - 3:00 = 38s
 \\ Building energy here
 \\ BETTER FX TWO
+
+SEQUENCE_WAIT_UNTIL &1D20
 
 \ ******************************************************************
 \\ **** PARALLAX ****
@@ -395,6 +394,7 @@ SEQUENCE_FX_UNTIL fx_Plasma, &2810
 SEQUENCE_FX_FOR_SECS fx_Copper, 10.0
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_pattern, textPattern_Spiral
 SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 
 SEQUENCE_WAIT_SECS 10.0
