@@ -1,1 +1,1 @@
-..\..\Bin\beebasm.exe -i just-rasters.asm -do just-rasters.ssd -boot JustRas -v > compile.txt
+..\..\Bin\beebasm.exe -i just-rasters.asm -di template.ssd -do just-rasters.ssd -v > compile.txt

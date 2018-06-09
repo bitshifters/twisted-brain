@@ -44,16 +44,14 @@ ENDIF
 }
 
 .crtc_reset_from_single
-{
+\{
 	\\ We lose a scanline here because R4=0
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
-IF _REAL_HARDWARE
-	LDA #6:	STA &FE01		; 7 scanlines?
-ELSE
-	LDA #7:	STA &FE01		; 8 scanlines?
-ENDIF
+
+	.crtc_reset_from_single_hardware_SM
+	LDA #6:	STA &FE01		; 7 scanlines or 8? Do you feel lucky punk?
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
 	LDA #4: STA &FE00
@@ -97,7 +95,7 @@ ENDIF
 	LDA #98: STA &FE01
 
 	RTS
-}
+\}
 
 .crtc_regs_high
 {
