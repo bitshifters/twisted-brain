@@ -5,11 +5,7 @@
 .sequence_start
 
 \ ******************************************************************
-\ *	The fns
-\ ******************************************************************
-
-\ ******************************************************************
-\ *	The script
+\ *	SEQUENCE MACROS
 \ ******************************************************************
 
 MACRO SEQUENCE_WAIT_SECS secs
@@ -51,6 +47,10 @@ MACRO SEQUENCE_FX_UNTIL fxenum, frame_time
     SCRIPT_SEGMENT_END
 ENDMACRO
 
+\ ******************************************************************
+\ *	COLOUR MACROS
+\ ******************************************************************
+
 MACRO MODE1_SET_COLOUR c, p
 IF c=1
     SCRIPT_CALLV pal_set_mode1_colour1, p
@@ -66,6 +66,10 @@ MACRO MODE1_SET_COLOURS p1, p2, p3
     SCRIPT_CALLV pal_set_mode1_colour2, p2
     SCRIPT_CALLV pal_set_mode1_colour3, p3
 ENDMACRO
+
+\ ******************************************************************
+\ *	TWISTER MACROS
+\ ******************************************************************
 
 MACRO TWISTER_TEMP_BLANK secs
     MODE1_SET_COLOURS PAL_black, PAL_black, PAL_black
@@ -146,6 +150,10 @@ MACRO TWISTER_SET_NUMBER n
     SCRIPT_CALLV twister_set_displayed, n*20
 ENDMACRO
 
+\ ******************************************************************
+\ *	The script
+\ ******************************************************************
+
 .sequence_script_start
 
 \\ Intro Pattern 1
@@ -218,6 +226,7 @@ SEQUENCE_FX_UNTIL fx_CheckerZoom, &84D
 
 SEQUENCE_FX_FOR_FRAMES fx_Kefrens, 1
 
+SCRIPT_CALLV kefrens_set_width, 1
 SCRIPT_CALLV kefrens_set_speed, 2
 SCRIPT_CALLV kefrens_set_add, 2
 
@@ -226,22 +235,26 @@ SEQUENCE_WAIT_UNTIL &9CC
 \\ Trigger next variation
 
 SCRIPT_CALLV kefrens_set_speed, 1
-SCRIPT_CALLV kefrens_set_add, 1
-SCRIPT_CALLV kefrens_set_width, 1
+;SCRIPT_CALLV kefrens_set_add, 1
+;SCRIPT_CALLV kefrens_set_width, 1
 
 SEQUENCE_WAIT_UNTIL &B4E
 
-\\ And  another one
+\\ And another one
 
-SCRIPT_CALLV kefrens_set_speed, 0
-SCRIPT_CALLV kefrens_set_add, 0
-SCRIPT_CALLV kefrens_set_width, 0
+SCRIPT_CALLV kefrens_set_speed, 1
+SCRIPT_CALLV kefrens_set_add, 1
+SCRIPT_CALLV kefrens_set_width, 1
 
 SEQUENCE_WAIT_UNTIL &CCE
 
 \\ And probably another one
 
-SEQUENCE_WAIT_UNTIL &DD3
+SCRIPT_CALLV kefrens_set_speed, 0
+SCRIPT_CALLV kefrens_set_add, 0
+SCRIPT_CALLV kefrens_set_width, 0
+
+SEQUENCE_WAIT_UNTIL &E40
 
 \\ Chord change 1:12 - 1:20 = 8s
 
@@ -257,7 +270,9 @@ SEQUENCE_WAIT_UNTIL &DD3
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Credits
-SEQUENCE_WAIT_SECS 7.0
+
+;SEQUENCE_WAIT_SECS 7.0
+SEQUENCE_WAIT_UNTIL &FCA
 
 \ ******************************************************************
 \\ **** TWISTER ****
@@ -276,9 +291,11 @@ TWISTER_SET_PARAMS 0, 10.0, 0
 SEQUENCE_WAIT_FRAMES 251
 MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
-SEQUENCE_WAIT_FRAMES 251
+;SEQUENCE_WAIT_FRAMES 251
+SEQUENCE_WAIT_UNTIL &12D0
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Music
 SEQUENCE_WAIT_SECS 7.0
 
@@ -288,7 +305,7 @@ SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
 \\ PART #2
 ; a knot
 TWISTER_SET_NUMBER 2
-MODE1_SET_COLOUR 2, PAL_green
+MODE1_SET_COLOUR 2, PAL_cyan
 TWISTER_SET_KNOT_Y 1.0
 TWISTER_SET_PARAMS 10.0, 0, 0
 SCRIPT_CALLV twister_set_twist_index, 0
@@ -297,12 +314,13 @@ SEQUENCE_WAIT_SECS 5.0
 ;TWISTER_TEMP_BLANK 0.75
 MODE1_SET_COLOUR 2, PAL_blue
 TWISTER_SET_KNOT_PERIOD 5.0
+
 SEQUENCE_WAIT_SECS 6.0
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
+SEQUENCE_WAIT_SECS 8.0
 
 ;TWISTER_TEMP_BLANK 0.75
 SEQUENCE_FX_FOR_FRAMES fx_Twister, 1
@@ -314,7 +332,8 @@ MODE1_SET_COLOUR 2, PAL_magenta
 TWISTER_SET_KNOT_Y 2.3
 TWISTER_SET_PARAMS 10, 40, 2.56
 
-SEQUENCE_WAIT_SECS 9.0
+;SEQUENCE_WAIT_SECS 9.0
+SEQUENCE_WAIT_UNTIL &1A46
 
 \\ Long bit B 1:51 - 2:22 = 31s
 \\ Slightly repetitive middle part so run text?
@@ -326,7 +345,12 @@ SEQUENCE_WAIT_SECS 9.0
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_SECS 7.0
+
+;SEQUENCE_WAIT_SECS 8.0
+SEQUENCE_WAIT_UNTIL &1BD0
+
+\\ Drums disappear 2:22 - 3:00 = 38s
+\\ Building energy here
 
 \ ******************************************************************
 \\ **** SPECS ****
@@ -335,22 +359,20 @@ SEQUENCE_WAIT_SECS 7.0
 ;SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Vertical
 SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
-SEQUENCE_WAIT_UNTIL &1BB3
 
-\\ Drums disappear 2:22 - 3:00 = 38s
-\\ Building energy here
+SEQUENCE_WAIT_UNTIL &1D18
+
 \\ BETTER FX TWO
-
-SEQUENCE_WAIT_UNTIL &1D20
 
 \ ******************************************************************
 \\ **** PARALLAX ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Parallax, 3.5
+SEQUENCE_FX_FOR_FRAMES fx_Parallax, 1
 
+SEQUENCE_WAIT_UNTIL &1DB0
 MODE1_SET_COLOUR 2, PAL_yellow
-SEQUENCE_WAIT_SECS 2.0
+SEQUENCE_WAIT_UNTIL &1E08
 MODE1_SET_COLOUR 3, PAL_white
 SEQUENCE_WAIT_SECS 2.0
 
@@ -359,21 +381,29 @@ SEQUENCE_WAIT_SECS 2.0
 SCRIPT_CALLV parallax_set_inc_x, &FE
 SCRIPT_CALLV parallax_set_wave_f, &FE
 
-SEQUENCE_WAIT_SECS 9.5
+;SEQUENCE_WAIT_SECS 9.5
+SEQUENCE_WAIT_UNTIL &204D
 
 MODE1_SET_COLOUR 2, PAL_cyan
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 2
 SCRIPT_CALLV parallax_set_wave_y, 3
 
-SEQUENCE_WAIT_SECS 9.5
+;SEQUENCE_WAIT_SECS 9.5
+SEQUENCE_WAIT_UNTIL &21CD
+
+\\ Another variation here?
+MODE1_SET_COLOUR 1, PAL_green
+
+SEQUENCE_WAIT_UNTIL &228D
 
 MODE1_SET_COLOUR 1, PAL_blue
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 1
 SCRIPT_CALLV parallax_set_wave_y, 15
 
-SEQUENCE_WAIT_SECS 9.5
+;SEQUENCE_WAIT_SECS 9.5
+SEQUENCE_WAIT_UNTIL &2338
 
 \\ Drums kick in again 3:00 - 3:31 = 31s
 \\ Crescendo of demo - best FX!
@@ -382,7 +412,7 @@ SEQUENCE_WAIT_SECS 9.5
 \\ **** PLASMA ****
 \ ******************************************************************
 
-SEQUENCE_FX_UNTIL fx_Plasma, &2810
+SEQUENCE_FX_UNTIL fx_Plasma, &293C
 
 \\ Final chords 3:31 - 3:33 = 2s + silence
 \\ Finish with wonder :)
@@ -397,7 +427,7 @@ SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Spiral
 SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 
-SEQUENCE_WAIT_SECS 10.0
+SEQUENCE_WAIT_SECS 8.0
 
 \ ******************************************************************
 \\ **** END ****
