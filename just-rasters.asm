@@ -14,7 +14,7 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
-_DEBUG = FALSE
+_DEBUG = TRUE
 _HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
@@ -267,6 +267,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR ula_pal_reset
 	JSR ula_control_reset
 	JSR crtc_hide_screen
+	\ Ensure MAIN RAM is writeable and shown by CRTC
+    LDA &FE34:AND #&FA:STA &FE34
 	JSR screen_clear_all
 
 	\\ Special FX boot!
