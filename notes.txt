@@ -421,3 +421,5 @@ scanline "frame" setting R4 is ignored for that row/frame so we're getting
 an extra scanline = 313
 In theory just need to remove the +1's from the end of the draw fn in Kefrens
 (And see all the other fx...)
+
+

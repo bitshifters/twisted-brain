@@ -368,7 +368,13 @@ SEQUENCE_WAIT_UNTIL &1D18
 \\ **** PARALLAX ****
 \ ******************************************************************
 
+; X=linear speed of top line in pixels
+; F=speed of wave horizontlly (movement left/right)
+; y=speed of wave vertically (how bendy)
+
 SEQUENCE_FX_FOR_FRAMES fx_Parallax, 1
+
+\ Straight bars
 
 SEQUENCE_WAIT_UNTIL &1DB0
 MODE1_SET_COLOUR 2, PAL_yellow
@@ -378,31 +384,70 @@ SEQUENCE_WAIT_SECS 2.0
 
 \\ Need some sort of fade / blackout in between?
 
+\ Reverse direction!
+
 SCRIPT_CALLV parallax_set_inc_x, &FE
 SCRIPT_CALLV parallax_set_wave_f, &FE
 
-;SEQUENCE_WAIT_SECS 9.5
-SEQUENCE_WAIT_UNTIL &204D
+SEQUENCE_WAIT_SECS 3.0
+;SEQUENCE_WAIT_UNTIL &204D
+
+\ Bend bars gently
 
 MODE1_SET_COLOUR 2, PAL_cyan
 SCRIPT_CALLV parallax_set_inc_x, 1
+SCRIPT_CALLV parallax_set_wave_f, 1
+SCRIPT_CALLV parallax_set_wave_y, 1
+SEQUENCE_WAIT_SECS 2.0
+
+\ Speed up wave
+
 SCRIPT_CALLV parallax_set_wave_f, 2
-SCRIPT_CALLV parallax_set_wave_y, 3
+SEQUENCE_WAIT_SECS 2.0
+SCRIPT_CALLV parallax_set_wave_f, 3
+SEQUENCE_WAIT_SECS 2.0
 
-;SEQUENCE_WAIT_SECS 9.5
-SEQUENCE_WAIT_UNTIL &21CD
+\ Bend bars more
 
-\\ Another variation here?
 MODE1_SET_COLOUR 1, PAL_green
+SCRIPT_CALLV parallax_set_inc_x, &FF
+SCRIPT_CALLV parallax_set_wave_f, 1
+SCRIPT_CALLV parallax_set_wave_y, 2
 
-SEQUENCE_WAIT_UNTIL &228D
+\ Speed up wave
+
+SEQUENCE_WAIT_SECS 2.0
+SCRIPT_CALLV parallax_set_wave_f, 2
+SEQUENCE_WAIT_SECS 2.0
+SCRIPT_CALLV parallax_set_wave_f, 3
+SEQUENCE_WAIT_SECS 2.0
+
+;SEQUENCE_WAIT_UNTIL &21CD
+
+\ Bend bars even more
 
 MODE1_SET_COLOUR 1, PAL_blue
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 1
+SCRIPT_CALLV parallax_set_wave_y, 3
+SEQUENCE_WAIT_SECS 2.0
+
+\ Speed up wave
+
+SCRIPT_CALLV parallax_set_wave_f, 2
+SEQUENCE_WAIT_SECS 2.0
+SCRIPT_CALLV parallax_set_wave_f, 3
+;SEQUENCE_WAIT_SECS 2.0
+
+SEQUENCE_WAIT_UNTIL &228D
+
+\ MEGA BEND!
+
+MODE1_SET_COLOUR 1, PAL_magenta
+SCRIPT_CALLV parallax_set_inc_x, &FF
+SCRIPT_CALLV parallax_set_wave_f, 1
 SCRIPT_CALLV parallax_set_wave_y, 15
 
-;SEQUENCE_WAIT_SECS 9.5
 SEQUENCE_WAIT_UNTIL &2338
 
 \\ Drums kick in again 3:00 - 3:31 = 31s
