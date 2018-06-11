@@ -154,7 +154,7 @@ text_pattern_ptr = locals_start + 10
 }
 
 .text_draw
-{
+\{
 	\\ Should be exactly on scanline 0
 
 	LDX #0					; 2c
@@ -166,7 +166,8 @@ text_pattern_ptr = locals_start + 10
 	NOP
 	NEXT
 
-	LDA text_fg_table, Y	; 4c
+.text_draw_fg_table_sm1
+	LDA text_fg_table_pastel, Y	; 4c
 	STA &FE21				; 4c
 	EOR #&10		; 2c
 	STA &FE21				; 4c
@@ -175,6 +176,7 @@ text_pattern_ptr = locals_start + 10
 	EOR #&10		; 2c
 	STA &FE21				; 4c
 
+.text_draw_bg_table_sm1
 	LDA text_bg_table, Y	; 4c
 	STA &FE21				; 4c
 	EOR #&10		; 2c
@@ -187,13 +189,14 @@ text_pattern_ptr = locals_start + 10
 	INY				; 2c
 	INX				; 2c
 
-	.here
+	.text_draw_here
 
 	FOR n,1,34,1
 	NOP
 	NEXT
 
-	LDA text_fg_table, Y	; 4c
+.text_draw_fg_table_sm2
+	LDA text_fg_table_pastel, Y	; 4c
 	STA &FE21				; 4c
 	EOR #&10		; 2c
 	STA &FE21				; 4c
@@ -202,6 +205,7 @@ text_pattern_ptr = locals_start + 10
 	EOR #&10		; 2c
 	STA &FE21				; 4c
 
+.text_draw_bg_table_sm2
 	LDA text_bg_table, Y	; 4c
 	STA &FE21				; 4c
 	EOR #&10		; 2c
@@ -214,10 +218,10 @@ text_pattern_ptr = locals_start + 10
 ;	BIT 0			; 3c
 	INY
 	INX				; 2c
-	BNE here		; 3c
+	BNE text_draw_here		; 3c
 
     RTS
-}
+\}
 
 .text_kill
 {
@@ -226,6 +230,7 @@ text_pattern_ptr = locals_start + 10
 	JMP ula_pal_reset
 }
 
+IF 0
 .text_clear_palette
 {
 	LDA #&00 + PAL_magenta
@@ -234,6 +239,7 @@ text_pattern_ptr = locals_start + 10
 	NEXT
 	RTS
 }
+ENDIF
 
 .text_plot_string
 {
@@ -372,6 +378,29 @@ text_pattern_ptr = locals_start + 10
 	RTS
 }
 
+.text_set_palette
+{
+	CMP #0
+	BEQ pastel
+	\\ Copper
+	LDA #LO(text_fg_table_copper)
+	STA text_draw_fg_table_sm1+1
+	STA text_draw_fg_table_sm2+1
+	LDA #HI(text_fg_table_copper)
+	STA text_draw_fg_table_sm1+2
+	STA text_draw_fg_table_sm2+2
+	RTS
+
+	.pastel
+	LDA #LO(text_fg_table_pastel)
+	STA text_draw_fg_table_sm1+1
+	STA text_draw_fg_table_sm2+1
+	LDA #HI(text_fg_table_pastel)
+	STA text_draw_fg_table_sm1+2
+	STA text_draw_fg_table_sm2+2
+	RTS
+}
+
 .text_pal
 {
 	EQUB &00 + PAL_black
@@ -441,15 +470,7 @@ ALIGN 32
 
 PAGE_ALIGN
 .text_bg_table
-IF 0
-	FOR n,0,255,1
-	IF ((n DIV 32) AND 1) = 1
-	EQUB MODE1_COL1 + PAL_magenta
-	ELSE
-	EQUB MODE1_COL1 + PAL_green
-	ENDIF
-	NEXT
-ELSE
+{
 	FOR n,1,43,1
 	EQUB MODE1_COL1 + PAL_red
 	NEXT
@@ -468,18 +489,35 @@ ELSE
 	FOR n,1,42,1
 	EQUB MODE1_COL1 + PAL_yellow
 	NEXT
-ENDIF
+}
 
-.text_fg_table
-IF 0
-	FOR n,0,255,1
-	IF ((n DIV 32) AND 1) = 1
-	EQUB MODE1_COL3 + PAL_white;PAL_yellow
-	ELSE
+.text_fg_table_pastel
+{
+	FOR n,1,21,1
 	EQUB MODE1_COL3 + PAL_white
-	ENDIF
 	NEXT
-ELSE
+	FOR n,1,42,1
+	EQUB MODE1_COL3 + PAL_black
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_white
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_black
+	NEXT
+	FOR n,1,43,1
+	EQUB MODE1_COL3 + PAL_white
+	NEXT
+	FOR n,1,42,1
+	EQUB MODE1_COL3 + PAL_black
+	NEXT
+	FOR n,1,22,1
+	EQUB MODE1_COL3 + PAL_white
+	NEXT
+}
+
+.text_fg_table_copper
+{
 	FOR n,1,21,1
 	EQUB MODE1_COL3 + PAL_red
 	NEXT
@@ -501,7 +539,7 @@ ELSE
 	FOR n,1,22,1
 	EQUB MODE1_COL3 + PAL_red
 	NEXT
-ENDIF
+}
 
 .text_font_data
 INCBIN "data\font_razor.bin"

@@ -424,6 +424,7 @@ SEQUENCE_FX_UNTIL fx_Plasma, &293C
 SEQUENCE_FX_FOR_SECS fx_Copper, 10.0
 
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
+SCRIPT_CALLV text_set_palette, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Spiral
 SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 
