@@ -163,26 +163,7 @@ ENDIF
 
 .picture_copy_line_X
 {
-    TXA
-    LSR A:LSR A: LSR A
-    TAY
-
-    LDA picture_screen_addr_LO, Y
-    STA writeptr
-
-    LDA picture_screen_addr_HI, Y
-    STA writeptr+1
-
-    TXA
-    AND #&7
-    CLC
-    ADC writeptr
-    STA writeptr
-    STA readptr
-    LDA writeptr+1
-    ADC #0
-    STA writeptr+1
-    STA readptr+1
+    JSR screen_calc_addr_lineX
 
 	\ Ensure SHADOW RAM is writeable
     LDA &FE34:ORA #&4:STA &FE34
@@ -249,20 +230,6 @@ ENDIF
 
     RTS
 }
-
-PAGE_ALIGN
-.picture_screen_addr_LO
-FOR n,0,31,1
-EQUB LO(screen_base_addr + n * 640)
-NEXT
-
-.picture_screen_addr_HI
-FOR n,0,31,1
-EQUB HI(screen_base_addr + n * 640)
-NEXT
-
-.picture_line_buffer
-SKIP 80
 
 .picture_palette
 {

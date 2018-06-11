@@ -423,12 +423,24 @@ SEQUENCE_FX_UNTIL fx_Plasma, &293C
 
 SEQUENCE_FX_FOR_SECS fx_Copper, 10.0
 
+\ ******************************************************************
+\\ **** GOODBYE MESSAGE ****
+\ ******************************************************************
+
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_palette, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Spiral
 SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 
 SEQUENCE_WAIT_SECS 8.0
+
+\ ******************************************************************
+\\ **** SMILEY ;) ****
+\ ******************************************************************
+
+SEQUENCE_FX_FOR_SECS fx_Smiley, 5.0
+\\ Wipe
+SCRIPT_CALLV smiley_set_anim, 1
 
 \ ******************************************************************
 \\ **** END ****

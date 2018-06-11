@@ -81,7 +81,8 @@ fx_Plasma = 8
 fx_Logo = 9
 fx_Text = 10
 fx_Picture = 11
-fx_MAX = 12
+fx_Smiley = 12
+fx_MAX = 13
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -635,11 +636,12 @@ INCLUDE "fx/sequence.asm"
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 	EQUW text_init,       text_update,       text_draw,       text_kill
 	EQUW picture_init,    picture_update,    do_nothing,      do_nothing
+	EQUW smiley_init,     smiley_update,     do_nothing,      do_nothing
 }
 
 .main_fx_slot
 {
-	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4		; need something better here?
+	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4, 6		; need something better here?
 }
 
 .string_1 EQUS " 1..",0
@@ -647,6 +649,21 @@ INCLUDE "fx/sequence.asm"
 .string_3 EQUS " 3..",0
 .string_4 EQUS " 4..",0
 .string_5 EQUS " 5..",0
+
+\ ******************************************************************
+\ *	Shared data
+\ ******************************************************************
+
+PAGE_ALIGN
+.picture_screen_addr_LO
+FOR n,0,31,1
+EQUB LO(screen_base_addr + n * 640)
+NEXT
+
+.picture_screen_addr_HI
+FOR n,0,31,1
+EQUB HI(screen_base_addr + n * 640)
+NEXT
 
 .data_end
 
@@ -672,7 +689,8 @@ SAVE "Brain", start, end
 \ *	Space reserved for runtime buffers not preinitialised
 \ ******************************************************************
 
-\\ Add BSS here
+.picture_line_buffer
+SKIP 80
 
 \ ******************************************************************
 \ *	Memory Info
@@ -729,7 +747,6 @@ SAVE "Bank0", bank0_start, bank0_end
 PRINT "------"
 PRINT "BANK 0"
 PRINT "------"
-PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "PICTURE size =", ~picture_end-picture_start
 PRINT "------"
@@ -797,6 +814,8 @@ PAGE_ALIGN
 INCLUDE "fx/text.asm"
 PAGE_ALIGN
 INCLUDE "fx/kefrens.asm"
+PAGE_ALIGN
+INCLUDE "fx/smiley.asm"
 
 .bank2_end
 
@@ -812,6 +831,8 @@ PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
+PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
+PRINT "SMILEY size =", ~smiley_end-smiley_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -876,4 +897,5 @@ IF _DEBUG
 ;PUTFILE "data/flash-mode2.bin", "FLASH", &3000
 ;PUTFILE "data/twisted-brain-mode2.bin", "BRAIN", &3000
 ;PUTBASIC "basic/mask.bas", "MASK"
+PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
 ENDIF

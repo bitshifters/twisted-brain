@@ -249,6 +249,32 @@ ENDIF
 	RTS
 }
 
+.screen_calc_addr_lineX
+{
+	TXA
+    LSR A:LSR A: LSR A
+    TAY
+
+    LDA picture_screen_addr_LO, Y
+    STA writeptr
+
+    LDA picture_screen_addr_HI, Y
+    STA writeptr+1
+
+    TXA
+    AND #&7
+    CLC
+    ADC writeptr
+    STA writeptr
+    STA readptr
+    LDA writeptr+1
+    ADC #0
+    STA writeptr+1
+    STA readptr+1
+
+	RTS
+}
+
 .cycles_wait_128		; JSR to get here takes 6c
 {
 	FOR n,1,58,1		; 58x
