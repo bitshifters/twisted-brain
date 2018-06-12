@@ -5,6 +5,7 @@
 
 _ENABLE_AUDIO = TRUE				; enables output to sound chip (disable for silent testing/demo loop)
 _ENABLE_VOLUME = FALSE
+_ENABLE_SFX = FALSE
 
 .vgm_player_start
 
@@ -33,6 +34,10 @@ _ENABLE_VOLUME = FALSE
 {
 	\\ Initialise music player
 	stz vgm_player_ended
+
+	stz vgm_beat_frames
+	stz vgm_beat_counter
+	stz vgm_pattern_counter
 
 	\\ Initialise exomizer - must have some data ready to decrunch
 	jmp exo_init_decruncher	
@@ -85,7 +90,31 @@ _ENABLE_VOLUME = FALSE
 
 	\\ Every call is 20ms
 	INC delta_time
-	
+
+	\\ Count beats & patterns
+	{
+		LDX vgm_beat_frames
+		INX
+		CPX #VGM_FRAMES_PER_BEAT
+		BCC no_beat
+
+		LDX #0
+
+		LDY vgm_beat_counter
+		INY
+		CPY #VGM_BEATS_PER_PATTERN
+		BCC no_pattern
+
+		LDY #0
+		INC vgm_pattern_counter
+
+		.no_pattern
+		STY vgm_beat_counter
+
+		.no_beat
+		STX vgm_beat_frames
+	}
+
 	\\ Assume this is called every 20ms..
 	LDA vgm_player_ended
 	BNE _sample_end
@@ -140,7 +169,7 @@ _ENABLE_VOLUME = FALSE
 ;----------------------------------------------------------------------------------
 
 
-
+IF _ENABLE_SFX
 
 ; Stop any currently playing SFX
 .vgm_sfx_stop
@@ -231,13 +260,13 @@ _ENABLE_VOLUME = FALSE
 	clc
 	rts
 }
-
-; volume ramp table - set by audio_set_volume - note that on SN chip 15=off, 0=full
-.volume_table	EQUB 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15		;
-
+ENDIF
 
 ; local ZP vars
 IF _ENABLE_VOLUME
+; volume ramp table - set by audio_set_volume - note that on SN chip 15=off, 0=full
+.volume_table	EQUB 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15		;
+
 volume_interp = locals + 0
 volume_increment = locals + 2
 volume_store = locals + 3
@@ -416,4 +445,3 @@ ENDIF ; _ENABLE_AUDIO
 
 
 .vgm_player_end
-

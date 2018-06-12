@@ -9,7 +9,7 @@ plasma_count = locals_start + 4
 plasma_colour = locals_start + 5
 plasma_anim = locals_start + 6
 
-PLASMA_MAX_OFFSET = 160
+PLASMA_MAX_OFFSET = 96	; 192/2		;160
 
 .plasma_start
 

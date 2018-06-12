@@ -140,6 +140,7 @@ ENDIF
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
 INCLUDE "fx/text_blocks.h.asm"
+INCLUDE "fx/twister.h.asm"
 
 .locals_start			SKIP 32		; guarantee 16 locals
 .locals_top

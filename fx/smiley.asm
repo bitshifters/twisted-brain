@@ -48,7 +48,7 @@ INCBIN "data/smiley.pu"
 
     STZ smiley_line
 
-    LDA #240
+    LDA #224
     STA smiley_yoff
     STZ smiley_vel
 
@@ -97,7 +97,7 @@ INCBIN "data/smiley.pu"
     SEC
     LDA smiley_vel
     EOR #&FF
-    SBC #1
+    SBC #2
     STA smiley_vel
 
     LDA #0
