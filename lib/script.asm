@@ -160,12 +160,12 @@ ENDMACRO
 .script_fetch_word
 {
     jsr script_fetch_byte
-    sta temp
+    sta fetch_temp
     jsr script_fetch_byte
     tax
-    lda temp
+    lda fetch_temp
     rts    
-.temp EQUB 0
+.fetch_temp EQUB 0
 }
 
 ; call the routine at the current sequence ptr (word)

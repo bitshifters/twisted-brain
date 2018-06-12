@@ -226,29 +226,31 @@ SEQUENCE_FX_UNTIL fx_CheckerZoom, &84D
 
 SEQUENCE_FX_FOR_FRAMES fx_Kefrens, 1
 
+\\ Simple wave
+
 SCRIPT_CALLV kefrens_set_width, 1
 SCRIPT_CALLV kefrens_set_speed, 2
 SCRIPT_CALLV kefrens_set_add, 2
 
 SEQUENCE_WAIT_UNTIL &9CC
 
-\\ Trigger next variation
-
-SCRIPT_CALLV kefrens_set_speed, 1
-;SCRIPT_CALLV kefrens_set_add, 1
-;SCRIPT_CALLV kefrens_set_width, 1
-
-SEQUENCE_WAIT_UNTIL &B4E
-
-\\ And another one
+\\ Simple wave w/ ripple
 
 SCRIPT_CALLV kefrens_set_speed, 1
 SCRIPT_CALLV kefrens_set_add, 1
 SCRIPT_CALLV kefrens_set_width, 1
 
+SEQUENCE_WAIT_UNTIL &B4E
+
+\\ Wider wave
+
+;SCRIPT_CALLV kefrens_set_speed, 1
+SCRIPT_CALLV kefrens_set_add, 0
+;SCRIPT_CALLV kefrens_set_width, 1
+
 SEQUENCE_WAIT_UNTIL &CCE
 
-\\ And probably another one
+\\ Most pleasing wave
 
 SCRIPT_CALLV kefrens_set_speed, 0
 SCRIPT_CALLV kefrens_set_add, 0
@@ -257,11 +259,6 @@ SCRIPT_CALLV kefrens_set_width, 0
 SEQUENCE_WAIT_UNTIL &E40
 
 \\ Chord change 1:12 - 1:20 = 8s
-
-;SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
-
-\\ Long bit A 1:20 - 1:51 = 31s
-\\ BETTER FX ONE
 
 \ ******************************************************************
 \\ **** CREDITS ****
@@ -273,6 +270,9 @@ SCRIPT_CALLV text_set_block, textBlock_Credits
 
 ;SEQUENCE_WAIT_SECS 7.0
 SEQUENCE_WAIT_UNTIL &FCA
+
+\\ Long bit A 1:20 - 1:51 = 31s
+\\ BETTER FX ONE
 
 \ ******************************************************************
 \\ **** TWISTER ****
@@ -317,6 +317,9 @@ TWISTER_SET_KNOT_PERIOD 5.0
 
 SEQUENCE_WAIT_SECS 6.0
 
+\\ Long bit B 1:51 - 2:22 = 31s
+\\ Slightly repetitive middle part so run text?
+
 SEQUENCE_FX_FOR_FRAMES fx_Text, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
@@ -334,9 +337,6 @@ TWISTER_SET_PARAMS 10, 40, 2.56
 
 ;SEQUENCE_WAIT_SECS 9.0
 SEQUENCE_WAIT_UNTIL &1A46
-
-\\ Long bit B 1:51 - 2:22 = 31s
-\\ Slightly repetitive middle part so run text?
 
 \ ******************************************************************
 \\ **** THANX & GREETZ ****
@@ -429,7 +429,7 @@ SEQUENCE_WAIT_SECS 2.0
 MODE1_SET_COLOUR 1, PAL_blue
 SCRIPT_CALLV parallax_set_inc_x, 1
 SCRIPT_CALLV parallax_set_wave_f, 1
-SCRIPT_CALLV parallax_set_wave_y, 3
+SCRIPT_CALLV parallax_set_wave_y, 4
 SEQUENCE_WAIT_SECS 2.0
 
 \ Speed up wave
@@ -483,9 +483,11 @@ SEQUENCE_WAIT_SECS 8.0
 \\ **** SMILEY ;) ****
 \ ******************************************************************
 
-SEQUENCE_FX_FOR_SECS fx_Smiley, 5.0
+\\ Bounce!
+SEQUENCE_FX_FOR_SECS fx_Smiley, 8.0
 \\ Wipe
 SCRIPT_CALLV smiley_set_anim, 1
+SEQUENCE_WAIT_SECS 10.0
 
 \ ******************************************************************
 \\ **** END ****
@@ -516,6 +518,10 @@ ENDIF
 \ ******************************************************************
 ;SEQUENCE_FX_FOR_SECS fx_VBlinds, 8.0
 
+\ ******************************************************************
+\\ **** ROTATING BOX ****
+\ ******************************************************************
+;SEQUENCE_FX_FOR_SECS fx_BoxRot, 7.8
 
 SCRIPT_END
 

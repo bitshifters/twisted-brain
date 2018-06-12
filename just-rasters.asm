@@ -83,6 +83,7 @@ fx_Text = 10
 fx_Picture = 11
 fx_Smiley = 12
 fx_MAX = 13
+fx_EXIT = &FF
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -125,6 +126,12 @@ INCLUDE "lib/script.h.asm"
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
 .writeptr				SKIP 2		; generic write ptr
+
+.temp					SKIP 1
+.font_yco				SKIP 1
+.font_storeptr			SKIP 2
+.font_stiple			SKIP 2
+
 
 IF _DEBUG
 .vsync_counter			SKIP 2		; counts up with each vsync
@@ -258,6 +265,10 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDX #LO(sequence_script_start)
 	LDY #HI(sequence_script_start)
 	JSR script_init
+
+	\\ Initialise font system
+
+	JSR font_init
 
 	\\ Set initial screen mode manually
 	\\ Stop us seeing any garbage that has been loaded into screen memory
@@ -562,7 +573,7 @@ ENDIF
 
 	\\ Maybe one day we'l escape the loop...
 
-	.return
+	.exit
 
     CLI
 
@@ -606,6 +617,7 @@ INCLUDE "lib/script.asm"
 \ ******************************************************************
 
 INCLUDE "fx/helpers.asm"
+INCLUDE "fx/font.asm"
 INCLUDE "fx/sequence.asm"
 
 \ ******************************************************************
@@ -636,7 +648,7 @@ INCLUDE "fx/sequence.asm"
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 	EQUW text_init,       text_update,       text_draw,       text_kill
 	EQUW picture_init,    picture_update,    do_nothing,      do_nothing
-	EQUW smiley_init,     smiley_update,     do_nothing,      do_nothing
+	EQUW smiley_init,     smiley_update,     smiley_draw,     crtc_reset
 }
 
 .main_fx_slot

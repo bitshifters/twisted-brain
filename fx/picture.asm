@@ -65,7 +65,8 @@ INCBIN "data/brain-mask.pu"
     LDA #1
     STA picture_dir
 
-    STZ picture_pal_index
+    LDA #&40
+    STA picture_pal_index
     LDA #0;PICTURE_DELAY
     STA picture_pal_delay
 
