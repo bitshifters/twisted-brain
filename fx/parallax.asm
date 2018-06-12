@@ -162,11 +162,11 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 	AND #&3F					; 2c
 	TAY							; 2c
 
-	FOR n,1,24,1
+	FOR n,1,23,1
 	NOP
 	NEXT
+	BIT 0
 
-	JSR cycles_wait_128
 	JSR cycles_wait_128
 	JSR cycles_wait_128
 
@@ -179,6 +179,8 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 	STA &FE01					; 4c++
 	
 	\\ 30c min + 10c loop, need 88c NOPs
+
+	JSR cycles_wait_128
 
 	\\ Set correct video page
 
@@ -231,8 +233,8 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 
 .parallax_kill
 {
-	JSR crtc_reset
     SET_ULA_MODE ULA_Mode2
+	JSR crtc_reset
     JSR ula_pal_reset
 
 	\\ Ensure we're displaying main memory

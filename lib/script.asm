@@ -9,6 +9,7 @@ SCRIPTID_CALL=3
 SCRIPTID_SLOT=6
 SCRIPTID_CALLSLOT=7
 SCRIPTID_CALLV=8
+SCRIPTID_SEGMENT_UNTIL=9
 
 SCRIPTID_END=255
 
@@ -43,6 +44,12 @@ ENDMACRO
 ; Indicate the end of a segment - MUST be paired with a SCRIPT_SEGMENT_START
 MACRO SCRIPT_SEGMENT_END
     EQUB    SCRIPTID_SEGMENT_END
+ENDMACRO
+
+; Same as SEGMENT_START but segment runs until overall frame counter is reached
+MACRO SCRIPT_SEGMENT_UNTIL  frame_time
+    EQUB    SCRIPTID_SEGMENT_UNTIL
+    EQUW    frame_time
 ENDMACRO
 
 IF 0
@@ -89,15 +96,6 @@ MACRO SCRIPT_CALLSLOTV   effect_addr, value, swr_slot
     SCRIPT_CALLV effect_addr, value
 ENDMACRO
 
-
-
-.script_time              EQUW 0    ; elapsed time in 1/50th secs
-.script_ptr               EQUW 0    ; current command ptr in the script
-.script_segment_ptr       EQUW 0    ; ptr to the first command in the current segment that is processing
-.script_segment_time      EQUW 0    ; elapsed time in the current segment
-.script_segment_duration  EQUW 0    ; duration of the current segment
-.script_segment_id        EQUB 0    ; id of the current segment (was mainly for debugging)
-.script_value             EQUB 0    ; value passed in A to a called function
 
 
 ; Setup new script to run
@@ -162,12 +160,12 @@ ENDMACRO
 .script_fetch_word
 {
     jsr script_fetch_byte
-    sta temp
+    sta fetch_temp
     jsr script_fetch_byte
     tax
-    lda temp
+    lda fetch_temp
     rts    
-.temp EQUB 0
+.fetch_temp EQUB 0
 }
 
 ; call the routine at the current sequence ptr (word)
@@ -227,10 +225,12 @@ ENDIF
 
     ; DEBUG CODE
     ; check for N key pressed to skip segment
+    IF _DEBUG
     lda #&81:ldx #LO(-86):ldy #&FF:jsr &FFF4
     tya:beq nopress:lda debounce:bne nopress
     lda #0:sta script_segment_duration+0:sta script_segment_duration+1
     lda #1:.nopress sta debounce
+    ENDIF
 
 
     rts
@@ -364,7 +364,7 @@ ENDIF
 
 .command_segment_start
     cmp #SCRIPTID_SEGMENT_START
-    bne command_segment_end
+    bne command_segment_until
 
     inc script_segment_id
     jsr script_fetch_word   ; duration of segment
@@ -384,6 +384,34 @@ ENDIF
     
     jmp command_loop
 
+.command_segment_until
+    CMP #SCRIPTID_SEGMENT_UNTIL
+    bne command_segment_end
+
+    inc script_segment_id
+    jsr script_fetch_word   ; end time of segment
+
+    \\ If you miss the until time it's going to be very long duration!
+    SEC
+    SBC script_time+0
+    STA script_segment_duration+0
+    TXA
+    SBC script_time+1
+    STA script_segment_duration+1
+
+    ; stash the ptr to the first command in this segment
+    ; so that it can be repeated for the duration of the segment
+    lda script_ptr+0
+    sta script_segment_ptr+0
+    lda script_ptr+1
+    sta script_segment_ptr+1
+
+    lda #0
+    sta script_segment_time+0
+    sta script_segment_time+1
+    
+    jmp command_loop
+    
 
 
 

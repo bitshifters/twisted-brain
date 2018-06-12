@@ -57,6 +57,12 @@ MACRO SCREEN_ADDR_HI row
 	EQUB HI((screen_base_addr + row*640) DIV 8)
 ENDMACRO
 
+MACRO MPRINT string
+{
+    LDX #LO(string):LDY #HI(string):JSR print_XY
+}
+ENDMACRO
+
 \ ******************************************************************
 \ *	DEMO defines
 \ ******************************************************************
@@ -75,7 +81,9 @@ fx_Plasma = 8
 fx_Logo = 9
 fx_Text = 10
 fx_Picture = 11
-fx_MAX = 12
+fx_Smiley = 12
+fx_MAX = 13
+fx_EXIT = &FF
 
 \ ******************************************************************
 \ *	GLOBAL constants
@@ -104,23 +112,36 @@ TimerValue = 32*64 - 2*64 - 2 - 22
 \ ******************************************************************
 
 ORG &0
-GUARD &90
+GUARD &70
+
+INCLUDE "lib/script.h.asm"
 
 \\ Vars used by main system routines
-.vsync_counter			SKIP 2		; counts up with each vsync
 .delta_time				SKIP 1
 .main_fx_enum			SKIP 1		; which FX are we running?
 .main_new_fx			SKIP 1		; which FX do we want?
 .first_frame			SKIP 1		; have we completed the first frame of FX?
+.first_fx				SKIP 1		; have we initialised our first FX?
 
 \\ Generic vars that can be shared (volatile)
 .readptr				SKIP 2		; generic read ptr
 .writeptr				SKIP 2		; generic write ptr
 
+.temp					SKIP 1
+.font_yco				SKIP 1
+.font_storeptr			SKIP 2
+.font_stiple			SKIP 2
+
+
+IF _DEBUG
+.vsync_counter			SKIP 2		; counts up with each vsync
+ENDIF
+
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
+INCLUDE "fx/text_blocks.h.asm"
 
-.locals_start			SKIP 16		; guarantee 16 locals
+.locals_start			SKIP 32		; guarantee 16 locals
 .locals_top
 
 \ ******************************************************************
@@ -140,6 +161,29 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 .main
 {
+	\\ Clear RAM on BREAK as things are going to get messy
+	
+	LDA #200
+	LDX #3
+	JSR osbyte
+
+	\\ Check emulator or real hardware and tweak accordingly
+
+	{
+		LDA &70
+		BEQ is_emulator
+
+		\\ Real hardware!
+
+		LDA #6: STA crtc_reset_from_single_hardware_SM + 1
+		BRA done
+
+		.is_emulator
+		LDA #7: STA crtc_reset_from_single_hardware_SM + 1
+
+		.done
+	}
+
 	\\ Reset stack
 
 	LDX #&FF					; X=11111111
@@ -157,11 +201,15 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	\\ Load SIDEWAYS RAM modules here
 
+	MPRINT string_5
+
 	LDA #4:JSR swr_select_slot
 	LDA #HI(bank0_start)
 	LDX #LO(bank0_filename)
 	LDY #HI(bank0_filename)
 	JSR disksys_load_file
+
+	MPRINT string_4
 
 	LDA #5:JSR swr_select_slot
 	LDA #HI(bank1_start)
@@ -169,17 +217,23 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDY #HI(bank1_filename)
 	JSR disksys_load_file
 
+	MPRINT string_3
+
 	LDA #6:JSR swr_select_slot
 	LDA #HI(bank2_start)
 	LDX #LO(bank2_filename)
 	LDY #HI(bank2_filename)
 	JSR disksys_load_file
 
+	MPRINT string_2
+
 	LDA #SLOT_MUSIC:JSR swr_select_slot
 	LDA #HI(music_start)
 	LDX #LO(music_filename)
 	LDY #HI(music_filename)
 	JSR disksys_load_file
+
+	MPRINT string_1
 
 	LDA #HI(HAZEL_START)
 	LDX #LO(hazel_filename)
@@ -190,15 +244,15 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 	\\ Initalise system vars
 
+	IF _DEBUG
 	LDA #0
 	STA vsync_counter
 	STA vsync_counter+1
+	ENDIF
 
-	LDA #0				; initial FX
-	STA main_new_fx
-
-	LDA #1
-	STA delta_time
+	STZ main_new_fx
+	STZ first_fx
+	STZ delta_time
 	
 	\\ Initialise music player
 
@@ -212,6 +266,10 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	LDY #HI(sequence_script_start)
 	JSR script_init
 
+	\\ Initialise font system
+
+	JSR font_init
+
 	\\ Set initial screen mode manually
 	\\ Stop us seeing any garbage that has been loaded into screen memory
 	\\ And hides the screen until first FX is ready to be shown
@@ -221,7 +279,16 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 	JSR ula_pal_reset
 	JSR ula_control_reset
 	JSR crtc_hide_screen
+	\ Ensure MAIN RAM is writeable and shown by CRTC
+    LDA &FE34:AND #&FA:STA &FE34
 	JSR screen_clear_all
+
+	\\ Special FX boot!
+
+	LDX #fx_Picture
+	LDA main_fx_slot, X
+	JSR swr_select_slot
+	JSR picture_boot
 
 	\ ******************************************************************
 	\ *	DEMO START - from here on out there is no OS to help you!!
@@ -322,6 +389,8 @@ GUARD screen_base_addr			; ensure code size doesn't hit start of screen memory
 
 IF 1
 	{
+		JSR music_poll_if_vsync
+
 		lda #&42
 		sta &FE4D	\ clear vsync & timer 1 flags
 
@@ -343,6 +412,8 @@ ENDIF
 	\\ We don't know how long the init took so resync to timer 1
 
 	{
+		JSR music_poll_if_vsync
+
 		lda #&42
 		sta &FE4D	\ clear vsync & timer 1 flags
 
@@ -377,13 +448,14 @@ ENDIF
 .main_loop
 
 	\\  Do useful work during vblank (vsync will occur at some point)
-
+	IF _DEBUG
 	{
 		INC vsync_counter
 		BNE no_carry
 		INC vsync_counter+1
 		.no_carry
 	}
+	ENDIF
 
 	\\ Service music player (move to music module?)
 
@@ -399,6 +471,10 @@ ENDIF
 	\\ Update the scripting system
 
 	JSR script_update
+
+	\\ Music player will update this
+
+	STZ delta_time
 
 	\\ FX update callback here!
 
@@ -487,6 +563,7 @@ ENDIF
 	\\ If this is the first frame we can show the screen
 
 	DEC A:STA first_frame
+	STA first_fx
 	JSR crtc_show_screen
 
 	\\ Loop as fast as possible
@@ -496,7 +573,7 @@ ENDIF
 
 	\\ Maybe one day we'l escape the loop...
 
-	.return
+	.exit
 
     CLI
 
@@ -532,6 +609,7 @@ INCLUDE "lib/exomiser.asm"
 INCLUDE "lib/disksys.asm"
 INCLUDE "lib/unpack.asm"
 INCLUDE "lib/swr.asm"
+INCLUDE "lib/print.asm"
 INCLUDE "lib/script.asm"
 
 \ ******************************************************************
@@ -539,6 +617,7 @@ INCLUDE "lib/script.asm"
 \ ******************************************************************
 
 INCLUDE "fx/helpers.asm"
+INCLUDE "fx/font.asm"
 INCLUDE "fx/sequence.asm"
 
 \ ******************************************************************
@@ -558,7 +637,7 @@ INCLUDE "fx/sequence.asm"
 \\ FX initialise, update, draw and kill functions
 \\ 
 	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
-	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    crtc_reset
+	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    kefrens_kill
 	EQUW twister_init,    twister_update,    twister_draw,    twister_kill
 	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
@@ -567,16 +646,44 @@ INCLUDE "fx/sequence.asm"
 	EQUW copper_init,     copper_update,     copper_draw,     copper_kill
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
-	EQUW text_init,       text_update,       text_draw,       ula_pal_reset
-	EQUW picture_init,    do_nothing,        do_nothing,      do_nothing
+	EQUW text_init,       text_update,       text_draw,       text_kill
+	EQUW picture_init,    picture_update,    do_nothing,      do_nothing
+	EQUW smiley_init,     smiley_update,     smiley_draw,     crtc_reset
 }
 
 .main_fx_slot
 {
-	EQUB 4, 4, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4		; need something better here?
+	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4, 6		; need something better here?
 }
 
+.string_1 EQUS " 1..",0
+.string_2 EQUS " 2..",0
+.string_3 EQUS " 3..",0
+.string_4 EQUS " 4..",0
+.string_5 EQUS " 5..",0
+
+\ ******************************************************************
+\ *	Shared data
+\ ******************************************************************
+
+PAGE_ALIGN
+.picture_screen_addr_LO
+FOR n,0,31,1
+EQUB LO(screen_base_addr + n * 640)
+NEXT
+
+.picture_screen_addr_HI
+FOR n,0,31,1
+EQUB HI(screen_base_addr + n * 640)
+NEXT
+
 .data_end
+
+\ ******************************************************************
+\ *	Text and strings
+\ ******************************************************************
+
+INCLUDE "fx/text_blocks.asm"
 
 \ ******************************************************************
 \ *	End address to be saved
@@ -588,13 +695,14 @@ INCLUDE "fx/sequence.asm"
 \ *	Save the code
 \ ******************************************************************
 
-SAVE "JustRas", start, end
+SAVE "Brain", start, end
 
 \ ******************************************************************
 \ *	Space reserved for runtime buffers not preinitialised
 \ ******************************************************************
 
-\\ Add BSS here
+.picture_line_buffer
+SKIP 80
 
 \ ******************************************************************
 \ *	Memory Info
@@ -609,11 +717,13 @@ PRINT "EXOMISER size =", ~exo_end-exo_start
 PRINT "DISKSYS size =", ~beeb_disksys_end-beeb_disksys_start
 PRINT "PUCRUNCH size =", ~pucrunch_end-pucrunch_start
 PRINT "SWR size =",~beeb_swr_end-beeb_swr_start
+PRINT "PRINT size =",~beeb_print_end-beeb_print_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
 PRINT "HELPERS size =",~helpers_end-helpers_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "DATA size =",~data_end-data_start
+PRINT "TEXT BLOCKS size =",~text_blocks_end-text_blocks_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~screen_base_addr-P%
@@ -634,8 +744,6 @@ GUARD &C000
 \ ******************************************************************
 
 PAGE_ALIGN
-INCLUDE "fx/kefrens.asm"
-PAGE_ALIGN
 INCLUDE "fx/checker-zoom.asm"
 PAGE_ALIGN
 INCLUDE "fx/picture.asm"
@@ -651,7 +759,6 @@ SAVE "Bank0", bank0_start, bank0_end
 PRINT "------"
 PRINT "BANK 0"
 PRINT "------"
-PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "CHECKER ZOOM size =", ~checkzoom_end-checkzoom_start
 PRINT "PICTURE size =", ~picture_end-picture_start
 PRINT "------"
@@ -717,6 +824,10 @@ PAGE_ALIGN
 INCLUDE "fx/logo.asm"
 PAGE_ALIGN
 INCLUDE "fx/text.asm"
+PAGE_ALIGN
+INCLUDE "fx/kefrens.asm"
+PAGE_ALIGN
+INCLUDE "fx/smiley.asm"
 
 .bank2_end
 
@@ -732,6 +843,8 @@ PRINT "------"
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
+PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
+PRINT "SMILEY size =", ~smiley_end-smiley_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -778,13 +891,23 @@ PRINT "------"
 \ ******************************************************************
 
 IF _DEBUG
-PUTBASIC "basic/parallax mode0.bas", "para0"
-PUTBASIC "basic/parallax mode1.bas", "para1"
+PUTBASIC "basic/quick.bas", "Twisted"
+ELSE
+PUTBASIC "basic/loader.bas", "Twisted"
+ENDIF
+
+IF _DEBUG
+;PUTBASIC "basic/parallax mode0.bas", "para0"
+;PUTBASIC "basic/parallax mode1.bas", "para1"
 ;PUTFILE "basic/makdith.bas.bin", "MAKDITH", &0E00
-PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
+;PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
 ;PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
-PUTBASIC "basic/twist.bas", "TWIST"
-PUTFILE "data/nova-mode1.bin", "NOVA", &3000
-PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
+;PUTBASIC "basic/twist.bas", "TWIST"
+;PUTFILE "data/nova-mode1.bin", "NOVA", &3000
+;PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
+;PUTFILE "data/flash-mode2.bin", "FLASH", &3000
+;PUTFILE "data/twisted-brain-mode2.bin", "BRAIN", &3000
+;PUTBASIC "basic/mask.bas", "MASK"
+PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
 ENDIF

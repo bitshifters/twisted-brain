@@ -1,11 +1,7 @@
 ; print.asm
 ; Printing library from Teletextr
 
-IF _DEBUG
-_MINIMAL_PRINT = FALSE
-ELSE
 _MINIMAL_PRINT = TRUE
-ENDIF
 
 .beeb_print_start
 
@@ -355,12 +351,6 @@ ENDMACRO
 }
 
 ELSE
-
-MACRO MPRINT string
-{
-    LDX #LO(string):LDY #HI(string):JSR print_XY
-}
-ENDMACRO
 
 .print_XY
 {

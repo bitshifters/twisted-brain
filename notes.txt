@@ -378,3 +378,70 @@ Might be easier to just have targets for velocity and use acceleration
 functions to reach those targets, rather than look up in a table?
 
 Table useful for enabling variable twist along the whole column
+
+More sensible naming convention: spin / twist / knot
+
+Text
+~~~
+Prefered interface: define block of text with a simple data format
+E.g.
+EQUS x, y, "text", 0
+EQUS x, y, "text", 0
+EQUB &FF
+
+Then specify which block required by enum in sequence
+Also specify how the block appears max 1x glyph per frame?
+To do this would need to define entire screens, so
+
+.screen1
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+EQUS "0123456789"
+
+As would then increment the x,y over update fn.
+
+OK
+9590 : STA FE01      >r crtc
+    CRTC registers :
+    Index=9
+    R0 =7F  R1 =50  R2 =62  R3 =28  R4 =26  R5 =00  R6 =20  R7 =23  R8 =30
+    R9 =07  R10=20  R11=08  R12=06  R13=50  R14=29  R15=B8  R16=00  R17=00
+    VC=0 SC=0 HC=7 MA=0657 scrx=384 scry=32
+
+Parallax breaks on real HW if Kefrens comes before it
+Behaviour is same as if put a 1 scanline delay at the start of the draw
+So suggests that draw timer is coming 1 line late after Kefrens
+Maybe the theory about latching in CRTC is correct, so because it's a single
+scanline "frame" setting R4 is ignored for that row/frame so we're getting
+an extra scanline = 313
+In theory just need to remove the +1's from the end of the draw fn in Kefrens
+(And see all the other fx...)
+
+Would love to drop the smiley and have it bounce...
+Vertical adjust...
+
+yoff=0 R5=8: means 8 scanlines at top border
+yoff=1 R5=7: means 7 scanlines at top border
+..
+yoff=7 R5=1: means 1 scanline at top border
+always turn display on 8 scanlines from top of screen
+
+So R5=8-yoff for vsync cycle
+And R5=yoff for display cycle
+
+Display portion is new crtc cycle
+Draw fn will arrive at scaline 0 during vsync cycle
+Wait 8 scanlines then turn on screen
+Configure display cycle
+30 rows + yoff vadjust, all visible, no vsync
+Set screen address for status
+
+Wait 30 rows until end of cycle
+VSync cycle
+39-31 rows + 8-yoff vadjust, display 1, vsync at 35-31
+Set screen address for displayed area

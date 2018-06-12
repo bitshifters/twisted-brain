@@ -105,7 +105,7 @@ PLASMA_MAX_OFFSET = 160
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
-	FOR n,1,38,1
+	FOR n,1,49,1
 	NOP
 	NEXT
 
@@ -130,7 +130,7 @@ PLASMA_MAX_OFFSET = 160
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
-	FOR n,1,27,1
+	FOR n,1,24,1
 	NOP
 	NEXT
 
@@ -223,6 +223,7 @@ PLASMA_MAX_OFFSET = 160
 
 \\ Have 16 double character rows
 
+PAGE_ALIGN
 .plasma_lookup_LO
 {
 	FOR n,0,15,1
@@ -272,6 +273,7 @@ PLASMA_MAX_OFFSET = 160
 	EQUB PAL_black
 }
 
+PAGE_ALIGN
 .plasma_offset_table
 {
 	FOR n,0,255,1

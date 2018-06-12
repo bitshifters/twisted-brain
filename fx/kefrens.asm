@@ -3,7 +3,13 @@
 \ ******************************************************************
 
 kefrens_dummy = locals_start + 0
-kefrens_index_offset = locals_start + 1
+kefrens_crtc_row = locals_start + 1
+kefrens_top_angle = locals_start + 2
+kefrens_row_angle = locals_start + 3
+kefrens_top_add = locals_start + 4
+kefrens_add_index = locals_start + 5
+
+kefrens_add_anim = locals_start + 6
 
 .kefrens_start
 
@@ -24,7 +30,10 @@ kefrens_index_offset = locals_start + 1
 
 .kefrens_init
 {
-    STZ kefrens_index_offset
+	STZ kefrens_top_angle
+	STZ kefrens_top_add
+	STZ kefrens_add_anim
+	
 	RTS
 }
 
@@ -45,8 +54,22 @@ kefrens_index_offset = locals_start + 1
 
 .kefrens_update
 {
-	INC kefrens_index_offset
-	JMP screen_clear_line0
+	LDX #0
+	JSR screen_clear_line_0X
+
+	DEC kefrens_top_angle
+	LDA kefrens_top_angle
+	STA kefrens_row_angle
+
+	CLC
+	LDA kefrens_top_add
+	ADC kefrens_add_anim
+	STA kefrens_top_add
+
+	LDA kefrens_top_add
+	STA kefrens_add_index
+
+	RTS
 }
 
 \ ******************************************************************
@@ -90,57 +113,98 @@ kefrens_index_offset = locals_start + 1
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
 
-	FOR n,1,14,1
+;	FOR n,1,14,1
+;	NOP
+;	NEXT
+
+	LDA #254
+	STA kefrens_crtc_row
+;	STZ kefrens_add_index
+	BIT 0
+	BIT 0
+}
+.kefrens_draw_here
+
+	LDY kefrens_row_angle	; actually our angle
+.kefrens_draw_sine_table_sm
+	LDA kefrens_speed_table_1, y		; SIN(y)
+;	CLC
+;	ADC kefrens_cos_table, Y	; COS(y)
+	TAY
+.kefrens_draw_width_table_sm
+	LDA kefrens_width_table_1, Y
+
+	CLC
+	LDY kefrens_add_index
+.kefrens_draw_add_table_sm
+	ADC kefrens_add_table_1, Y
+	TAY
+
+\	CPY #40							; 2c
+\	BCC left_side_nop_later
+									; 2c
+	\\ Right side NOP first
+\	FOR n,1,13,1
+\	NOP
+\	NEXT
+
+	{
+	.left_side_nop_later
+	LDA kefrens_addr_table_LO, Y	; 4c
+	STA writeptr					; 3c
+	LDA kefrens_addr_table_HI, Y	; 4c
+	STA writeptr+1					; 3c
+
+	TYA:LSR A
+	BCS right
+
+	;2c
+	\\ Left
+	LDA # PIXEL_LEFT_7 OR PIXEL_RIGHT_3
+	LDY #0:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_6 OR PIXEL_RIGHT_2
+	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1
+	LDY #16:STA (writeptr), Y
+	LDY #24:
+
+	LDA (writeptr),Y		; 6c
+	AND #&55				; 2c
+	ORA #PIXEL_LEFT_4		; 2c
+	STA (writeptr), Y
+
+	BRA continue ;3c
+
+	.right	;3c
+	\\ Left
+	LDY #0
+	LDA (writeptr),Y		; 6c
+	AND #&AA				; 2c
+	ORA #PIXEL_RIGHT_7		; 2c
+	STA (writeptr), Y
+
+	LDA # PIXEL_LEFT_3 OR PIXEL_RIGHT_6			; yellow/cyan
+	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_2 OR PIXEL_RIGHT_5			; green/magenta
+	LDY #16:STA (writeptr), Y
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_4			; red/blue
+	LDY #24:STA (writeptr), Y
 	NOP
-	NEXT
-
-	LDX #2					; 2c
-	LDY kefrens_index_offset
-
-	.here
-
-	\\ 8x6c = 48c
-IF 0
-	LDA #PIXEL_LEFT_1 + PIXEL_RIGHT_1: STA &3140
-	LDA #PIXEL_LEFT_2 + PIXEL_RIGHT_2: STA &3148
-	LDA #PIXEL_LEFT_3 + PIXEL_RIGHT_3: STA &3150
-	LDA #PIXEL_LEFT_4 + PIXEL_RIGHT_4: STA &3158
-	LDA #PIXEL_LEFT_5 + PIXEL_RIGHT_5: STA &3160
-	LDA #PIXEL_LEFT_6 + PIXEL_RIGHT_6: STA &3168
-	LDA #PIXEL_LEFT_7 + PIXEL_RIGHT_7: STA &3170
-	LDA #PIXEL_LEFT_8 + PIXEL_RIGHT_8: STA &3178
-
-	\\ Need 80-10 more cycles
-
-	FOR n,1,35,1	; 
-	NOP
-	NEXT
-	INC dummy		; 5c
-
-ELSE
-;	TXA
-;	AND #&3F
-;	TAY				; 6c
-
-	LDA kefrens_code_table_LO, Y		; 4c
-	STA jump_command+1			; 4c
-	LDA kefrens_code_table_HI, Y		; 4c
-	STA jump_command+2			; 4c
-
-	INY
-	TXA
-;	LDA #PIXEL_LEFT_1 + PIXEL_RIGHT_1	;2c
-
-	.jump_command
-	JSR &FFFF					; 6c
-
-	\\ 16+2+6 = 24c + 8c loop = 32c fn must take 96c including RTS
-
-	BIT 0						; 3c
-ENDIF
 	
-	INX				; 2c
-	BNE here		; 3c
+	.continue
+	INC kefrens_row_angle
+	INC kefrens_add_index ;-5c
+	\\ 8*10c = 80c
+
+	FOR n,1,7,1
+	NOP
+	NEXT
+
+	INX								; 2c
+
+	DEC kefrens_crtc_row
+	}
+	BNE kefrens_draw_here
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
@@ -157,69 +221,193 @@ ENDIF
 	\\ R6=1 - got to display just one row
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01
-	
+
     RTS
-}
+\}
 
-NUM_NOPS=28
-
-.kefrens_code_gen
-FOR x,0,79,1
+.kefrens_kill
 {
-	\\ Code must take 96c including RTS = 6c = 90c total
-	N%=x DIV 2
-	PRINT N%
-	IF N% < 1
-	; no NOPs	
-	ELIF N% < NUM_NOPS
-	FOR i,1,N%,1
-	NOP
-	NEXT
-	ELSE
-	FOR i,1,NUM_NOPS,1
-	NOP
-	NEXT
-	ENDIF
-	STA &3000 + x * 8
-	STA &3008 + x * 8
-	STA &3010 + x * 8
-	STA &3018 + x * 8
-	STA &3020 + x * 8
-	STA &3028 + x * 8
-	STA &3030 + x * 8
-	STA &3038 + x * 8
-	\\ 8x 4c = 32c
-	M%=NUM_NOPS-N%
-	PRINT M%
-	IF M% < 1
-	; no NOPs
-	ELIF M% < NUM_NOPS
-	FOR i,1,M%,1
-	NOP
-	NEXT
-	ELSE
-	FOR i,1,NUM_NOPS,1
-	NOP
-	NEXT
-	ENDIF
-	\\ 30 NOPs = 60c
-	RTS		; 6c
+	JMP crtc_reset_from_single
 }
+
+.kefrens_set_anim
+{
+	STA kefrens_add_anim
+	RTS
+}
+
+.kefrens_set_width
+{
+	PHX
+	TAX
+	LDA kefrens_width_table, X
+	STA kefrens_draw_width_table_sm+2
+	PLX
+	RTS
+}
+
+.kefrens_set_add
+{
+	PHX
+	TAX
+	LDA kefrens_add_table, X
+	STA kefrens_draw_add_table_sm+2
+	PLX
+	RTS
+}
+
+.kefrens_set_speed
+{
+	PHX
+	TAX
+	LDA kefrens_speed_table, X
+	STA kefrens_draw_sine_table_sm+2
+	PLX
+	RTS
+}
+
+PAGE_ALIGN
+.kefrens_colour_lookup_A
+{
+	FOR n,0,15,1
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_0			; 0 = black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_0			; 1 = red/black
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; 2 = red/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_1			; 3 = yellow/red
+	EQUB PIXEL_LEFT_3 OR PIXEL_RIGHT_3			; 4 = yellow/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_3			; 5 = green/yellow
+	EQUB PIXEL_LEFT_2 OR PIXEL_RIGHT_2			; 6 = green/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_2			; 7 = cyan/green
+	EQUB PIXEL_LEFT_6 OR PIXEL_RIGHT_6			; 8 = cyan/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_6			; 9 = blue/cyan
+	EQUB PIXEL_LEFT_4 OR PIXEL_RIGHT_4			;10 = blue/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_4			;11 = magenta/blue
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			;12 = magenta/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_5			;13 = white/magenta
+	EQUB PIXEL_LEFT_7 OR PIXEL_RIGHT_7			;14 = white/white
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_7			;15 = black/white
+	\\ Or can wrap around to red again
+	NEXT
+}
+
+PAGE_ALIGN
+.kefrens_colour_lookup_B
+{
+	FOR n,0,15,1
+	EQUB PIXEL_RIGHT_0 OR PIXEL_LEFT_0			; 0 = black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_0			; 1 = red/black
+	EQUB PIXEL_RIGHT_1 OR PIXEL_LEFT_1			; 2 = red/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_1			; 3 = yellow/red
+	EQUB PIXEL_RIGHT_3 OR PIXEL_LEFT_3			; 4 = yellow/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_3			; 5 = green/yellow
+	EQUB PIXEL_RIGHT_2 OR PIXEL_LEFT_2			; 6 = green/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_2			; 7 = cyan/green
+	EQUB PIXEL_RIGHT_6 OR PIXEL_LEFT_6			; 8 = cyan/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_6			; 9 = blue/cyan
+	EQUB PIXEL_RIGHT_4 OR PIXEL_LEFT_4			;10 = blue/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_4			;11 = magenta/blue
+	EQUB PIXEL_RIGHT_5 OR PIXEL_LEFT_5			;12 = magenta/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_5			;13 = white/magenta
+	EQUB PIXEL_RIGHT_7 OR PIXEL_LEFT_7			;14 = white/white
+	EQUB PIXEL_LEFT_0 OR PIXEL_RIGHT_7			;15 = black/white
+	\\ Or can wrap around to red again
+	NEXT
+}
+
+PAGE_ALIGN
+.kefrens_addr_table_LO
+FOR x,0,255,1
+EQUB LO(screen_base_addr + ((x-48-2) DIV 2)*8)
 NEXT
 
 PAGE_ALIGN
-.kefrens_code_table_LO
-FOR y,0,255,1
-x=INT(36+30*SIN(y * 2 * PI / 255))
-addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
-EQUB LO(addr)
+.kefrens_addr_table_HI
+FOR x,0,255,1
+EQUB HI(screen_base_addr + ((x-48-2) DIV 2)*8)
 NEXT
 
-.kefrens_code_table_HI
+PAGE_ALIGN
+.kefrens_width_table_1
 FOR y,0,255,1
-x=INT(36+30*SIN(y * 2 * PI / 255))
-addr=kefrens_code_gen + x * (NUM_NOPS + 8 * 3 + 1)
-EQUB HI(addr)
+x=INT(128 + 76 * SIN(y * 2 * PI / 256))			\\ config 1
+EQUB x
 NEXT
+
+PAGE_ALIGN
+.kefrens_width_table_2
+FOR y,0,255,1
+x=INT(128 + 48 * SIN(y * 2 * PI / 256))			\\ config 2
+EQUB x
+NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_1
+FOR y,0,255,1
+EQUB 30 * SIN(y * 2 * PI / 256)				\\ config 1
+NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_2
+FOR y,0,255,1
+EQUB 10 * SIN(SIN(y * 2 * PI / 256) * 2 * PI)	\\ config 2
+NEXT
+
+PAGE_ALIGN
+.kefrens_add_table_3
+FOR y,0,255,1
+EQUB 10 * SIN(y * 2 * PI / 256)				\\ config 3
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_1
+FOR n,0,&FF,1			; &13F for COS
+EQUB 127 * SIN(2 * PI * n / 256)				\\ config 1
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_2
+FOR n,0,&FF,1			; &13F for COS
+EQUB 64 * SIN(2 * PI * n / 256)					\\ config 2
+NEXT
+
+PAGE_ALIGN
+.kefrens_speed_table_3
+FOR n,0,&FF,1			; &13F for COS
+EQUB 32 * SIN(2 * PI * n / 256)					\\ config 3
+NEXT
+
+\kefrens_cos_table = kefrens_speed_table + 64
+
+.kefrens_width_table
+{
+	EQUB HI(kefrens_width_table_1)
+	EQUB HI(kefrens_width_table_2)
+}
+
+.kefrens_add_table
+{
+	EQUB HI(kefrens_add_table_1)
+	EQUB HI(kefrens_add_table_2)
+	EQUB HI(kefrens_add_table_3)
+}
+
+.kefrens_speed_table
+{
+	EQUB HI(kefrens_speed_table_1)
+	EQUB HI(kefrens_speed_table_2)
+	EQUB HI(kefrens_speed_table_3)
+}
+
+.kefrens_bar_pixels
+{
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_5			; red/amgenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_5			; magenta
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
+	EQUB PIXEL_LEFT_5 OR PIXEL_RIGHT_1			; magenta/red
+	EQUB PIXEL_LEFT_1 OR PIXEL_RIGHT_1			; red
+}
 
 .kefrens_end

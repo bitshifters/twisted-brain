@@ -78,6 +78,13 @@ _ENABLE_VOLUME = FALSE
 {
 ;	ldx musicon
 ;	jsr vgm_set_volume_mask
+
+	\\ Not started yet!
+	LDA first_fx
+	BEQ wait_20_ms
+
+	\\ Every call is 20ms
+	INC delta_time
 	
 	\\ Assume this is called every 20ms..
 	LDA vgm_player_ended
