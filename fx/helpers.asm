@@ -225,6 +225,9 @@ ENDIF
   lda #HI(screen_base_addr)
 
   sta loop+2
+
+  JSR music_poll_if_vsync
+
   lda #0
   ldy #0
   .loop

@@ -722,6 +722,7 @@ PRINT "PRINT size =",~beeb_print_end-beeb_print_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
 PRINT "HELPERS size =",~helpers_end-helpers_start
+PRINT "FONT size =",~font_end-font_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "DATA size =",~data_end-data_start
 PRINT "TEXT BLOCKS size =",~text_blocks_end-text_blocks_start

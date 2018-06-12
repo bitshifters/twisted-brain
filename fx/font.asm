@@ -39,6 +39,8 @@ MODE1_COL1=&20
 MODE1_COL2=&80
 MODE1_COL3=&A0
 
+.font_start
+
 .font_init
 {
 	LDA #LO(font_map_1bpp_to_2bpp_line_A)
@@ -57,6 +59,8 @@ MODE1_COL3=&A0
   TYA
   EOR temp
   STA smToggle+1
+
+	JSR music_poll_if_vsync
 
   ldx #HI(SCREEN_SIZE_BYTES)
   lda #HI(screen_base_addr)
@@ -241,3 +245,5 @@ ALIGN 32
 	EQUB (m AND FONT_LINE_B_FG) OR (n AND FONT_LINE_B_BG)
 	NEXT
 }
+
+.font_end
