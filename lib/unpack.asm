@@ -25,6 +25,9 @@ LZPOS=readptr
 	stx INPOS
 	sty INPOS+1
 
+	; poll the music player just in case
+	JSR music_poll_if_vsync
+
 	jsr getbyt	; 'x'
 	jsr getbyt	; 'x'
 	jsr getbyt	; 'p'
