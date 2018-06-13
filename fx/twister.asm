@@ -170,6 +170,31 @@ TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 	ADC twister_knot_table_HI, Y
 	STA twister_twist_brot+1
 	
+	\ Beat flash experiment - harder than it looks
+IF 0
+	LDA vgm_beat_counter
+	AND #&1
+	BEQ no_beat
+
+	LDA vgm_beat_frames
+	CMP #4
+	BCS no_beat
+
+	\\ Beat
+	LDA #PAL_white
+	JSR pal_set_mode1_colour2
+	LDA #PAL_white
+	JSR pal_set_mode1_colour1
+	BRA return
+
+	.no_beat
+	LDA #PAL_yellow
+	JSR pal_set_mode1_colour2
+	LDA #PAL_red
+	JSR pal_set_mode1_colour1
+ENDIF
+
+	.return
     RTS
 }
 

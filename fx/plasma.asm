@@ -10,6 +10,7 @@ plasma_colour = locals_start + 5
 plasma_anim = locals_start + 6
 
 PLASMA_MAX_OFFSET = 96	; 192/2		;160
+PLASMA_MAX_COLOURS = 6
 
 .plasma_start
 
@@ -49,7 +50,10 @@ PLASMA_MAX_OFFSET = 96	; 192/2		;160
 	\\ Next colour
 	LDA plasma_colour
 	INC A
-	AND #&7
+	CMP #PLASMA_MAX_COLOURS
+	BCC next_col
+	LDA #0
+	.next_col
 	STA plasma_colour
 	JSR plasma_set_colour
 
@@ -248,12 +252,12 @@ PAGE_ALIGN
 
 \\ By Brightness white = red, blue, green, white
 	EQUB PAL_red
-	EQUB PAL_blue
+;	EQUB PAL_blue
 	EQUB PAL_green
 	EQUB PAL_white
 
 \\ Mono
-	EQUB PAL_white
+;	EQUB PAL_white
 }
 
 .plasma_colour_black
@@ -265,12 +269,12 @@ PAGE_ALIGN
 
 \\ By Brightness black = magenta, black, cyan, white
 	EQUB PAL_magenta
-	EQUB PAL_black
+;	EQUB PAL_black
 	EQUB PAL_cyan
 	EQUB PAL_yellow
 
 \\ Mono
-	EQUB PAL_black
+;	EQUB PAL_black
 }
 
 PAGE_ALIGN
