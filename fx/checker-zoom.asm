@@ -21,6 +21,7 @@ MAX_CHECK_SIZE = 255
 MIN_CHECK_SIZE = 8
 CHECKZOOM_DELAY = 1
 CHECKER_ZOOM = TRUE
+CHECKER_COLOUR_BEAT = TRUE
 
 .checkzoom_start
 
@@ -70,6 +71,32 @@ CHECKER_ZOOM = TRUE
 	EQUB &F0 + (15 EOR 7)
 }
 
+IF CHECKER_COLOUR_BEAT
+.checkzoom_beat_pal_0
+{
+    EQUB (8 EOR 7)
+    EQUB (9 EOR 7)
+    EQUB (10 EOR 7)
+    EQUB (11 EOR 7)
+    EQUB (15 EOR 7)
+    EQUB (14 EOR 7)
+    EQUB (13 EOR 7)
+    EQUB (12 EOR 7)
+}
+
+.checkzoom_beat_pal_3
+{
+    EQUB &A0 + (15 EOR 7)
+    EQUB &A0 + (14 EOR 7)
+    EQUB &A0 + (13 EOR 7)
+    EQUB &A0 + (12 EOR 7)
+    EQUB &A0 + (8 EOR 7)
+    EQUB &A0 + (9 EOR 7)
+    EQUB &A0 + (10 EOR 7)
+    EQUB &A0 + (11 EOR 7)
+}
+ENDIF
+
 .checkzoom_update
 {
 	\\ X = 40 + sin(iy) / 4
@@ -91,6 +118,25 @@ CHECKER_ZOOM = TRUE
     INC checkzoom_idx
 
     INC checkzoom_idy
+
+IF CHECKER_COLOUR_BEAT
+    LDA vgm_beat_frames
+    CMP #1      ; don't beat on frame 0 as VGM player taxed
+    BNE no_beat
+    LDX vgm_beat_counter    ;0-7
+    LDA checkzoom_beat_pal_0, X
+    STA &FE21
+    EOR #&10:STA &FE21
+    EOR #&40:STA &FE21
+    EOR #&10:STA &FE21
+
+    LDA checkzoom_beat_pal_3, X
+    STA &FE21
+    EOR #&10:STA &FE21
+    EOR #&40:STA &FE21
+    EOR #&10:STA &FE21
+    .no_beat
+ENDIF
 
 IF CHECKER_ZOOM
     {
