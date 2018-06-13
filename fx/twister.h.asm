@@ -79,4 +79,11 @@ ENDMACRO
 
 MACRO TWISTER_SET_NUMBER n
     SCRIPT_CALLV twister_set_displayed, n*20
+    IF n=1
+    SCRIPT_CALLV twister_set_position, 98 - 30
+    ELIF n=2
+    SCRIPT_CALLV twister_set_position, 98 - 20
+    ELSE
+    SCRIPT_CALLV twister_set_position, 98
+    ENDIF
 ENDMACRO

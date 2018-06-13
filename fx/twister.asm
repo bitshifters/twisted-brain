@@ -38,7 +38,7 @@ TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 	LDY #HI(twister_pal)
 	JSR ula_set_palette
 
-	LDA #20:JSR twister_set_displayed
+;	LDA #20:JSR twister_set_displayed
 
 	LDX #LO(twister_screen_data)
 	LDY #HI(twister_screen_data)
@@ -329,6 +329,16 @@ ENDIF
 {
 	PHA
 	LDA #1
+	STA &FE00
+	PLA
+	STA &FE01
+	RTS
+}
+
+.twister_set_position
+{
+	PHA
+	LDA #2
 	STA &FE00
 	PLA
 	STA &FE01
