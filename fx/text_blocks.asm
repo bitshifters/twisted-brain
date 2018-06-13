@@ -98,6 +98,7 @@ EQUS "^ EVERYONE AT    ^"
 EQUS "^     THE PARTY! ^"
 EQUS "^^^^^^^^^^^^^^^^^^"
 
+IF 0
 .text_block_specs
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
@@ -115,6 +116,26 @@ EQUS "@ INSPIRED BY    @"
 EQUS "@     ^ REBELS ^ @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
+ELSE
+.text_block_return
+.text_block_specs
+\\ Each text block must be 18 x 14 characters
+\\    012345678901234567
+EQUS "@@@ BBC MASTER @@@"
+EQUS "@   ----------   @"
+EQUS "@ 2MHZ 6502      @"
+EQUS "@       128K RAM @"
+EQUS "@ 6845 CRTC      @"
+EQUS "@        SN76489 @"
+EQUS "@                @"
+EQUS "@ NO TELETEXT    @"
+EQUS "@  JUST RASTERS! @"
+EQUS "@                @"
+EQUS "@ ^ THANKS FOR ^ @"
+EQUS "@  ^ WATCHING ^  @"
+EQUS "@                @"
+EQUS "@@@@@@@@@@@@@@@@@@"
+ENDIF
 
 .text_block_music
 \\ Each text block must be 18 x 14 characters
@@ -134,6 +155,7 @@ EQUS "@ BY HENLEY      @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
+IF 0
 .text_block_return
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
@@ -151,6 +173,7 @@ EQUS "@ BITSHIFTERS.   @"
 EQUS "@      GITHUB.IO @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
+ENDIF
 
 ASCII_MAPCHAR
 

@@ -245,7 +245,7 @@ TWISTER_SET_KNOT_Y 2.3
 TWISTER_SET_PARAMS 10, 40, 2.56
 
 \ ******************************************************************
-\\ **** GREETS & SPECS ****
+\\ **** GREETS ****
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 35
@@ -253,9 +253,15 @@ SEQUENCE_SET_FX fx_Text
 SCRIPT_CALLV text_set_pattern, textPattern_Snake
 SCRIPT_CALLV text_set_block, textBlock_Greets    ; takes 252 frames = 5.04s
 
+\ ******************************************************************
+\\ **** COPPER ****
+\ ******************************************************************
+
 SEQUENCE_WAIT_UNTIL_PATTERN 37
-SCRIPT_CALLV text_set_pattern, textPattern_Vertical
-SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
+SEQUENCE_SET_FX fx_Copper
+;SEQUENCE_SET_FX fx_Text
+;SCRIPT_CALLV text_set_pattern, textPattern_Vertical
+;SCRIPT_CALLV text_set_block, textBlock_Specs    ; takes 252 frames = 5.04s
 
 \ ******************************************************************
 \\ **** PARALLAX ****
@@ -341,11 +347,8 @@ SCRIPT_CALLV parallax_set_wave_y, 15
 SEQUENCE_WAIT_UNTIL_PATTERN 47
 SEQUENCE_SET_FX fx_Plasma
 
-;SEQUENCE_SET_FX fx_Copper
-;SEQUENCE_WAIT_UNTIL_PATTERN 55
-
 \ ******************************************************************
-\\ **** GOODBYE MESSAGE ****
+\\ **** GOODBYE MESSAGE INC SPECS ****
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 53
@@ -362,15 +365,8 @@ SEQUENCE_WAIT_UNTIL_PATTERN 55
 \\ Bounce!
 SEQUENCE_SET_FX fx_Smiley
 \\ Wipe
-;SEQUENCE_WAIT_UNTIL_PATTERN 56
-;SCRIPT_CALLV smiley_set_anim, 1
-
-\ ******************************************************************
-\\ **** COPPER ****
-\ ******************************************************************
-
-SEQUENCE_WAIT_UNTIL_PATTERN 56.5
-SEQUENCE_SET_FX fx_Copper
+SEQUENCE_WAIT_UNTIL_PATTERN 56
+SCRIPT_CALLV smiley_set_anim, 1
 
 \ ******************************************************************
 \\ **** END ****
