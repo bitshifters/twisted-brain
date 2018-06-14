@@ -424,14 +424,14 @@ ENDIF
 	EQUB &50 + PAL_black
 	EQUB &60 + PAL_red
 	EQUB &70 + PAL_red
-	EQUB &80 + PAL_cyan
-	EQUB &90 + PAL_cyan
-	EQUB &A0 + PAL_white
-	EQUB &B0 + PAL_white
-	EQUB &C0 + PAL_cyan
-	EQUB &D0 + PAL_cyan
-	EQUB &E0 + PAL_white
-	EQUB &F0 + PAL_white
+	EQUB &80 + PAL_green
+	EQUB &90 + PAL_green
+	EQUB &A0 + PAL_blue
+	EQUB &B0 + PAL_blue
+	EQUB &C0 + PAL_green
+	EQUB &D0 + PAL_green
+	EQUB &E0 + PAL_blue
+	EQUB &F0 + PAL_blue
 }
 
 PAGE_ALIGN

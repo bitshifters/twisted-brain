@@ -98,6 +98,9 @@ ENDMACRO
 
 .sequence_script_start
 
+SEQUENCE_SET_FX fx_Plasma
+SEQUENCE_WAIT_UNTIL_PATTERN 20
+
 \ ******************************************************************
 \\ **** TELETEXT LOGO ****
 \ ******************************************************************
@@ -192,12 +195,12 @@ SEQUENCE_SET_FX fx_Twister
 TWISTER_SET_NUMBER 1
 TWISTER_SET_PARAMS 5.12, 0, 0
 SEQUENCE_WAIT_FRAMES 153    ; 281
-MODE1_SET_COLOUR 2, PAL_green
+;MODE1_SET_COLOUR 2, PAL_green
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
 TWISTER_SET_PARAMS 0, 10.0, 0
 SEQUENCE_WAIT_FRAMES 251
-MODE1_SET_COLOUR 2, PAL_yellow
+;MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
 
 \ ******************************************************************
@@ -216,13 +219,15 @@ SCRIPT_CALLV text_set_block, textBlock_Music
 SEQUENCE_WAIT_UNTIL_PATTERN 27
 SEQUENCE_SET_FX fx_Twister
 TWISTER_SET_NUMBER 2
+MODE1_SET_COLOUR 1, PAL_blue
 MODE1_SET_COLOUR 2, PAL_cyan
+MODE1_SET_COLOUR 3, PAL_white
 TWISTER_SET_KNOT_Y 1.0
 TWISTER_SET_PARAMS 10.0, 0, 0
 SCRIPT_CALLV twister_set_twist_index, 0
 SEQUENCE_WAIT_UNTIL_PATTERN 28
 ; move the knot
-MODE1_SET_COLOUR 2, PAL_blue
+;MODE1_SET_COLOUR 2, PAL_blue
 TWISTER_SET_KNOT_PERIOD 5.0
 
 \ ******************************************************************
@@ -241,7 +246,9 @@ SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
 SEQUENCE_WAIT_UNTIL_PATTERN 32
 SEQUENCE_SET_FX fx_Twister
 TWISTER_SET_NUMBER 4
+MODE1_SET_COLOUR 1, PAL_red
 MODE1_SET_COLOUR 2, PAL_magenta
+MODE1_SET_COLOUR 3, PAL_white
 TWISTER_SET_KNOT_Y 2.3
 TWISTER_SET_PARAMS 10, 40, 2.56
 

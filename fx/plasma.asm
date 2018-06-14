@@ -7,10 +7,18 @@ plasma_row = locals_start + 2
 plasma_crtc_count = locals_start + 3
 plasma_count = locals_start + 4
 plasma_colour = locals_start + 5
-plasma_anim = locals_start + 6
+
+plasma_incx = locals_start + 6
+plasma_wavef = locals_start + 7
+plasma_wavey = locals_start + 8
+plasma_x = locals_start + 9
+plasma_top_idx = locals_start + 10
+plasma_size = locals_start + 11
+plasma_row_idx = locals_start + 12
 
 PLASMA_MAX_OFFSET = 96	; 192/2		;160
 PLASMA_MAX_COLOURS = 6
+PLASMA_MAX_X = 160
 
 .plasma_start
 
@@ -23,11 +31,24 @@ PLASMA_MAX_COLOURS = 6
 
     SET_ULA_MODE ULA_Mode0
 
-	STZ plasma_anim
-	STZ plasma_colour
+	LDA #6
+	STA plasma_colour
+
 	STZ plasma_row
 	STZ plasma_offset
-	STZ plasma_offset+1
+
+	STZ plasma_x
+	STZ plasma_top_idx
+
+	LDA #0
+	STA plasma_incx
+	LDA #1
+	STA plasma_wavef
+	LDA #1
+	STA plasma_wavey
+
+	LDA #0
+	STA plasma_size
 
 	JSR plasma_set_colour
 
@@ -36,6 +57,35 @@ PLASMA_MAX_COLOURS = 6
 
 .plasma_update
 {
+	\\ Increment top edge
+	LDA plasma_x
+	CLC
+	ADC plasma_incx
+	CMP #PLASMA_MAX_X
+	BCC x_ok
+	LDA #0
+	INC plasma_size
+	.x_ok
+	STA plasma_x
+
+	\\ Increment sine index at top edge
+	CLC
+	LDA plasma_top_idx
+	ADC plasma_wavef
+	STA plasma_top_idx
+
+	LDX plasma_top_idx
+	LDA plasma_offset_table, X
+	CLC
+	ADC plasma_x
+	; do we care if X overflows? - just goes into next size +/-1
+	TAX
+
+	\\ Display row Y character offset X
+	LDY plasma_size
+	JSR plasma_set_charrow		; 172c
+
+IF 0
 	LDX plasma_offset
 	INX							; increment this on another sinewave?
 	CPX #PLASMA_MAX_OFFSET
@@ -70,6 +120,7 @@ PLASMA_MAX_COLOURS = 6
 
 	LDY plasma_row
 	JSR plasma_set_charrow		; 172c
+ENDIF
 
     RTS
 }
@@ -92,10 +143,12 @@ PLASMA_MAX_COLOURS = 6
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01		; 8 * 6c = 48c
 
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+
 	\\ Set up second charrow
 
-	LDY plasma_row				; 3c
-
+IF 0
 	LDX plasma_offset			; 3c
 	STX plasma_count			; 3c
 
@@ -104,7 +157,21 @@ PLASMA_MAX_COLOURS = 6
 	LDA plasma_offset_table, X	; 4c
 	ADC plasma_offset			; 3c
 	TAX							; 2c
+ELSE
+	LDA plasma_top_idx			; 3c
+	CLC							; 2c
+	ADC plasma_wavey			; 3c
+	STA plasma_row_idx 						; 2c
+	TAX
+	LDA plasma_offset_table, X	; 4c
+	CLC							; 2c
+	ADC plasma_x				; 3c
+;	AND #&3F					; 2c
+	TAX							; 2c
 
+ENDIF
+
+	LDY plasma_size				; 3c
 	JSR plasma_set_charrow		; 46c
 
 	\\ Cycle count to end of charrow (4 scanlines)
@@ -113,9 +180,6 @@ PLASMA_MAX_COLOURS = 6
 	NOP
 	NEXT
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
-
 	.start_of_charrow_1
 
 	LDA #62						; 2c
@@ -123,6 +187,7 @@ PLASMA_MAX_COLOURS = 6
 
 	.here
 
+IF 0
 	INC plasma_count			\\ could maybe increment this on another sinewave?
 
 	LDX plasma_count			; 3c
@@ -130,13 +195,36 @@ PLASMA_MAX_COLOURS = 6
 	LDA plasma_offset_table, X	; 4c
 	ADC plasma_offset			; 3c
 	TAX							; 2c
-	JSR plasma_set_charrow		; 46c
-
 	\\ Cycle count to end of charrow (4 scanlines)
 
 	FOR n,1,24,1
 	NOP
 	NEXT
+ELSE
+	LDA plasma_row_idx
+	CLC							; 2c
+	ADC plasma_wavey			; 3c
+	STA plasma_row_idx
+	TAX 						; 2c
+	LDA plasma_offset_table, X	; 4c
+	CLC							; 2c
+	ADC plasma_x				; 3c
+
+	LDX plasma_crtc_count
+	ADC plasma_second_table, X
+
+;	AND #&3F					; 2c
+	TAX							; 2c
+
+	FOR n,1,21-5,1
+	NOP
+	NEXT
+	BIT 0
+ENDIF
+
+	\\ Set adddress of character row
+
+	JSR plasma_set_charrow		; 46c
 
 	JSR cycles_wait_128
 	JSR cycles_wait_128
@@ -257,7 +345,7 @@ PAGE_ALIGN
 	EQUB PAL_white
 
 \\ Mono
-;	EQUB PAL_white
+	EQUB PAL_white
 }
 
 .plasma_colour_black
@@ -274,7 +362,7 @@ PAGE_ALIGN
 	EQUB PAL_yellow
 
 \\ Mono
-;	EQUB PAL_black
+	EQUB PAL_black
 }
 
 PAGE_ALIGN
@@ -284,6 +372,16 @@ PAGE_ALIGN
 	EQUB (PLASMA_MAX_OFFSET/2) + (PLASMA_MAX_OFFSET/2)*SIN(n * 2 * PI / 256)
 	NEXT
 }
+
+IF 1
+PAGE_ALIGN
+.plasma_second_table
+{
+	FOR n,0,255,1
+	EQUB (PLASMA_MAX_OFFSET/4)*SIN(n * 4 * PI / 256)
+	NEXT
+}
+ENDIF
 
 PAGE_ALIGN
 .plasma_screen_data

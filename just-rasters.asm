@@ -640,7 +640,8 @@ INCLUDE "fx/sequence.asm"
 	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
 	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    kefrens_kill
 	EQUW twister_init,    twister_update,    twister_draw,    twister_kill
-	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+;	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
 	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
@@ -654,7 +655,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4, 6		; need something better here?
+	EQUB 4, 6, 5, 4, 5, 4, 5, 5, 5, 6, 6, 4, 6		; need something better here?
 }
 
 .string_1 EQUS " 1..",0
@@ -780,14 +781,16 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/twister.asm"
-PAGE_ALIGN
-INCLUDE "fx/boxrot.asm"
+;PAGE_ALIGN
+;INCLUDE "fx/boxrot.asm"
 PAGE_ALIGN
 INCLUDE "fx/parallax.asm"
 PAGE_ALIGN
 INCLUDE "fx/vblinds.asm"
 PAGE_ALIGN
 INCLUDE "fx/copper.asm"
+PAGE_ALIGN
+INCLUDE "fx/plasma.asm"
 
 .bank1_end
 
@@ -801,10 +804,11 @@ PRINT "------"
 PRINT "BANK 1"
 PRINT "------"
 PRINT "TWISTER size =", ~twister_end-twister_start
-PRINT "BOXROT size =",~boxrot_end-boxrot_start
+;PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
 PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
 PRINT "COPPER size =", ~copper_end-copper_start
+PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -820,8 +824,6 @@ GUARD &C000
 \ *	FX
 \ ******************************************************************
 
-PAGE_ALIGN
-INCLUDE "fx/plasma.asm"
 PAGE_ALIGN
 INCLUDE "fx/logo.asm"
 PAGE_ALIGN
@@ -842,7 +844,6 @@ SAVE "Bank2", bank2_start, bank2_end
 PRINT "------"
 PRINT "BANK 2"
 PRINT "------"
-PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
