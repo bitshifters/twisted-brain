@@ -913,4 +913,7 @@ IF _DEBUG
 ;PUTFILE "data/twisted-brain-mode2.bin", "BRAIN", &3000
 ;PUTBASIC "basic/mask.bas", "MASK"
 PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
+PUTBASIC "basic/make_dither2.bas", "MAKDITH"
+PUTBASIC "basic/double-dith.bas", "DUBDITH"
+PUTFILE "data/hdither.bin", "HDITHER", &3000
 ENDIF

@@ -92,6 +92,11 @@ MACRO MODE1_SET_COLOURS p1, p2, p3
     SCRIPT_CALLV pal_set_mode1_colour3, p3
 ENDMACRO
 
+MACRO MODE0_SET_COLOURS p0,p1
+    SCRIPT_CALLV pal_set_mode0_colour0, p0
+    SCRIPT_CALLV pal_set_mode0_colour1, p1
+ENDMACRO
+
 \ ******************************************************************
 \ *	The script
 \ ******************************************************************
@@ -99,6 +104,28 @@ ENDMACRO
 .sequence_script_start
 
 SEQUENCE_SET_FX fx_Plasma
+
+MODE0_SET_COLOURS PAL_red, PAL_magenta
+; fast & squashy
+SCRIPT_CALLV plasma_set_size, 6
+SCRIPT_CALLV plasma_set_wave_2, &FF
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, 1
+SEQUENCE_WAIT_UNTIL_PATTERN 20
+
+MODE0_SET_COLOURS PAL_red, PAL_magenta
+; fat & slow
+SCRIPT_CALLV plasma_set_size, 0
+SCRIPT_CALLV plasma_set_wave_2, 0
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, 2
+SEQUENCE_WAIT_UNTIL_PATTERN 20
+
+SCRIPT_CALLV plasma_set_size, 5
+; scroller
+SCRIPT_CALLV plasma_set_wave_2, &FF
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, 0
 SEQUENCE_WAIT_UNTIL_PATTERN 20
 
 \ ******************************************************************

@@ -310,4 +310,30 @@ ENDIF
 	RTS
 }
 
+.pal_set_mode0_colour0
+{
+	STA &FE21						; 4c
+	AND #&F:ORA #&10:STA &FE21		; 8c
+	AND #&F:ORA #&20:STA &FE21		; 8c
+	AND #&F:ORA #&30:STA &FE21		; 8c
+	AND #&F:ORA #&40:STA &FE21		; 8c
+	AND #&F:ORA #&50:STA &FE21		; 8c
+	AND #&F:ORA #&60:STA &FE21		; 8c
+	AND #&F:ORA #&70:STA &FE21		; 8c
+	RTS	
+}
+
+.pal_set_mode0_colour1
+{
+	AND #&F:ORA #&80:STA &FE21		; 8c
+	AND #&F:ORA #&90:STA &FE21		; 8c
+	AND #&F:ORA #&A0:STA &FE21		; 8c
+	AND #&F:ORA #&B0:STA &FE21		; 8c
+	AND #&F:ORA #&C0:STA &FE21		; 8c
+	AND #&F:ORA #&D0:STA &FE21		; 8c
+	AND #&F:ORA #&E0:STA &FE21		; 8c
+	AND #&F:ORA #&F0:STA &FE21		; 8c
+	RTS
+}
+
 .helpers_end

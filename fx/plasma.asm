@@ -16,7 +16,11 @@ plasma_top_idx = locals_start + 10
 plasma_size = locals_start + 11
 plasma_row_idx = locals_start + 12
 
-PLASMA_MAX_OFFSET = 96	; 192/2		;160
+plasma_second_idx = locals_start + 13
+plasma_second_top = locals_start + 14
+plasma_wave2 = locals_start + 15
+
+PLASMA_MAX_OFFSET = 128	;160	; 192/2		;160	// actully we have 320 chars
 PLASMA_MAX_COLOURS = 6
 PLASMA_MAX_X = 160
 
@@ -31,24 +35,29 @@ PLASMA_MAX_X = 160
 
     SET_ULA_MODE ULA_Mode0
 
-	LDA #6
-	STA plasma_colour
-
 	STZ plasma_row
 	STZ plasma_offset
 
-	STZ plasma_x
+	LDA #0
+	STA plasma_x
 	STZ plasma_top_idx
+	STZ plasma_second_top
 
 	LDA #0
 	STA plasma_incx
 	LDA #1
 	STA plasma_wavef
-	LDA #1
+	LDA #2
 	STA plasma_wavey
 
 	LDA #0
+	STA plasma_wave2
+
+	LDA #0
 	STA plasma_size
+
+	LDA #6
+	STA plasma_colour
 
 	JSR plasma_set_colour
 
@@ -57,6 +66,11 @@ PLASMA_MAX_X = 160
 
 .plasma_update
 {
+	CLC
+	LDA plasma_second_top
+	ADC plasma_wave2
+	STA plasma_second_top
+
 	\\ Increment top edge
 	LDA plasma_x
 	CLC
@@ -79,6 +93,12 @@ PLASMA_MAX_X = 160
 	CLC
 	ADC plasma_x
 	; do we care if X overflows? - just goes into next size +/-1
+	CLC
+
+	LDX plasma_second_top
+	STX plasma_second_idx
+	ADC plasma_second_table, X
+
 	TAX
 
 	\\ Display row Y character offset X
@@ -166,6 +186,9 @@ ELSE
 	LDA plasma_offset_table, X	; 4c
 	CLC							; 2c
 	ADC plasma_x				; 3c
+	CLC
+	LDX plasma_second_idx
+	ADC plasma_second_table, X
 ;	AND #&3F					; 2c
 	TAX							; 2c
 
@@ -176,7 +199,7 @@ ENDIF
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
-	FOR n,1,49,1
+	FOR n,1,49-5,1
 	NOP
 	NEXT
 
@@ -210,16 +233,18 @@ ELSE
 	CLC							; 2c
 	ADC plasma_x				; 3c
 
-	LDX plasma_crtc_count
+	CLC
+	LDX plasma_second_idx
 	ADC plasma_second_table, X
 
 ;	AND #&3F					; 2c
 	TAX							; 2c
 
-	FOR n,1,21-5,1
+	INC plasma_second_idx
+
+	FOR n,1,21-7,1
 	NOP
 	NEXT
-	BIT 0
 ENDIF
 
 	\\ Set adddress of character row
@@ -313,20 +338,44 @@ ENDIF
 	RTS
 }
 
+.plasma_set_wave_y
+{
+	STA plasma_wavey
+	RTS
+}
+
+.plasma_set_wave_f
+{
+	STA plasma_wavef
+	RTS
+}
+
+.plasma_set_wave_2
+{
+	STA plasma_wave2
+	RTS
+}
+
+.plasma_set_size
+{
+	STA plasma_size
+	RTS
+}
+
 \\ Have 16 double character rows
 
 PAGE_ALIGN
 .plasma_lookup_LO
 {
-	FOR n,0,15,1
-	EQUB LO((screen_base_addr + n*1280)/8)
+	FOR n,0,7,1
+	EQUB LO((screen_base_addr + n*2580)/8)
 	NEXT
 }
 
 .plasma_lookup_HI
 {
-	FOR n,0,15,1
-	EQUB HI((screen_base_addr + n*1280)/8)
+	FOR n,0,7,1
+	EQUB HI((screen_base_addr + n*2560)/8)
 	NEXT
 }
 
@@ -369,7 +418,7 @@ PAGE_ALIGN
 .plasma_offset_table
 {
 	FOR n,0,255,1
-	EQUB (PLASMA_MAX_OFFSET/2) + (PLASMA_MAX_OFFSET/2)*SIN(n * 2 * PI / 256)
+	EQUB (PLASMA_MAX_OFFSET) + (PLASMA_MAX_OFFSET/2)*SIN(n * 2 * PI / 256)
 	NEXT
 }
 
@@ -378,13 +427,13 @@ PAGE_ALIGN
 .plasma_second_table
 {
 	FOR n,0,255,1
-	EQUB (PLASMA_MAX_OFFSET/4)*SIN(n * 4 * PI / 256)
+	EQUB (PLASMA_MAX_OFFSET/4)*COS(n * 4 * PI / 256)
 	NEXT
 }
 ENDIF
 
 PAGE_ALIGN
 .plasma_screen_data
-INCBIN "data/hdither.pu"
+INCBIN "data/hdither2.pu"
 
 .plasma_end
