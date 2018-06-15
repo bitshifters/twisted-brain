@@ -655,7 +655,7 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 6, 5, 4, 5, 4, 5, 5, 5, 6, 6, 4, 6		; need something better here?
+	EQUB 4, 6, 5, 4, 5, 4, 6, 5, 5, 6, 6, 4, 6		; need something better here?
 }
 
 .string_1 EQUS " 1..",0
@@ -786,8 +786,6 @@ INCLUDE "fx/twister.asm"
 PAGE_ALIGN
 INCLUDE "fx/parallax.asm"
 PAGE_ALIGN
-INCLUDE "fx/vblinds.asm"
-PAGE_ALIGN
 INCLUDE "fx/copper.asm"
 PAGE_ALIGN
 INCLUDE "fx/plasma.asm"
@@ -806,7 +804,6 @@ PRINT "------"
 PRINT "TWISTER size =", ~twister_end-twister_start
 ;PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
-PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
 PRINT "COPPER size =", ~copper_end-copper_start
 PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "------"
@@ -832,6 +829,8 @@ PAGE_ALIGN
 INCLUDE "fx/kefrens.asm"
 PAGE_ALIGN
 INCLUDE "fx/smiley.asm"
+PAGE_ALIGN
+INCLUDE "fx/vblinds.asm"
 
 .bank2_end
 
@@ -848,6 +847,7 @@ PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
 PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "SMILEY size =", ~smiley_end-smiley_start
+PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%

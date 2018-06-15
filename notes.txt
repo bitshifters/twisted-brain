@@ -445,3 +445,13 @@ Wait 30 rows until end of cycle
 VSync cycle
 39-31 rows + 8-yoff vadjust, display 1, vsync at 35-31
 Set screen address for displayed area
+
+Plasma
+~~~
+Rather than size + offset need to think as one continue field of bars of
+decreasing size, so just one large offset!
+
+32 rows x 80 characters each = 2560 = &A00 characters
+A 16-bit offset is sufficient
+
+No reason to have large tubes to small tubes - can mix them together!

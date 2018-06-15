@@ -103,31 +103,6 @@ ENDMACRO
 
 .sequence_script_start
 
-SEQUENCE_SET_FX fx_Plasma
-
-MODE0_SET_COLOURS PAL_red, PAL_magenta
-; fast & squashy
-SCRIPT_CALLV plasma_set_size, 6
-SCRIPT_CALLV plasma_set_wave_2, &FF
-SCRIPT_CALLV plasma_set_wave_f, 1
-SCRIPT_CALLV plasma_set_wave_y, 1
-SEQUENCE_WAIT_UNTIL_PATTERN 20
-
-MODE0_SET_COLOURS PAL_red, PAL_magenta
-; fat & slow
-SCRIPT_CALLV plasma_set_size, 0
-SCRIPT_CALLV plasma_set_wave_2, 0
-SCRIPT_CALLV plasma_set_wave_f, 1
-SCRIPT_CALLV plasma_set_wave_y, 2
-SEQUENCE_WAIT_UNTIL_PATTERN 20
-
-SCRIPT_CALLV plasma_set_size, 5
-; scroller
-SCRIPT_CALLV plasma_set_wave_2, &FF
-SCRIPT_CALLV plasma_set_wave_f, 1
-SCRIPT_CALLV plasma_set_wave_y, 0
-SEQUENCE_WAIT_UNTIL_PATTERN 20
-
 \ ******************************************************************
 \\ **** TELETEXT LOGO ****
 \ ******************************************************************
@@ -381,6 +356,89 @@ SCRIPT_CALLV parallax_set_wave_y, 15
 
 SEQUENCE_WAIT_UNTIL_PATTERN 47
 SEQUENCE_SET_FX fx_Plasma
+
+; X=linear speed of top line in characters
+; F=speed of sine movement horizontlly (left/right)
+; Y=freq of wave 1 vertically (how bendy)
+; YF=speed of wave 2
+; X=freq wave 2 vertically (hot extra bendy)
+\\ By Hue white = red, blue, green
+\\ By Hue black = magenta, cyan, yellow
+\\ By Brightness white = red, blue, green, white
+\\ By Brightness black = magenta, black, cyan, white
+
+; fat & slow
+MODE0_SET_COLOURS PAL_red, PAL_magenta
+SCRIPT_CALLV plasma_set_x16, 2
+SCRIPT_CALLV plasma_set_inc_x, 0
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, 1
+SCRIPT_CALLV plasma_set_wave_yf, &FF
+SCRIPT_CALLV plasma_set_wave_x, 1
+
+SEQUENCE_WAIT_UNTIL_PATTERN 48
+
+; slow squeeze out
+;MODE0_SET_COLOURS PAL_blue, PAL_cyan
+;SCRIPT_CALLV plasma_set_x16, 20
+;SCRIPT_CALLV plasma_set_inc_x, 0
+;SCRIPT_CALLV plasma_set_wave_f, 1
+;SCRIPT_CALLV plasma_set_wave_y, 2
+;SCRIPT_CALLV plasma_set_wave_yf, 1
+;SCRIPT_CALLV plasma_set_wave_x, 4
+
+; swing from large
+MODE0_SET_COLOURS PAL_green, PAL_yellow
+SCRIPT_CALLV plasma_set_x16, 1
+SCRIPT_CALLV plasma_set_inc_x, 1
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, &FF
+SCRIPT_CALLV plasma_set_wave_yf, 1
+SCRIPT_CALLV plasma_set_wave_x, 2
+
+SEQUENCE_WAIT_UNTIL_PATTERN 49
+
+; nice & wibbly
+MODE0_SET_COLOURS PAL_blue, PAL_cyan
+SCRIPT_CALLV plasma_set_x16, 10
+SCRIPT_CALLV plasma_set_inc_x, &FF
+SCRIPT_CALLV plasma_set_wave_f, 0
+SCRIPT_CALLV plasma_set_wave_y, &FE
+SCRIPT_CALLV plasma_set_wave_yf, 3
+SCRIPT_CALLV plasma_set_wave_x, 9
+
+SEQUENCE_WAIT_UNTIL_PATTERN 50
+
+; fast swipe from large
+MODE0_SET_COLOURS PAL_white, PAL_yellow
+SCRIPT_CALLV plasma_set_x16, 1
+SCRIPT_CALLV plasma_set_inc_x, 1
+SCRIPT_CALLV plasma_set_wave_f, 2
+SCRIPT_CALLV plasma_set_wave_y, 1
+SCRIPT_CALLV plasma_set_wave_yf, 0
+SCRIPT_CALLV plasma_set_wave_x, 1
+
+SEQUENCE_WAIT_UNTIL_PATTERN 51
+
+; med bars swing
+MODE0_SET_COLOURS PAL_green, PAL_cyan
+SCRIPT_CALLV plasma_set_x16, 16
+SCRIPT_CALLV plasma_set_inc_x, 0
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, &FF
+SCRIPT_CALLV plasma_set_wave_yf, &FF
+SCRIPT_CALLV plasma_set_wave_x, &FF
+
+SEQUENCE_WAIT_UNTIL_PATTERN 52
+
+; fat firey wobble
+MODE0_SET_COLOURS PAL_red, PAL_yellow
+SCRIPT_CALLV plasma_set_x16, 8
+SCRIPT_CALLV plasma_set_inc_x, &FF
+SCRIPT_CALLV plasma_set_wave_f, 1
+SCRIPT_CALLV plasma_set_wave_y, 2
+SCRIPT_CALLV plasma_set_wave_yf, &FB
+SCRIPT_CALLV plasma_set_wave_x, 6
 
 \ ******************************************************************
 \\ **** GOODBYE MESSAGE INC SPECS ****
