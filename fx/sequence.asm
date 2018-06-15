@@ -54,13 +54,6 @@ MACRO SEQUENCE_WAIT_UNTIL_PATTERN p
     SCRIPT_SEGMENT_END
 ENDMACRO
 
-MACRO SEQUENCE_WAIT_PATTERNS p
-    SCRIPT_SEGMENT_PATTERN;p
-    ; just wait
-    SCRIPT_SEGMENT_END
-    NEXT
-ENDMACRO
-
 MACRO SEQUENCE_SET_FX fxenum
     SCRIPT_CALLV main_set_fx, fxenum
     SCRIPT_SEGMENT_START 1/50
@@ -283,7 +276,8 @@ SEQUENCE_SET_FX fx_Copper
 
 \ Straight bars
 
-SEQUENCE_WAIT_UNTIL_PATTERN 39
+SEQUENCE_WAIT_UNTIL_PATTERN 39 - 0.25 ; for setup
+
 SEQUENCE_SET_FX fx_Parallax
 
 SEQUENCE_WAIT_UNTIL_PATTERN 39.5
@@ -354,7 +348,8 @@ SCRIPT_CALLV parallax_set_wave_y, 15
 \\ **** PLASMA ****
 \ ******************************************************************
 
-SEQUENCE_WAIT_UNTIL_PATTERN 47
+SEQUENCE_WAIT_UNTIL_PATTERN 47 - 0.1 ; for setup
+
 SEQUENCE_SET_FX fx_Plasma
 
 ; X=linear speed of top line in characters

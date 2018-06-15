@@ -142,9 +142,9 @@ ENDIF
 \\    012345678901234567
 EQUS "@@@@@ MUSIC @@@@@@"
 EQUS "@     -----      @"
-EQUS "@ THERE ARE MANY @"
-EQUS "@ SHEEP IN OUTER @"
-EQUS "@ MONGOLIA       @"
+EQUS "@ THERE AREN'T   @"
+EQUS "@   ANY SHEEP IN @"
+EQUS "@ OUTER MONGOLIA @"
 EQUS "@     BY MAD MAX @"
 EQUS "@                @"
 EQUS "@ PORTED FROM    @"

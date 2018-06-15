@@ -97,7 +97,7 @@ INCBIN "data/smiley.pu"
     SEC
     LDA smiley_vel
     EOR #&FF
-    SBC #2
+    SBC #3          ; deaden bounce
     STA smiley_vel
 
     LDA #0
