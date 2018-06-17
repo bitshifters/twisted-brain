@@ -190,12 +190,12 @@ SEQUENCE_SET_FX fx_Twister
 TWISTER_SET_NUMBER 1
 TWISTER_SET_PARAMS 5.12, 0, 0
 SEQUENCE_WAIT_FRAMES 153    ; 281
-MODE1_SET_COLOUR 2, PAL_magenta
+;MODE1_SET_COLOUR 2, PAL_magenta
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
 TWISTER_SET_PARAMS 0, 10.0, 0
 SEQUENCE_WAIT_FRAMES 251
-MODE1_SET_COLOUR 2, PAL_yellow
+;MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
 
 \ ******************************************************************
