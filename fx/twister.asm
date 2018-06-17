@@ -40,10 +40,24 @@ TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 
 ;	LDA #20:JSR twister_set_displayed
 
+	\ Ensure MAIN RAM is writeable
+    LDA &FE34:AND #&FB:STA &FE34
+
 	LDX #LO(twister_screen_data)
 	LDY #HI(twister_screen_data)
     LDA #HI(screen_base_addr)
     JSR PUCRUNCH_UNPACK
+
+	\ Ensure SHADOW RAM is writeable
+    LDA &FE34:ORA #&4:STA &FE34
+
+	LDX #LO(twister_data_2)
+	LDY #HI(twister_data_2)
+    LDA #HI(screen_base_addr)
+    JSR PUCRUNCH_UNPACK
+
+	\ Ensure MAIN RAM is writeable
+    LDA &FE34:AND #&FB:STA &FE34
 
 	\\ Starting paramaters
 
@@ -194,6 +208,11 @@ IF 0
 	JSR pal_set_mode1_colour1
 ENDIF
 
+	\\ View main RAM
+	LDA &FE34					; 4c
+	AND #&FE					; 2c
+	STA &FE34					; 4c
+
 	.return
     RTS
 }
@@ -231,9 +250,15 @@ ENDIF
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 
-	FOR n,1,8,1
+	FOR n,1,3,1
 	NOP
 	NEXT
+
+	\\ View shadow RAM
+
+	LDA &FE34					; 4c
+	ORA #1
+	STA &FE34					; 4c
 
 	\\ Should be exactly on next scanline
 
@@ -290,14 +315,80 @@ ENDIF
 	LDA twister_vram_table_LO, Y		; 4c
 	STA &FE01					; 4c++
 	
-	\\ 30c min + 10c loop, need 88c NOPs
+	\\ View main RAM
 
-	FOR n,1,5,1
-	NOP
-	NEXT
+	LDA &FE34					; 4c
+	AND #&FE
+	STA &FE34					; 4c
+
+;	FOR n,1,5,1
+;	NOP
+;	NEXT
 	
 	DEC twister_crtc_row
-	BNE here		; 3c
+;	BIT 0
+
+	\\ Apply the (global) twist value to the row first
+
+	CLC
+	LDA twister_twist_brot
+	LDY twister_twist_index+1
+	ADC twister_twist_table_LO, Y
+	STA twister_twist_brot
+
+	LDA twister_twist_brot+1
+	ADC twister_twist_table_HI, Y
+	STA twister_twist_brot+1
+
+	\\ Update local twist index value by incrementing by step
+
+	CLC
+	LDA twister_knot_i
+	ADC twister_knot_y
+	STA twister_knot_i
+	LDA twister_knot_i+1
+	ADC twister_knot_y+1
+	STA twister_knot_i+1
+	TAY
+
+	\\ Use the local twist index to calculate additional rotation value 'knot'
+
+	CLC
+	LDA twister_twist_brot
+	ADC twister_knot_table_LO, Y
+	STA twister_twist_brot
+
+	LDA twister_twist_brot+1
+	ADC twister_knot_table_HI, Y
+	STA twister_twist_brot+1
+	
+	AND #&7F
+	TAY
+	INX
+
+	LDA #12: STA &FE00			; 2c + 4c++
+	LDA twister_vram_table_HI, Y		; 4c
+	STA &FE01					; 4c++
+
+	LDA #13: STA &FE00			; 2c + 4c++
+	LDA twister_vram_table_LO, Y		; 4c
+	STA &FE01					; 4c++
+
+	\\ View shadow RAM
+
+	LDA &FE34					; 4c
+	ORA #1
+	STA &FE34					; 4c
+	
+;	FOR n,1,5,1
+;	NOP
+;	NEXT
+	
+	DEC twister_crtc_row
+	BEQ done
+	JMP here
+	
+	.done		; 3c
 
 	\\ R9=7 - character row = 8 scanlines
 	LDA #9: STA &FE00
@@ -475,13 +566,13 @@ ENDMACRO
 .twister_twist_table_LO			; global rotation increment per row of the twister
 FOR n,0,255,1
 {
-;	t = 360 * SIN(2 * PI * n / 256)
 	IF n < 128
 	m = (64 - ABS(n-64))/64
 	ELSE
 	m = -(64 - ABS(n-192))/64
 	ENDIF
-	t = 480 * m
+;	t = 480 * m
+	t = 480 * SIN(2 * PI * n / 256)	; thanks IP!
 	TWISTER_TWIST_LO t
 }
 NEXT
@@ -489,13 +580,13 @@ NEXT
 .twister_twist_table_HI			; global rotation increment per row of the twister
 FOR n,0,255,1
 {
-;	t = 360 * SIN(2 * PI * n / 256)
 	IF n < 128
 	m = (64 - ABS(n-64))/64
 	ELSE
 	m = -(64 - ABS(n-192))/64
 	ENDIF
-	t = 480 * m
+;	t = 480 * m
+	t = 480 * SIN(2 * PI * n / 256)	; thanks IP!
 	TWISTER_TWIST_HI t
 }
 NEXT
@@ -541,5 +632,9 @@ NEXT
 PAGE_ALIGN
 .twister_screen_data
 INCBIN "data/twist.pu"
+
+PAGE_ALIGN
+.twister_data_2
+INCBIN "data/twist2.pu"
 
 .twister_end

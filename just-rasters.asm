@@ -906,7 +906,7 @@ IF _DEBUG
 ;PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
 ;PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
-;PUTBASIC "basic/twist.bas", "TWIST"
+PUTBASIC "basic/twist.bas", "MTWIST"
 ;PUTFILE "data/nova-mode1.bin", "NOVA", &3000
 ;PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
 ;PUTFILE "data/flash-mode2.bin", "FLASH", &3000

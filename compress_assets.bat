@@ -5,6 +5,7 @@ bin\pucrunch.exe -d -c0 -l0x1000 data\shift.bin data\shift.pu
 bin\pucrunch.exe -d -c0 -l0x1000 data\parallax1-mode1.bin data\parallax1.pu
 bin\pucrunch.exe -d -c0 -l0x1000 data\parallax2-mode1.bin data\parallax2.pu
 bin\pucrunch.exe -d -c0 -l0x1000 data\twist.bin data\twist.pu
+bin\pucrunch.exe -d -c0 -l0x1000 data\twist2.bin data\twist2.pu
 bin\pucrunch.exe -d -c0 -l0x1000 data\nova-mode1.bin data\nova.pu
 bin\pucrunch.exe -d -c0 -l0x1000 data\brain-mode2.bin data\brain.pu
 
