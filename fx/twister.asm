@@ -413,6 +413,10 @@ ENDIF
 {
 	JSR crtc_reset_from_single
     SET_ULA_MODE ULA_Mode2
+
+	\\ View main RAM
+	LDA &FE34:AND #&FE:STA &FE34
+
     JMP ula_pal_reset
 }
 

@@ -52,6 +52,16 @@ INCBIN "data/smiley.pu"
     STA smiley_yoff
     STZ smiley_vel
 
+    \\ Super hack-balls!
+    \\ Will only work at the end of the demo :)
+
+    LDX #LO(smiley_music)
+    LDY #HI(smiley_music)
+    JSR vgm_init_stream
+
+    \\ "Tell" music player not to start until we display first frame
+	STZ first_fx
+
     RTS
 }
 
@@ -61,6 +71,8 @@ INCBIN "data/smiley.pu"
 
 	LDA #8:STA &FE00
 	LDA #&30:STA &FE01
+
+    \\ Bounce!
 
     LDA smiley_yoff
     AND #&7
@@ -106,6 +118,8 @@ INCBIN "data/smiley.pu"
 
     LDA smiley_anim
     BEQ return
+
+    \\ Wipe!
 
     LDA #SMILEY_SPEED
     STA smiley_count
@@ -285,6 +299,7 @@ INCBIN "data/smiley.pu"
     RTS
 }
 
+ALIGN 64
 .smiley_addr_LO
 FOR n,0,31,1
 EQUB LO((screen_base_addr + n * 640)/8)
@@ -294,6 +309,5 @@ NEXT
 FOR n,0,31,1
 EQUB HI((screen_base_addr + n * 640)/8)
 NEXT
-
 
 .smiley_end

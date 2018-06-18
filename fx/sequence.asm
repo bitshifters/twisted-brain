@@ -8,20 +8,8 @@
 \ *	SEQUENCE MACROS
 \ ******************************************************************
 
-MACRO SEQUENCE_WAIT_SECS secs
-    SCRIPT_SEGMENT_START secs
-    ; just wait
-    SCRIPT_SEGMENT_END
-ENDMACRO
-
 MACRO SEQUENCE_WAIT_FRAMES frames
     SCRIPT_SEGMENT_START frames/50
-    ; just wait
-    SCRIPT_SEGMENT_END
-ENDMACRO
-
-MACRO SEQUENCE_WAIT_UNTIL frame_time
-    SCRIPT_SEGMENT_UNTIL frame_time
     ; just wait
     SCRIPT_SEGMENT_END
 ENDMACRO
@@ -29,20 +17,6 @@ ENDMACRO
 MACRO SEQUENCE_FX_FOR_SECS fxenum, secs
     SCRIPT_CALLV main_set_fx, fxenum
     SCRIPT_SEGMENT_START secs
-    ; just wait
-    SCRIPT_SEGMENT_END
-ENDMACRO
-
-MACRO SEQUENCE_FX_FOR_FRAMES fxenum, frames
-    SCRIPT_CALLV main_set_fx, fxenum
-    SCRIPT_SEGMENT_START frames/50
-    ; just wait
-    SCRIPT_SEGMENT_END
-ENDMACRO
-
-MACRO SEQUENCE_FX_UNTIL fxenum, frame_time
-    SCRIPT_CALLV main_set_fx, fxenum
-    SCRIPT_SEGMENT_UNTIL frame_time
     ; just wait
     SCRIPT_SEGMENT_END
 ENDMACRO
@@ -108,6 +82,7 @@ SEQUENCE_SET_FX fx_Logo
 
 ; THINGS START TO GO RASTERY
 SEQUENCE_WAIT_UNTIL_PATTERN 1
+
 SCRIPT_CALLV logo_set_anim, 1
 SEQUENCE_WAIT_UNTIL_PATTERN 3
 SCRIPT_CALLV logo_set_anim, 0
@@ -193,7 +168,7 @@ SEQUENCE_WAIT_FRAMES 153    ; 281
 ;MODE1_SET_COLOUR 2, PAL_magenta
 ; keep spin constant (should be ~200 deg/sec)
 ; 10s to wind & unwind in one direction
-TWISTER_SET_PARAMS 0, 10.0, 0
+TWISTER_SET_PARAMS 0, 9.0, 0
 SEQUENCE_WAIT_FRAMES 251
 ;MODE1_SET_COLOUR 2, PAL_yellow
 ; 10s to wind & unwind in other direction
@@ -450,10 +425,16 @@ SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 55
+
+\\ Black
+SEQUENCE_SET_FX fx_Null
+
 \\ Bounce!
+SEQUENCE_WAIT_UNTIL_PATTERN 55.5
 SEQUENCE_SET_FX fx_Smiley
+
 \\ Wipe
-SEQUENCE_WAIT_UNTIL_PATTERN 56
+SEQUENCE_WAIT_UNTIL_PATTERN 56.5
 SCRIPT_CALLV smiley_set_anim, 1
 
 \ ******************************************************************
