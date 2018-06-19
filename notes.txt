@@ -455,3 +455,12 @@ decreasing size, so just one large offset!
 A 16-bit offset is sufficient
 
 No reason to have large tubes to small tubes - can mix them together!
+
+bounce
+FX init &29B9
+#1 &29CD = 20 = 
+#2 &29EF = 54 = 34 =
+#3 &2A09 = 80 = 26 = 8
+#4 &2A1B = 98 = 18 = 8
+#5 &2A25 = 108 = 10 = 8
+#6 &2A27 = 110 = 2 = 8

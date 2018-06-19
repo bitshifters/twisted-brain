@@ -346,7 +346,7 @@ SCRIPT_CALLV plasma_set_wave_y, 1
 SCRIPT_CALLV plasma_set_wave_yf, &FF
 SCRIPT_CALLV plasma_set_wave_x, 1
 
-SEQUENCE_WAIT_UNTIL_PATTERN 48
+SEQUENCE_WAIT_UNTIL_PATTERN 49
 
 ; slow squeeze out
 ;MODE0_SET_COLOURS PAL_blue, PAL_cyan
@@ -366,7 +366,7 @@ SCRIPT_CALLV plasma_set_wave_y, &FF
 SCRIPT_CALLV plasma_set_wave_yf, 1
 SCRIPT_CALLV plasma_set_wave_x, 2
 
-SEQUENCE_WAIT_UNTIL_PATTERN 49
+SEQUENCE_WAIT_UNTIL_PATTERN 50
 
 ; nice & wibbly
 MODE0_SET_COLOURS PAL_blue, PAL_cyan
@@ -377,7 +377,7 @@ SCRIPT_CALLV plasma_set_wave_y, &FE
 SCRIPT_CALLV plasma_set_wave_yf, 3
 SCRIPT_CALLV plasma_set_wave_x, 9
 
-SEQUENCE_WAIT_UNTIL_PATTERN 50
+SEQUENCE_WAIT_UNTIL_PATTERN 51
 
 ; fast swipe from large
 MODE0_SET_COLOURS PAL_white, PAL_yellow
@@ -388,7 +388,7 @@ SCRIPT_CALLV plasma_set_wave_y, 1
 SCRIPT_CALLV plasma_set_wave_yf, 0
 SCRIPT_CALLV plasma_set_wave_x, 1
 
-SEQUENCE_WAIT_UNTIL_PATTERN 51
+SEQUENCE_WAIT_UNTIL_PATTERN 52
 
 ; med bars swing
 MODE0_SET_COLOURS PAL_green, PAL_cyan
@@ -399,7 +399,7 @@ SCRIPT_CALLV plasma_set_wave_y, &FF
 SCRIPT_CALLV plasma_set_wave_yf, &FF
 SCRIPT_CALLV plasma_set_wave_x, &FF
 
-SEQUENCE_WAIT_UNTIL_PATTERN 52
+SEQUENCE_WAIT_UNTIL_PATTERN 53
 
 ; fat firey wobble
 MODE0_SET_COLOURS PAL_red, PAL_yellow
@@ -414,7 +414,7 @@ SCRIPT_CALLV plasma_set_wave_x, 6
 \\ **** GOODBYE MESSAGE INC SPECS ****
 \ ******************************************************************
 
-SEQUENCE_WAIT_UNTIL_PATTERN 53
+SEQUENCE_WAIT_UNTIL_PATTERN 54
 SEQUENCE_SET_FX fx_Text
 SCRIPT_CALLV text_set_palette, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Spiral
@@ -424,17 +424,16 @@ SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 \\ **** SMILEY ;) ****
 \ ******************************************************************
 
-SEQUENCE_WAIT_UNTIL_PATTERN 55
-
 \\ Black
-SEQUENCE_SET_FX fx_Null
+;SEQUENCE_WAIT_UNTIL_PATTERN 55
+;SEQUENCE_SET_FX fx_Null
 
 \\ Bounce!
-SEQUENCE_WAIT_UNTIL_PATTERN 55.5
+SEQUENCE_WAIT_UNTIL_PATTERN 56
 SEQUENCE_SET_FX fx_Smiley
 
 \\ Wipe
-SEQUENCE_WAIT_UNTIL_PATTERN 56.5
+SEQUENCE_WAIT_UNTIL_PATTERN 57
 SCRIPT_CALLV smiley_set_anim, 1
 
 \ ******************************************************************
