@@ -14,7 +14,7 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
-_DEBUG = TRUE
+_DEBUG = FALSE
 _HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
@@ -914,6 +914,8 @@ PUTBASIC "basic/quick.bas", "Twisted"
 ELSE
 PUTBASIC "basic/loader.bas", "Twisted"
 ENDIF
+
+PUTFILE "Reference/readme.txt", "Readme", 0
 
 IF _DEBUG
 ;PUTBASIC "basic/parallax mode0.bas", "para0"
