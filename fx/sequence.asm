@@ -35,10 +35,6 @@ MACRO SEQUENCE_SET_FX fxenum
     SCRIPT_SEGMENT_END
 ENDMACRO
 
-\\ Ideally want:
-\ SCRIPT_WAIT_UNTIL_NEXT_BEAT
-\ SCRIPT_WAIT_UNTIL_NEXT_PATTERN
-
 \ ******************************************************************
 \ *	COLOUR MACROS
 \ ******************************************************************
