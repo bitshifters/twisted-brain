@@ -336,4 +336,22 @@ ENDIF
 	RTS
 }
 
+.twister_crtc_r1
+EQUB 80
+
+.twister_set_displayed
+{
+	STA twister_crtc_r1
+	RTS
+}
+
+.twister_crtc_r2
+EQUB 98
+
+.twister_set_position
+{
+	STA twister_crtc_r2
+	RTS
+}
+
 .helpers_end

@@ -157,8 +157,8 @@ SCRIPT_CALLV text_set_block, textBlock_Credits
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 21
+TWISTER_SET_NUMBER 1      ; only this is safe to be before SET_FX fx_Twister!
 SEQUENCE_SET_FX fx_Twister
-TWISTER_SET_NUMBER 1
 TWISTER_SET_PARAMS 5.12, 0, 0
 SEQUENCE_WAIT_FRAMES 153    ; 281
 ;MODE1_SET_COLOUR 2, PAL_magenta
@@ -183,8 +183,8 @@ SCRIPT_CALLV text_set_block, textBlock_Music
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 27
+TWISTER_SET_NUMBER 2      ; only this is safe to be before SET_FX fx_Twister!
 SEQUENCE_SET_FX fx_Twister
-TWISTER_SET_NUMBER 2
 MODE1_SET_COLOUR 1, PAL_blue
 MODE1_SET_COLOUR 2, PAL_cyan
 MODE1_SET_COLOUR 3, PAL_white
@@ -210,8 +210,8 @@ SCRIPT_CALLV text_set_block, textBlock_Thanks    ; takes 252 frames = 5.04s
 \ ******************************************************************
 
 SEQUENCE_WAIT_UNTIL_PATTERN 32
+TWISTER_SET_NUMBER 4      ; only this is safe to be before SET_FX fx_Twister!
 SEQUENCE_SET_FX fx_Twister
-TWISTER_SET_NUMBER 4
 MODE1_SET_COLOUR 1, PAL_red
 MODE1_SET_COLOUR 2, PAL_magenta
 MODE1_SET_COLOUR 3, PAL_white
@@ -420,10 +420,6 @@ SCRIPT_CALLV text_set_block, textBlock_Return    ; takes 252 frames = 5.04s
 \\ **** SMILEY ;) ****
 \ ******************************************************************
 
-\\ Black
-;SEQUENCE_WAIT_UNTIL_PATTERN 55
-;SEQUENCE_SET_FX fx_Null
-
 \\ Bounce!
 SEQUENCE_WAIT_UNTIL_PATTERN 56
 SEQUENCE_SET_FX fx_Smiley
@@ -431,6 +427,10 @@ SEQUENCE_SET_FX fx_Smiley
 \\ Wipe
 SEQUENCE_WAIT_UNTIL_PATTERN 57
 SCRIPT_CALLV smiley_set_anim, 1
+
+\\ Black
+SEQUENCE_WAIT_UNTIL_PATTERN 59
+SEQUENCE_SET_FX fx_Null
 
 \ ******************************************************************
 \\ **** END ****

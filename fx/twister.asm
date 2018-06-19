@@ -38,7 +38,12 @@ TWISTER_DEFAULT_KNOT_INDEX = 0 * &100		; no knots
 	LDY #HI(twister_pal)
 	JSR ula_set_palette
 
-;	LDA #20:JSR twister_set_displayed
+	\\ Set display width & centre
+	LDA #1: STA &FE00
+	LDA twister_crtc_r1:STA &FE01
+
+	LDA #2: STA &FE00
+	LDA twister_crtc_r2:STA &FE01
 
 	\ Ensure MAIN RAM is writeable
     LDA &FE34:AND #&FB:STA &FE34
@@ -418,26 +423,6 @@ ENDIF
 	LDA &FE34:AND #&FE:STA &FE34
 
     JMP ula_pal_reset
-}
-
-.twister_set_displayed
-{
-	PHA
-	LDA #1
-	STA &FE00
-	PLA
-	STA &FE01
-	RTS
-}
-
-.twister_set_position
-{
-	PHA
-	LDA #2
-	STA &FE00
-	PLA
-	STA &FE01
-	RTS
 }
 
 .twister_set_spin_step_LO

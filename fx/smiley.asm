@@ -187,7 +187,7 @@ INCBIN "data/smiley.pu"
     CPY #SMILEY_TOP
     BNE cont
 
-    STY smiley_anim
+    STZ smiley_anim
 
     .cont
     DEY
