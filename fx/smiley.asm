@@ -21,6 +21,7 @@ SMILEY_SPEED = 1
 SMILEY_STATUS_ADDR = screen_base_addr + 29 * 640
 
 SMILEY_DEBUG_RASTERS = FALSE
+SMILEY_SFX_PAUSE = TRUE
 
 .smiley_start
 
@@ -65,6 +66,12 @@ INCBIN "data/smiley.pu"
 
     \\ "Tell" music player not to start until we display first frame
 	STZ first_fx
+    
+    \\ And pause the music player anyway
+    IF SMILEY_SFX_PAUSE
+    LDA #&FF
+    STA vgm_pause
+    ENDIF
 
     RTS
 }
@@ -100,6 +107,11 @@ INCBIN "data/smiley.pu"
     EOR #&FF
     SBC #3          ; deaden bounce
     STA smiley_vel
+
+    \\ Trigger SFX on bounce
+    IF SMILEY_SFX_PAUSE
+    STZ vgm_pause
+    ENDIF
 
     LDA #0
     .ok

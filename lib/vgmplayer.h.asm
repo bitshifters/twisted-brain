@@ -29,3 +29,5 @@ VGM_FRAMES_PER_PATTERN = VGM_FRAMES_PER_BEAT * VGM_BEATS_PER_PATTERN
 .vgm_beat_frames            SKIP 1
 .vgm_beat_counter           SKIP 1
 .vgm_pattern_counter        SKIP 1
+
+.vgm_pause                  SKIP 1

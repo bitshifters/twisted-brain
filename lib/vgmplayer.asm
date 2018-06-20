@@ -39,6 +39,8 @@ _ENABLE_SFX = FALSE
 	stz vgm_beat_counter
 	stz vgm_pattern_counter
 
+	stz vgm_pause
+
 	\\ Initialise exomizer - must have some data ready to decrunch
 	jmp exo_init_decruncher	
 }
@@ -90,6 +92,13 @@ _ENABLE_SFX = FALSE
 
 	\\ Every call is 20ms
 	INC delta_time
+
+	\\ Just for Smiley
+	LDA vgm_pause
+	BEQ not_paused
+	RTS
+
+	.not_paused
 
 	\\ Count beats & patterns
 	{
