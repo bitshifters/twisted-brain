@@ -885,7 +885,7 @@ INCBIN "audio\music\mongolia.bin.exo"
 
 PAGE_ALIGN
 .smiley_music
-INCBIN "audio\music\bbcexplod.raw.exo"
+INCBIN "audio\music\dropsmiley-timed.raw.exo"
 
 .music_end
 

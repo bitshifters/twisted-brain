@@ -13,6 +13,7 @@ smiley_yoff = locals_start + 6
 
 smiley_vel = locals_start + 7
 smiley_visible = locals_start + 8
+smiley_delay = locals_start + 9
 
 SMILEY_TOP = 3*8
 SMILEY_BOTTOM = 27*8
@@ -21,7 +22,7 @@ SMILEY_SPEED = 1
 SMILEY_STATUS_ADDR = screen_base_addr + 29 * 640
 
 SMILEY_DEBUG_RASTERS = FALSE
-SMILEY_SFX_PAUSE = TRUE
+SMILEY_SFX_DELAY = 0
 
 .smiley_start
 
@@ -67,8 +68,11 @@ INCBIN "data/smiley.pu"
     \\ "Tell" music player not to start until we display first frame
 	STZ first_fx
     
+    LDA #SMILEY_SFX_DELAY
+    STA smiley_delay
+
     \\ And pause the music player anyway
-    IF SMILEY_SFX_PAUSE
+    IF SMILEY_SFX_DELAY<>0
     LDA #&FF
     STA vgm_pause
     ENDIF
@@ -78,6 +82,16 @@ INCBIN "data/smiley.pu"
 
 .smiley_update
 {
+    \\ Trigger SFX on bounce
+    IF SMILEY_SFX_DELAY<>0
+    LDA smiley_delay
+    BEQ no_pause
+    DEC smiley_delay
+    BNE no_pause
+    STZ vgm_pause
+    .no_pause
+    ENDIF
+
     \\ Bounce!
 
     SEC
@@ -107,11 +121,6 @@ INCBIN "data/smiley.pu"
     EOR #&FF
     SBC #3          ; deaden bounce
     STA smiley_vel
-
-    \\ Trigger SFX on bounce
-    IF SMILEY_SFX_PAUSE
-    STZ vgm_pause
-    ENDIF
 
     LDA #0
     .ok
