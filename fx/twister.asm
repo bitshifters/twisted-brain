@@ -270,8 +270,6 @@ ENDIF
 	LDA #254					; 2c
 	STA twister_crtc_row
 
-	LDX #2
-
 	.here
 
 	\\ Apply the (global) twist value to the row first
@@ -310,7 +308,6 @@ ENDIF
 	
 	AND #&7F
 	TAY
-	INX
 
 	LDA #12: STA &FE00			; 2c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
@@ -326,7 +323,7 @@ ENDIF
 	AND #&FE
 	STA &FE34					; 4c
 
-;	FOR n,1,5,1
+;	FOR n,1,1,1
 ;	NOP
 ;	NEXT
 	
@@ -369,7 +366,6 @@ ENDIF
 	
 	AND #&7F
 	TAY
-	INX
 
 	LDA #12: STA &FE00			; 2c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
@@ -385,10 +381,11 @@ ENDIF
 	ORA #1
 	STA &FE34					; 4c
 	
-;	FOR n,1,5,1
+;	FOR n,1,1,1
 ;	NOP
 ;	NEXT
-	
+	BIT 0
+		
 	DEC twister_crtc_row
 	BEQ done
 	JMP here
