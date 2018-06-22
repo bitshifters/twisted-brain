@@ -89,6 +89,7 @@ SCRIPT_CALLV logo_set_anim, 0
 
 SEQUENCE_WAIT_UNTIL_PATTERN 5
 SEQUENCE_SET_FX fx_Text
+SCRIPT_CALLV text_set_palette, 1
 SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Title    ; takes 252 frames = 5.04s
 
@@ -149,6 +150,7 @@ SCRIPT_CALLV kefrens_set_width, 0
 
 SEQUENCE_WAIT_UNTIL_PATTERN 19
 SEQUENCE_SET_FX fx_Text
+SCRIPT_CALLV text_set_palette, 0
 SCRIPT_CALLV text_set_pattern, textPattern_Horizontal
 SCRIPT_CALLV text_set_block, textBlock_Credits
 
