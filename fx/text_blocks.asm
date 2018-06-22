@@ -70,8 +70,8 @@ EQUS "^        RICH-TW ^"
 EQUS "^ TRICKY         ^"
 EQUS "^     TOM SEDDON ^"
 EQUS "^ SARAH WALKER   ^"
-EQUS "^   HORSENBURGER ^"
-EQUS "^ PUPPEH         ^"
+EQUS "^         PUPPEH ^"
+EQUS "^ HORSENBURGER   ^"
 EQUS "^           RC55 ^"
 EQUS "^ PIXELBLIP      ^"
 EQUS "^    STEW BADGER ^"
@@ -88,16 +88,19 @@ EQUS "^    GREETZ      ^"
 EQUS "^    ------      ^"
 EQUS "^ CRTC           ^"
 EQUS "^         DESIRE ^"
-EQUS "^ LOGICOMA       ^"
-EQUS "^     SLIPSTREAM ^"
-EQUS "^ VIRGILL        ^"
-EQUS "^  UKSCENE ALL@S ^"
 EQUS "^ FAIRLIGHT      ^"
-EQUS "^                ^"
-EQUS "^ EVERYONE AT    ^"
-EQUS "^     THE PARTY! ^"
+EQUS "^       LOGICOMA ^"
+EQUS "^ POOBRAIN       ^"
+EQUS "^         REBELS ^"
+EQUS "^ RIFT           ^"
+EQUS "^     SLIPSTREAM ^"
+EQUS "^ UKSCENE ALL@S  ^"
+EQUS "^        VIRGILL ^"
 EQUS "^^^^^^^^^^^^^^^^^^"
+;EQUS "^ EVERYONE AT    ^"
+;EQUS "^     THE PARTY! ^"
 
+IF 0
 .text_block_specs
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
@@ -115,15 +118,35 @@ EQUS "@ INSPIRED BY    @"
 EQUS "@     ^ REBELS ^ @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
+ELSE
+.text_block_return
+.text_block_specs
+\\ Each text block must be 18 x 14 characters
+\\    012345678901234567
+EQUS "@@@ BBC MASTER @@@"
+EQUS "@   ----------   @"
+EQUS "@ 2MHZ 6502      @"
+EQUS "@       128K RAM @"
+EQUS "@ 6845 CRTC      @"
+EQUS "@        SN76489 @"
+EQUS "@                @"
+EQUS "@ NO TELETEXT    @"
+EQUS "@  JUST RASTERS! @"
+EQUS "@                @"
+EQUS "@ ^ THANKS FOR ^ @"
+EQUS "@  ^ WATCHING ^  @"
+EQUS "@                @"
+EQUS "@@@@@@@@@@@@@@@@@@"
+ENDIF
 
 .text_block_music
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
 EQUS "@@@@@ MUSIC @@@@@@"
 EQUS "@     -----      @"
-EQUS "@ THERE ARE MANY @"
-EQUS "@ SHEEP IN OUTER @"
-EQUS "@ MONGOLIA       @"
+EQUS "@ THERE AREN'T   @"
+EQUS "@   ANY SHEEP IN @"
+EQUS "@ OUTER MONGOLIA @"
 EQUS "@     BY MAD MAX @"
 EQUS "@                @"
 EQUS "@ PORTED FROM    @"
@@ -134,6 +157,7 @@ EQUS "@ BY HENLEY      @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
 
+IF 0
 .text_block_return
 \\ Each text block must be 18 x 14 characters
 \\    012345678901234567
@@ -151,6 +175,7 @@ EQUS "@ BITSHIFTERS.   @"
 EQUS "@      GITHUB.IO @"
 EQUS "@                @"
 EQUS "@@@@@@@@@@@@@@@@@@"
+ENDIF
 
 ASCII_MAPCHAR
 

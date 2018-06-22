@@ -2,14 +2,20 @@
 \ *	Plasma-ish FX
 \ ******************************************************************
 
-plasma_offset = locals_start + 0
-plasma_row = locals_start + 2
-plasma_crtc_count = locals_start + 3
-plasma_count = locals_start + 4
-plasma_colour = locals_start + 5
-plasma_anim = locals_start + 6
+plasma_crtc_count = locals_start + 0
+plasma_addr = locals_start + 2
+plasma_incx = locals_start + 4
 
-PLASMA_MAX_OFFSET = 160
+plasma_f_idx = locals_start + 6
+plasma_wavef = locals_start + 7
+plasma_wavey = locals_start + 8
+plasma_y_idx = locals_start + 9
+plasma_wavex = locals_start + 10
+plasma_waveyf = locals_start + 11
+
+plasma_x16 = locals_start + 12		; x offset of top row
+
+PLASMA_MAX_X16 = &A00
 
 .plasma_start
 
@@ -22,50 +28,79 @@ PLASMA_MAX_OFFSET = 160
 
     SET_ULA_MODE ULA_Mode0
 
-	STZ plasma_anim
-	STZ plasma_colour
-	STZ plasma_row
-	STZ plasma_offset
-	STZ plasma_offset+1
+	LDA #PAL_black
+	JSR pal_set_mode0_colour0
+	LDA #PAL_white
+	JSR pal_set_mode0_colour1
 
-	JSR plasma_set_colour
+	STZ plasma_f_idx
+	STZ plasma_y_idx
+
+	LDA #0
+	STA plasma_incx
+	STA plasma_incx+1
+	LDA #0
+	STA plasma_wavef
+	LDA #0
+	STA plasma_wavey
+	LDA #0
+	STA plasma_wavex
+
+	LDA #1
+	JSR plasma_set_x16
 
     RTS
 }
 
 .plasma_update
 {
-	LDX plasma_offset
-	INX							; increment this on another sinewave?
-	CPX #PLASMA_MAX_OFFSET
-	BCC ok
+	\\ Move top row along
 
-	\\ Next row
-	LDA plasma_row
-	INC A
-	AND #&F
-	STA plasma_row
+	CLC
+	LDA plasma_x16
+	ADC plasma_incx
+	STA plasma_x16
+	LDA plasma_x16+1
+	ADC plasma_incx+1
+	STA plasma_x16+1
 
-	\\ Next colour
-	LDA plasma_colour
-	INC A
-	AND #&7
-	STA plasma_colour
-	JSR plasma_set_colour
+	\\ Increment frame index
 
-	LDX #0
-	.ok
-	STX plasma_offset
+	CLC
+	LDA plasma_f_idx
+	ADC plasma_wavef
+	STA plasma_f_idx
 
-\\ Set the address for first screen row
+	\\ Increment row index?
 
-	CLC							; 2c
-	LDA plasma_offset_table, X	; 4c
-	ADC plasma_offset			; 3c
-	TAX							; 2c
+	CLC
+	LDA plasma_y_idx
+	ADC plasma_waveyf
+	STA plasma_y_idx
 
-	LDY plasma_row
-	JSR plasma_set_charrow		; 172c
+	\\ Address = x16 offset + wavef[f_idx] + wavey[y_idx]
+
+	LDX plasma_f_idx
+	CLC
+	LDA plasma_x16
+	ADC plasma_wavef_table_LO, X
+	STA plasma_addr
+	LDA plasma_x16+1
+	ADC plasma_wavef_table_HI, X
+	STA plasma_addr+1
+
+	LDY plasma_y_idx
+	CLC
+	LDA plasma_addr
+	ADC plasma_wavey_table_LO, Y
+	STA plasma_addr
+	LDA plasma_addr+1
+	ADC plasma_wavey_table_HI, Y
+	STA plasma_addr+1
+
+	JSR plasma_set_charrow
+
+	\\ Setup for draw
 
     RTS
 }
@@ -88,49 +123,53 @@ PLASMA_MAX_OFFSET = 160
 	LDA #6: STA &FE00
 	LDA #1: STA &FE01		; 8 * 6c = 48c
 
-	\\ Set up second charrow
+	\\ Cycle count to end of scanline
 
-	LDY plasma_row				; 3c
-
-	LDX plasma_offset			; 3c
-	STX plasma_count			; 3c
-
-	INX							; 2c
-	CLC							; 2c
-	LDA plasma_offset_table, X	; 4c
-	ADC plasma_offset			; 3c
-	TAX							; 2c
-
-	JSR plasma_set_charrow		; 46c
-
-	\\ Cycle count to end of charrow (4 scanlines)
-
-	FOR n,1,49,1
+	FOR n,1,33,1
 	NOP
 	NEXT
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
+	.start_of_scanline_1 \ still in charrow 0
 
-	.start_of_charrow_1
-
-	LDA #62						; 2c
+	LDA #63						; 2c
 	STA plasma_crtc_count		; 3c
+
+	LDY plasma_f_idx
+	LDX plasma_y_idx
 
 	.here
 
-	INC plasma_count			\\ could maybe increment this on another sinewave?
+	TYA
+	CLC
+	ADC plasma_wavey
+	TAY
 
-	LDX plasma_count			; 3c
 	CLC							; 2c
-	LDA plasma_offset_table, X	; 4c
-	ADC plasma_offset			; 3c
-	TAX							; 2c
-	JSR plasma_set_charrow		; 46c
+	LDA plasma_x16				; 3c
+	ADC plasma_wavef_table_LO, Y	; 4c
+	STA plasma_addr				; 3c
+	LDA plasma_x16+1			; 3c
+	ADC plasma_wavef_table_HI, Y	; 4c
+	STA plasma_addr+1			; 3c
 
-	\\ Cycle count to end of charrow (4 scanlines)
+	TXA
+	CLC
+	ADC plasma_wavex
+	TAX
 
-	FOR n,1,24,1
+	CLC
+	LDA plasma_addr
+	ADC plasma_wavey_table_LO, X
+	STA plasma_addr
+	LDA plasma_addr+1
+	ADC plasma_wavey_table_HI, X
+	STA plasma_addr+1
+
+	\\ Set adddress of character row
+
+	JSR plasma_set_charrow		; 42c
+
+	FOR n,1,5,1
 	NOP
 	NEXT
 
@@ -175,109 +214,117 @@ PLASMA_MAX_OFFSET = 160
 
 .plasma_set_charrow
 {
-	\\ Set screen to character row Y with character offset X
-
 	LDA #13: STA &FE00				; 6c
 
-	CLC								; 2c
-	TXA								; 2c
-    ADC plasma_lookup_LO, Y			; 4c
+	\\ Set x value, X=LO byte & Y=HI byte
+	CLC
+	LDA plasma_addr					; 2c
+	ADC #LO(screen_base_addr/8)		; 2c
 	STA &FE01						; 4c
 
    	LDA #12: STA &FE00				; 6c
-    LDA plasma_lookup_HI, Y			; 4c
-	ADC #0							; 2c
+    LDA plasma_addr+1				; 2c
+	ADC #HI(screen_base_addr/8)		; 2c
 	STA &FE01						; 4c
-
+	
 	RTS								; 6c
 }	\\ total = 6c + 40c = 46c
 
-.plasma_set_colour
+.plasma_set_wave_f
 {
-	LDY plasma_colour
-
-	\\ Set black to this
-	LDA plasma_colour_black, Y		; 4c
-	STA &FE21						; 4c
-	AND #&F:ORA #&10:STA &FE21		; 8c
-	AND #&F:ORA #&20:STA &FE21		; 8c
-	AND #&F:ORA #&30:STA &FE21		; 8c
-	AND #&F:ORA #&40:STA &FE21		; 8c
-	AND #&F:ORA #&50:STA &FE21		; 8c
-	AND #&F:ORA #&60:STA &FE21		; 8c
-	AND #&F:ORA #&70:STA &FE21		; 8c
-
-	\\ Set white to this
-	LDA plasma_colour_white, Y		; 4c
-	AND #&F:ORA #&80:STA &FE21		; 8c
-	AND #&F:ORA #&90:STA &FE21		; 8c
-	AND #&F:ORA #&A0:STA &FE21		; 8c
-	AND #&F:ORA #&B0:STA &FE21		; 8c
-	AND #&F:ORA #&C0:STA &FE21		; 8c
-	AND #&F:ORA #&D0:STA &FE21		; 8c
-	AND #&F:ORA #&E0:STA &FE21		; 8c
-	AND #&F:ORA #&F0:STA &FE21		; 8c
-
+	STA plasma_wavef
 	RTS
 }
 
-\\ Have 16 double character rows
+.plasma_set_wave_y
+{
+	STA plasma_wavey
+	RTS
+}
 
-PAGE_ALIGN
+.plasma_set_wave_yf
+{
+	STA plasma_waveyf
+	RTS
+}
+
+.plasma_set_wave_x
+{
+	STA plasma_wavex
+	RTS
+}
+
+.plasma_set_x16
+{
+	PHX
+	TAX
+	LDA plasma_lookup_LO, X
+	STA plasma_x16
+	LDA plasma_lookup_HI, X
+	STA plasma_x16+1
+	PLX
+	RTS
+}
+
+.plasma_set_inc_x
+{
+	STZ plasma_incx+1
+	STA plasma_incx
+	BPL positive
+	LDA #&FF
+	STA plasma_incx+1
+	.positive
+	RTS
+}
+
+\\ Map character row number to screen offset
+
 .plasma_lookup_LO
 {
-	FOR n,0,15,1
-	EQUB LO((screen_base_addr + n*1280)/8)
+	FOR n,0,31,1
+	EQUB LO(n * 80)
 	NEXT
 }
 
 .plasma_lookup_HI
 {
-	FOR n,0,15,1
-	EQUB HI((screen_base_addr + n*1280)/8)
+	FOR n,0,31,1
+	EQUB HI(n * 80)
 	NEXT
 }
 
-
-.plasma_colour_white
+PAGE_ALIGN
+.plasma_wavef_table_LO
 {
-\\ By Hue white = red, blue, green
-	EQUB PAL_red
-	EQUB PAL_blue
-	EQUB PAL_green
-
-\\ By Brightness white = red, blue, green, white
-	EQUB PAL_red
-	EQUB PAL_blue
-	EQUB PAL_green
-	EQUB PAL_white
-
-\\ Mono
-	EQUB PAL_white
+	FOR n,0,255,1
+	w=40*SIN(n * 2 * PI / 256)		; in screen chars
+	EQUB LO(w)
+	NEXT
 }
 
-.plasma_colour_black
+.plasma_wavef_table_HI
 {
-\\ By Hue black = magenta, cyan, yellow
-	EQUB PAL_magenta
-	EQUB PAL_cyan
-	EQUB PAL_yellow
-
-\\ By Brightness black = magenta, black, cyan, white
-	EQUB PAL_magenta
-	EQUB PAL_black
-	EQUB PAL_cyan
-	EQUB PAL_yellow
-
-\\ Mono
-	EQUB PAL_black
+	FOR n,0,255,1
+	w=40*SIN(n * 2 * PI / 256)		; in screen chars
+	EQUB HI(w)
+	NEXT
 }
 
 PAGE_ALIGN
-.plasma_offset_table
+.plasma_wavey_table_LO
 {
 	FOR n,0,255,1
-	EQUB (PLASMA_MAX_OFFSET/2) + (PLASMA_MAX_OFFSET/2)*SIN(n * 2 * PI / 256)
+	w=20*SIN(n * 2 * PI / 256)		; in screen chars
+;	w=10 * SIN(SIN(n * 2 * PI / 256) * 2 * PI)	\\ config 2
+	EQUB LO(w) 
+	NEXT
+}
+.plasma_wavey_table_HI
+{
+	FOR n,0,255,1
+	w=20*SIN(n * 2 * PI / 256)		; in screen chars
+;	w=10 * SIN(SIN(n * 2 * PI / 256) * 2 * PI)	\\ config 2
+	EQUB HI(w) 
 	NEXT
 }
 

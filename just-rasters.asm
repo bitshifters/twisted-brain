@@ -14,7 +14,7 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
-_DEBUG = TRUE
+_DEBUG = FALSE
 _HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
@@ -140,6 +140,7 @@ ENDIF
 INCLUDE "lib/vgmplayer.h.asm"
 INCLUDE "lib/exomiser.h.asm"
 INCLUDE "fx/text_blocks.h.asm"
+INCLUDE "fx/twister.h.asm"
 
 .locals_start			SKIP 32		; guarantee 16 locals
 .locals_top
@@ -636,10 +637,11 @@ INCLUDE "fx/sequence.asm"
 {
 \\ FX initialise, update, draw and kill functions
 \\ 
-	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
+	EQUW screen_clear_all,do_nothing,        do_nothing,      do_nothing
 	EQUW kefrens_init,    kefrens_update,    kefrens_draw,    kefrens_kill
 	EQUW twister_init,    twister_update,    twister_draw,    twister_kill
-	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+;	EQUW boxrot_init,     boxrot_update,     boxrot_draw,     ula_pal_reset
+	EQUW do_nothing,      do_nothing,        do_nothing,      do_nothing
 	EQUW parallax_init,   parallax_update,   parallax_draw,   parallax_kill
 	EQUW checkzoom_init,  checkzoom_update,  checkzoom_draw,  checkzoom_kill
 	EQUW vblinds_init,    vblinds_update,    vblinds_draw,    crtc_reset
@@ -653,7 +655,19 @@ INCLUDE "fx/sequence.asm"
 
 .main_fx_slot
 {
-	EQUB 4, 6, 5, 5, 5, 4, 5, 5, 6, 6, 6, 4, 6		; need something better here?
+	EQUB 4		; fx_Null
+	EQUB 5		; fx_Kefrens
+	EQUB 5		; fx_Twister
+	EQUB 4		; fx_BoxRot
+	EQUB 5		; fx_Parallax
+	EQUB 4		; fx_CheckZoom
+	EQUB 6		; fx_VBlinds
+	EQUB 5		; fx_Copper
+	EQUB 6		; fx_Plasma
+	EQUB 6		; fx_Logo
+	EQUB 6		; fx_Text
+	EQUB 4		; fx Picture
+	EQUB 6		; fx_Smiley
 }
 
 .string_1 EQUS " 1..",0
@@ -721,6 +735,7 @@ PRINT "PRINT size =",~beeb_print_end-beeb_print_start
 PRINT "SCRIPT size =",~script_end-script_start
 PRINT "------"
 PRINT "HELPERS size =",~helpers_end-helpers_start
+PRINT "FONT size =",~font_end-font_start
 PRINT "SEQUENCE size =",~sequence_end-sequence_start
 PRINT "DATA size =",~data_end-data_start
 PRINT "TEXT BLOCKS size =",~text_blocks_end-text_blocks_start
@@ -778,14 +793,14 @@ GUARD &C000
 
 PAGE_ALIGN
 INCLUDE "fx/twister.asm"
-PAGE_ALIGN
-INCLUDE "fx/boxrot.asm"
+;PAGE_ALIGN
+;INCLUDE "fx/boxrot.asm"
 PAGE_ALIGN
 INCLUDE "fx/parallax.asm"
 PAGE_ALIGN
-INCLUDE "fx/vblinds.asm"
-PAGE_ALIGN
 INCLUDE "fx/copper.asm"
+PAGE_ALIGN
+INCLUDE "fx/kefrens.asm"
 
 .bank1_end
 
@@ -799,10 +814,10 @@ PRINT "------"
 PRINT "BANK 1"
 PRINT "------"
 PRINT "TWISTER size =", ~twister_end-twister_start
-PRINT "BOXROT size =",~boxrot_end-boxrot_start
+;PRINT "BOXROT size =",~boxrot_end-boxrot_start
 PRINT "PARALLAX size =", ~parallax_end-parallax_start
-PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
 PRINT "COPPER size =", ~copper_end-copper_start
+PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -819,15 +834,15 @@ GUARD &C000
 \ ******************************************************************
 
 PAGE_ALIGN
-INCLUDE "fx/plasma.asm"
-PAGE_ALIGN
 INCLUDE "fx/logo.asm"
 PAGE_ALIGN
 INCLUDE "fx/text.asm"
 PAGE_ALIGN
-INCLUDE "fx/kefrens.asm"
-PAGE_ALIGN
 INCLUDE "fx/smiley.asm"
+PAGE_ALIGN
+INCLUDE "fx/vblinds.asm"
+PAGE_ALIGN
+INCLUDE "fx/plasma.asm"
 
 .bank2_end
 
@@ -840,11 +855,11 @@ SAVE "Bank2", bank2_start, bank2_end
 PRINT "------"
 PRINT "BANK 2"
 PRINT "------"
-PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "LOGO size =", ~logo_end-logo_start
 PRINT "TEXT size =", ~text_end-text_start
-PRINT "KEFRENS size =", ~kefrens_end-kefrens_start
 PRINT "SMILEY size =", ~smiley_end-smiley_start
+PRINT "VERTICAL BLINDS size =", ~vblinds_end-vblinds_start
+PRINT "PLASMA size =", ~plasma_end-plasma_start
 PRINT "------"
 PRINT "HIGH WATERMARK =", ~P%
 PRINT "FREE =", ~&C000-P%
@@ -867,6 +882,10 @@ GUARD HAZEL_TOP
 PAGE_ALIGN
 .music_data
 INCBIN "audio\music\mongolia.bin.exo"
+
+PAGE_ALIGN
+.smiley_music
+INCBIN "audio\music\dropsmiley-timed.raw.exo"
 
 .music_end
 
@@ -896,6 +915,8 @@ ELSE
 PUTBASIC "basic/loader.bas", "Twisted"
 ENDIF
 
+PUTFILE "Reference/readme.txt", "Readme", 0
+
 IF _DEBUG
 ;PUTBASIC "basic/parallax mode0.bas", "para0"
 ;PUTBASIC "basic/parallax mode1.bas", "para1"
@@ -903,11 +924,14 @@ IF _DEBUG
 ;PUTFILE "basic/makdith2.bas.bin", "MAKDIT2", &0E00
 ;PUTFILE "basic/makshif.bas.bin", "MAKSHIF", &E000
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
-;PUTBASIC "basic/twist.bas", "TWIST"
+PUTBASIC "basic/twist.bas", "MTWIST"
 ;PUTFILE "data/nova-mode1.bin", "NOVA", &3000
 ;PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
 ;PUTFILE "data/flash-mode2.bin", "FLASH", &3000
 ;PUTFILE "data/twisted-brain-mode2.bin", "BRAIN", &3000
 ;PUTBASIC "basic/mask.bas", "MASK"
 PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
+PUTBASIC "basic/make_dither2.bas", "MAKDITH"
+PUTBASIC "basic/double-dith.bas", "DUBDITH"
+PUTFILE "data/hdither.bin", "HDITHER", &3000
 ENDIF
