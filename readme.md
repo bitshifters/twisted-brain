@@ -1,35 +1,69 @@
-Experiments in Stable Raster Timing
+**TWiSTeD bRaIn**
 
-(Started as an attempt to change the pallete entries every scanline, hence "palline".)
+aka **#noteletext #justrasters**
 
-Our goal is to be able to execute code at a specific time during the raster loop.  To reduce the number of possible things running in the system we turn CPU interupts off for the entire process.
+A new demo for the BBC Master by ~ BITSHIFTERS COLLECTIVE ~
 
-At the highest level the approach is:
-1. Synchronise "exactly" to vsync
-2. Set a timer to tell us when we hit the very first scanline after vblank completes
-3. Do some useful work during the vblank period
-4. Execute our desired code on first scanline taking exactly 128 cycles
-5. Repeat for all 256 visible scanlines
-6. Loop back to #3
+Presented at the NOVA 2018 demoparty on 23rd June 2018 in Budleigh Salterton, Devon. 
+This demo will twist the 6845 CRTC video chip in your BBC Master computer. 
+If you experience any glitches or have compatibility problems please report them to us as a GitHub issue. Otherwise, just enjoy the show & let us know what you think!
 
-Step 1 - Synchronise to vsync.
+(We also broke your favourite emulator a little bit, sorry about that! ;)
 
-Credit for this approach should be given to Tom Seddon & Richard Broadhurst as discussed on the retrosoftware forum:
+**CREDITS**
+* Code & FX by kieranhj
+* Atari ST music by Mad Max
+* Music code & Atari ST port by Henley
+* Artwork by Dethmunk
+* Bitshifters logo by @Horsenburger
+* Font by Razor
 
-- Sit in a tight loop waiting for the vsync interupt to be signalled (note that CPU interupts are turned off so no code is triggered.)  We do this by waiting for bit 1 (CA1) to be set in register 13 (interrupt flag register - IFR) in the System VIA, i.e. at &FE4D.
+**CONTACT**
+* Visit our BBC Retro Coding webpage
+https://bitshifters.github.io
+* Find us on Facebook
+https://www.facebook.com/bitshiftrs/
+* Say hello on Twitter
+https://twitter.com/khconnell
+* Join the Acorn community at Stardot
+http://stardot.org.uk/forums/
 
-- Because of the loop latency this only gets us within 10 cycles of vsync having hit.
+**INVERSE PHASE**
+is creating authentic chiptunes
+please offer your support by visiting
+www.inversephase.com
 
-- We know that one PAL frame takes exactly 39936 cycles (= 312 scanlines * 128 cycles per line) so we wait a bit less than this with an artifical delay loop of ~39932 cycles before testing for vsync again.
+**TOOLS USED**
 
-- If the vsync flag is set then we know we're already late so we repeat the loop until we don't have vsync.  This means that vsync is imminent in the next instruction.
+BeebAsm, b-em emulator, jsbeeb emulator
+Exomizer, Pucrunch, Visual Studio Code
+GitHub & more
 
-Step 2 - Set timer to first scanline
+**TECHNICAL SUPPORT**
 
-We set the System VIA Timer 1 to count down for our desired duration of the vblank and trigger on the first scanline:
+This demo requires a standard issue
+BBC Master 128K computer. Only MOS 3.20
+has been tested, other MOS versions may
+be supported. Let us know!
 
-vblank = 40 * 64 (40 scanline * 64 us per scanline)
-vsync = -2 * 64 (vsync interrupt comes 2 scanlines after vsync occurs!)
-latch load = -2 (2 us taken to load the value into the latch)
-hsync = -28 (we often want to start executing code in the hsync period so changes are not visible on screen)
+All 4x sideways RAM banks 4 - 7 must be
+available for use. If you have ROMs
+installed internally these may be
+occupying sideways RAM banks. You will
+need to remove them and check links
+LK18 and LK19 are set correcly as per
+the Master Reference manual.
 
+PAGE must be &1900 or lower. Type
+"P.~PAGE" in BASIC to check your value.
+If this is higher than &E00 then you
+may have a ROM installed that is
+claiming precious RAM! Try unplugging
+any non-essential ROMS with *UNPLUG.
+
+Coprocessors and the Tube must be
+disabled. Type *CONF.NOTUBE and reset.
+
+This demo has been tested on real
+floppy disc hardware, Retroclinic
+DataCentre and MAMMFS for MMC devices.
