@@ -109,7 +109,7 @@ OK, propose that initialisation expectation is:
 
 - CRTC and Video ULA set to MODE 2, SHEILA = &F4 
 - ULA palette set to default (no flash) ??
-- Single buffered with main memory paged in and displayed, so ACCON | 5 = 0
+- Single buffered with main memory paged in and displayed, so ACCON & 5 = 0
 - Screen buffer may be garbage so set this up as required (most FX copying into buffer anyway)
 
 Checkerboard
@@ -464,3 +464,81 @@ FX init &29B9
 #4 &2A1B = 98 = 18 = 8
 #5 &2A25 = 108 = 10 = 8
 #6 &2A27 = 110 = 2 = 8
+
+Post-Mortem
+~~~
+*GOOD*
+Doing prototypes / doodles when not under time or release pressure is good (started some in July 2017.) Can then pick most promising ones as starting point for making a new prod.
+
+Starting early and having a "schedule". Started after Easter (after POP) and had about 10 weeks total - this gave enough slack to accomodate RL. Also having a date for stopping developing new FX (~6 weeks) to then concentrate on sequence and polish (~4 weeks) meant final prod quality was high.
+
+Clearly defining how the FX module interface worked - requirements & expectations of init, update, draw and kill fns meant parts could be resequenced (mostly) without unexpected consequences or bugs.
+
+Approach of raster timed code allowed some very impressive full screen FX running at 50Hz all based on the same framework.
+
+Reusing existing libraries from previous prods (inc. POP) meant it was quick to scale out from individual prototypes to a demo of many parts: particularly vgm player, scripting, disc loading, SWRAM / memory management, Pucrunch compression.
+
+Recording a video capture from real hardware ahead of the compo meant no party coding required (as fun as that was for Teletextr) so avoided any last minute panic with bugs or problems on real hardware.
+
+Simon's ST YM music converter was a big win as it allowed him to choose a really awesome tune for the demo from a large collection, not just the smaller selection of SMS game tunes or BotB ditties. We got lots of recognition for the iconic Mad Max tune and props for the quality of the port.
+
+Getting constructive feedback on the FX from IP & Simon and not being too precious about it. :)
+
+Getting IP to patiently explain Tracker BPM (again) meant timing to patterns became trivial and improved the feel of the demo instantly whilst making the sequence script substantially simpler.
+
+Asking Dethmunk to contribute screens helped give the demo an identity and theme (Twisted Brain was his title.)
+
+
+*BAD*
+Even though the FX had a defined module interface, the complexity of the approach and exact cycle-timing requirements meant it was hard to enable anyone else to contribute their own FX, RL availability notwithstanding. Teletextr was a more enjoyably collaborative effort.
+
+Dithered (no pun intended ;) over the name for a long time and anxed whether there was a consistent theme to the production rather than it being a random bag of prototypes. (Perhaps crawl, walk, run?)
+
+Still painful to produce techical artwork for demos. The BASIC programs used to generate pre-rendered frame buffers are undocumented and arcane, sometimes hacked up and lost. Some of the frame buffers took an unnecessarily long time to render in the emulator. There is no reproducible build of all the art assets for the prod (unlike the music) - everything is just "magic" binaries.
+
+Painful and slow to keep testing the sequence towards the end. My NULA build of b-em only runs ~200% speed at full tilt, so even ffwd in emulator takes many minutes if wanting to test the final parts. Pressing N skips through the script in DEBUG but doesn't skip the music with it so no good for testing music sync.
+
+The end of the demo wasn't quite right. Having an unexpected bonus (Smiley drop) is fine for the private audience (will make them smile) but the party crowd didn't know if the demo had finished or not (had already cheered on the "thanks for watching" screen.)
+
+Required a custom build of b-em for full CRTC timing debugging which would have made it difficult for others to make FX modules.
+
+As awesome as the music was, it was still a borrowed tune. Would be nice to make a demo in which the music & FX are created hand-in-hand together.
+
+
+*NEXT TIME*
+Invest time in improved music player that understands Tracker patterns better to allow jumping (forward) in the sequence more easily.
+
+Having a music player that runs in more constant time would be helpful (Exo can be very spikey - ended up with 10+ scanline polls every 3 frames.)
+
+Get a faster build of b-em? And/or get custom debugging info pushed into main release so don't need custom build.
+
+Invest time in learning Python and use scripts to generate technical art rather than BBC BASIC in the emulator. Need a nice BBC screen buffer module? Make art build reproducible and documented.
+
+
+NULA VERSION
+. Bitshifters logo - meant to look like MODE 7 so leave it!
+. Text - could do much smoother gradiant w/out dither
+. Brain picture - ask John to redraw in 12-bit palette?
+. Checkerboard - could probably do any colour combos - pulse?
+. VBlinds - grey or colour gradient?
+. Kefrens - make bars look rounded in one colour - switch colours each variation
+. Twister - nicer colour combos?
+. Copper - do this without dithering just palette interpolation?
+. Parallax - move to MODE 2 and have smooth vertical bars - how many pixels / colours?
+. Plasma - do this without dithering just grey scale in MODE 2?
+. Smiley - ask John to redraw in 12-bit palette?
+
+
+MORE POSSIBLE CRTC EFFECTS
+- Scrolling checkerboard floor (Lost Boys for Simon :)
+- Wavey width checkerboard
+- Wavey Twister (moves across full width of screen)
+- Textured Twister
+- Mode R (horizontal interlace high colour display from CPC)
+    - Standard approach is MODE 2
+    - What about MODE 1 w/ or w/out partial palette programming?
+- Full screen interference using interlace mode
+    (Display different offset images on alternate fields)
+- Large circles / shapes using Kefrens scanline build up
+- Parallax srolltexts (fast & slow character rows)
+- Zoom scroller (vertical with CRTC, horizontal in sw)
