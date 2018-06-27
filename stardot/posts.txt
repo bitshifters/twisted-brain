@@ -1,0 +1,146 @@
+POSTS
+~~~~~
+- FX framework & main loop
+  - Picture FX (SHADOW)
+  - Text (changing palette per scanline)
+- CRTC registers
+- Vertical rupture
+- Single scanline framebuffer
+  - Checkerboard zoom
+  - Kefrens
+- Two scanline framebuffer double buffered
+  - VBlinds
+- Single scanline x256 cycles
+  - Logo
+  - Twister (SHADOW)
+- Four scanline x 64 cycles
+  - Copper
+  - Parallax (SHADOW)
+  - Plasma
+- Vertical adjust
+  - Smiley
+How Twisted Brain was created
+
+Part #1: FX Framework & Main Loop
+
+In this series of posts I will attempt to explain the inner workings of the Twisted Brain demo. Because some of the FX are more complex than others, these posts will not be in the order in which they appear in the demo. There are a number of concepts that I will try to introduce along the way, with opportunity between posts for questions and clarifications!
+
+The single main principle behind the demo is the ability to execute code when the raster is at a given point on the screen. I will not go into explaining the fundamentals of the raster here but see this Wikipedia article if you would like to know more. [url]https://en.wikipedia.org/wiki/Raster_scan[/url]
+
+The single most important diagram you will need to refer to is the CRTC screen format diagram on page 187 of the NAUG:
+
+[INSERT CRTC PICTURE HERE]
+
+We'll go into much more detail about 6845 CRTC registers at a later point. Note that I'm going to use the term "raster line" to refer to the line on the actual screen that the raster is currently scanning across horizontally. The term "scanline" may be overloaded when refering to certain CRTC register behaviours (more later.)
+
+The FX framework is designed so that code is executed at these raster times:
+
+[INSERT FRAMEWORK PICTURE HERE]
+
+Assuming everything is behaving correctly then the following is true for every FX module:
+
+1. The FX draw function is called at the very beginning* of raster line 0
+2. The FX draw function may exit at any point but typically runs for 256 raster lines
+3. The music player is polled immediately after draw and must be done so every 20ms (* more on this later)
+4. The scripting system is updated for ~ 3 raster lines
+5. The FX update function is called during the vertical blank period but [b]must[/b] return before raster line 0 is reached (maximum ~18 raster lines)
+
+Some useful numbers to remember: one raster line is 64us = 128 cycles @ 2 MHz. There are 312 raster lines in a non-interlaced PAL signal so 312 * 64 = 19968 us = 50.08Hz. Finally we have 312 * 128 = 39936 cycles per frame. This sounds like a lot but they disappear quickly! We will be counting cycles later on...
+
+How does the FX draw function always get called at the same time?
+
+First it is important to note that the entire demo (after boot) runs with interrupts disabled (SEI) although this does not mean that you cannot check that interrupts have occured. We'll explain later.
+
+The vertical sync pulse is the only method we have to synchronise to the entire TV signal. To find the exact cycle of vsync I used the following code taken from the RetroSoftware forum:
+
+[code]
+lda #2
+.vsync1
+bit &FE4D
+beq vsync1 \ wait for vsync
+
+\now we're within 10 cycles of vsync having hit
+
+\delay just less than one frame
+.syncloop
+sta &FE4D \ 4(stretched), ack vsync
+
+\{ this takes (5*ycount+2+4)*xcount cycles
+\x=55,y=142 -> 39902 cycles. one frame=39936
+ldx #142 \2
+.deloop
+ldy #55 \2
+.innerloop
+dey \2
+bne innerloop \3
+\ =152
+dex \ 2
+bne deloop \3
+\}
+
+nop:nop:nop:nop:nop:nop:nop:nop:nop \ +16
+bit &FE4D \4(stretched)
+bne syncloop \ +3
+\ 4+39902+16+4+3+3 = 39932
+\ ne means vsync has hit
+\ loop until it hasn't hit
+
+\now we're synced to vsync
+[/code]
+
+My notes have it attributed to Tom Seddon and Tricky but unfortunately I can no longer find the post! Perhaps it got lost when the forum had to be restored after it was taken down? I know there were many conversations on this topic including RTW and hexwab so my apologies if this has been mis-attributed (I asked Tom and he couldn't remember writing it either!)
+
+Next we setup the 1MHz Timer 1 to interupt at the exact point we require on every frame:
+
+[code]
+; Exact time for a 50Hz frame less latch load time
+FramePeriod = 312*64-2
+
+; Calculate here the timer value to interrupt at the desired line
+TimerValue = 32*64 - 2*64 - 22 - 2
+
+\\ 32 lines for vsync (vertical position = 35 / 39)
+\\ interupt arrives 2 lines after vsync pulse
+\\ 22 us for code that executes after timer interupt fires
+\\ 2 us for latch
+
+; Write T1 low now (the timer will not be written until you write the high byte)
+LDA #LO(TimerValue):STA &FE44
+; Get high byte ready so we can write it as quickly as possible at the right moment
+LDX #HI(TimerValue):STX &FE45             		; start T1 counting		; 4c +1/2c 
+
+; Latch T1 to interupt exactly every 50Hz frame
+LDA #LO(FramePeriod):STA &FE46
+LDA #HI(FramePeriod):STA &FE47
+[/code]
+
+We know vsync has just taken place and we want the timer to reach zero on the first visible raster line of the screen. Given the vertical sync position is at raster line 280 = 35 * 8 we have to wait another 312 - 280 = 32 raster lines before we have completed our full 312 raster line signal. We also discover that the vertical sync interrupt arrives 2 raster lines [i]after[/i] the vsync actually took place (so the raster is actually further ahead that we thought) so we need to adjust for that. Finally, if we want the FX draw function to be called at the start of raster line 0 then we need to compensate for any framework code that runs before the FX draw function, in this case 22us (found by measurement.)
+
+So our initial Timer1 value is 32*64 - 2*64 - 22 - 2 = 1896us
+
+(The extra -2us is due to the time it takes to latch the register as discovered by RTW.)
+
+Timer 1 is put into free-run mode and latched to the value of 312*64 - 2 so that it continues to countdown for the exact duration of a 312 raster line frame, thus reaching zero at the same point on each subsequent 50.08Hz frame.
+
+So at the top of the main loop we simply block waiting for Timer 1 to reach zero before then calling the current FX draw function.
+
+[code]
+\\ Wait for first raster line
+{
+	LDA #&40
+	.waitTimer1
+	BIT &FE4D				; 4c + 1/2c
+	BEQ waitTimer1         	; poll timer1 flag
+	STA &FE4D             	; clear timer1 flag ; 4c +1/2c
+}
+[/code]
+
+Note that testing Timer 1 in this way involves [url=http://beebwiki.mdfs.net/Cycle_stretching]cycle stretching[/url], which I'm not going to get into here. The net result for our purposes is that there is up to 8 cycles of jitter for when the wait loop will terminate. It is possible to get a truly stable raster (as demonstrated by [url=http://www.retrosoftware.co.uk/forum/viewtopic.php?f=73&t=1007]hexwab[/url] on the RetroSoftware forum) but it requires even more careful coding and deemed not worth the extra effort for this demo. (It may return at a future date ;) )
+
+You may observe that this framework requires the code to [b]always[/b] generate a 312 raster line signal from the CRTC otherwise the Timer 1 interrupt will reach zero at a [i]different[/i] position relative to the raster. This will become apparent later on when we discuss the differences between real CRTC behaviour and the emulated behaviour.
+
+Because we need to keep the music playing throughout the demo, it is not possible for us to re-align to vsync using the code above because the syncloop for narrowing down the vsync edge has to be an exact number of cycles. The music player takes a different number of cycles each time it is polled depending on how many bytes have to be decompressed and sent to the SN76489 chip. If the music is not updated every 20ms then there are pauses / slowdowns that are very noticeable and detract from the quality of the production.
+
+I think that's enough for now. Hopefully this is a reasonably clear start. Please do ask any questions, correct anything I've got wrong or suggest improvements for next time! I will try and get one post done per train commute.
+
+You can reference the code on GitHub as we go along: [url]https://github.com/bitshifters/twisted-brain[/url]
