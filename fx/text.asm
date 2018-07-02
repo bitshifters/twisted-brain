@@ -384,6 +384,6 @@ NEXT
 
 .font_font_data
 ; TEMP TEMP TEMP
-INCBIN "data\font_razor.bin"
+INCBIN "data/font_razor.bin"
 
 .text_end
