@@ -1,24 +1,30 @@
 POSTS
 ~~~~~
-- FX framework & main loop
-  - Picture FX (SHADOW)
-  - Text (changing palette per scanline)
-- CRTC registers
-- Vertical rupture
-- Single scanline framebuffer
-  - Checkerboard zoom
-  - Kefrens
-- Two scanline framebuffer double buffered
-  - VBlinds
-- Single scanline x256 cycles
-  - Logo
-  - Twister (SHADOW)
+1. FX framework & main loop
+  2. Picture FX (SHADOW)
+  3. Text (changing palette per scanline)
+4. CRTC registers
+5. Vertical rupture
 - Four scanline x 64 cycles
-  - Copper
-  - Parallax (SHADOW)
-  - Plasma
+  6. Copper inc. ordered dithering
+  7. Plasma
+  8. Parallax (SHADOW)
+- Two scanline framebuffer (double buffered)
+  9. VBlinds
+- Single scanline framebuffer
+  10. Kefrens
+  11. Checkerboard zoom
+- Single scanline x256 cycles
+  12. Logo
+  13. Twister (SHADOW)
 - Vertical adjust
-  - Smiley
+  14. Smiley
+
+15. Misc
+  - Scripting system
+  - Music player
+  - Helpers
+
 How Twisted Brain was created
 
 Part #1: FX Framework & Main Loop
@@ -144,3 +150,632 @@ Because we need to keep the music playing throughout the demo, it is not possibl
 I think that's enough for now. Hopefully this is a reasonably clear start. Please do ask any questions, correct anything I've got wrong or suggest improvements for next time! I will try and get one post done per train commute.
 
 You can reference the code on GitHub as we go along: [url]https://github.com/bitshifters/twisted-brain[/url]
+
+
+[b]Part #2: Da Brain Picture[/b]
+
+Let's start with the simplest effect - the Brain picture reveal. I sent an early work-in-progress version of the demo to Dethmunk and asked if he was inspired enough to make some MODE 2 artwork. He sent back this awesome picture and suggested that the title of the demo might be "Twisted Brain":
+
+[INSERT DA BRAIN PICTURE]
+
+The effect itself is very simple - each frame a few lines of pixels are copied from the SHADOW screen buffer across to the visible screen buffer in main RAM. We can use this to explain how the various FX module functions operate.
+
+[i]FX Init function[/i]
+Every FX module has an init function that is called before any frames are drawn. This is used to set up screen buffers to any pretermined state and / or change MODE.
+
+The FX framework requires that all modules return the system to a "known" state so that certain assumptions can be made safely. These are:
+
+[list]Standard MODE 2 CRTC registers - i.e. 32 visible character rows each of 8 scanlines[/list]
+[list]ULA Control Register set to MODE 2 value (&F4)[/list]
+[list]ULA Palette set to MODE 2 defaults (but without flashing colours)[/list]
+[list]Main RAM paged in for read/write with ACCCON[/list]
+[list]Main RAM being displayed by the CRTC[/list]
+
+Note that the state of the screen buffers is undefined as all modules are expected to either clear or set up the buffer(s) during init.
+
+Finally, the FX framework makes sure that FX init function is called at the start of raster line 0 and the screen display is turned OFF until [i]after[/i] the first FX draw function has been called (to hide any initialisation garbage.)
+
+The init function for the Brain picture simply initialises some local ZP variables uses the PuCrunch library to decompress two images from SWRAM, one to main screen and one to SHADOW screen:
+
+[INSERT MASK PICTURE]
+
+[INSERT FLASH PICTURE]
+
+(Because the decompress can take a long time, and the Brain picture is early on in the demo, the SHADOW picture is actually decompressed at boot time before the music starts to avoid a large wait later on.)
+
+[i]FX Update function[/i]
+The FX framework calls the update function for the current FX module after both the music player and scripting system have been polled. The only guarantee given is that this will be during the vertical blank period and the only requirement is that the function returns [i]before[/i] raster line 0 (otherwise everything breaks :) )
+
+The update function is intended to update any logic for the effect. Because we don't really know how long we have before raster line 0, it is not advised to perform much in the way of heavy lifting (although this is stretched for a couple of FX.)
+
+Because the update takes place during vblank, it is safe to write to the visible screen buffer without introducing any flicker or tearing. We just don't have time to write too much.
+
+For the Brain reveal this is simply:
+
+[list]Copy the current line from SHADOW buffer to main screen buffer[/list]
+[list]Update the line y value in a pleasing way[/list]
+[list]Repeat as required (actually copies 3 lines per frame)[/list]
+[list]If animated, update palette mapping[/list]
+
+The palette is updated using the regular method of writing to the SHEILA Palette Register at &FE21 (see page 207 of the NAUG.)
+
+You will have noticed that only the brain palette animates. This is because it uses colours 8-15 whilst the rest of the image uses colours 0-7. Dethmunk provided me with the brain as a separate image and I used a short BASIC program to mask in the top bit to the colour values for these pixels.
+
+[i]FX Draw function[/i]
+We'll talk more about this next time. For the Brain reveal this is literally "do nothing". (There is a function in the code [i]do_nothing[/i] that is just RTS.)
+
+[i]FX Kill function[/i]
+We'll talk more about this next time as well, including the timings and expectations. For the Brain reveal it should have at least set the ULA Palette back to default state (there is a helper function to do this) but looks like I forgot to call it. Clearly to no ill effect. :)
+
+
+[b]Part #3: Text Screens[/b]
+
+Now we can get into the first effect that runs code on a specific raster line in the FX draw function! But first lets cover off the Init & Update:
+
+[i]FX Init function[/i]
+As ever, we initialise a few ZP variables including pointers to blocks of text and the pattern used to type the font glyphs, set ULA Control Register to MODE 1 (&D8) then clear the screen to a stipple pattern made up of colours 0 & 2.
+
+[i]FX Update function[/i]
+This just updates the colour scroll offset value and then plots a single font glyph to the screen (if there is one left to plot) at the next position.
+
+Each block of text is 18 x 14 = 252 characters (conveniently < 256) and each "pattern" is just a list of 252 values specifying which position on screen (x + y * 18) to use for the next character.
+
+I won't cover the font plot routine here, other than to say it takes 1bpp glyph data and writes this to the screen as MODE 1 pixel bytes using colours 1 & 3 stippled as a mask. The font itself came from an Amiga/ST font collection pack I found somewhere and each glyph is 16x15 pixels.
+
+[INSERT FONT HERE]
+
+[INSERT TEXT PICTURE]
+
+[i]FX Draw function[/i]
+Finally we can get to our first raster timed draw routine! For the text colour effect we are changing the colour values of 2x entries in the palette on every raster line.
+
+Since we know the draw function is always called at (roughly) the start of raster line 0, this becomes "easy" with cycle counting.  The main draw loop looks like this (tidied up a bit from GitHub):
+
+[code]
+	LDX #0                    ; raster line counter
+	LDY palette_lookup_index  ; index into palette lookup tables
+
+	.loop
+  \\ Wait 69 cycles 
+	FOR n,1,33,1
+	NOP
+	NEXT
+  BIT 0                     ; 3c
+
+  \\ Set foreground colour = 26c
+	LDA foreground_colour, Y	; 4c
+	STA &FE21				          ; 4c
+	EOR #&10		              ; 2c
+	STA &FE21				          ; 4c
+	EOR #&40		              ; 2c
+	STA &FE21				          ; 4c
+	EOR #&10		              ; 2c
+	STA &FE21				          ; 4c
+  
+  \\ Set background colour = 26c
+	LDA background_colour, Y	; 4c
+	STA &FE21				          ; 4c
+	EOR #&10		              ; 2c
+	STA &FE21				          ; 4c
+	EOR #&40		              ; 2c
+	STA &FE21				          ; 4c
+	EOR #&10		              ; 2c
+	STA &FE21				          ; 4c
+
+  \\ Increment palette lookup
+	INY                       ; 2c
+
+  \\ Increment raster line counter
+	INX				                ; 2c
+	BNE loop		              ; 3c
+[/code]
+
+For each raster line, we wait 69 cycles so that our palette change takes place at the end of the line. Then we set the MODE 1 palette values by looking up from predefined tables and writing the values to SHIELA Palette Register (&FE21). Note that we must write 4x values to the palette register to change 1x colour in MODE 1. If the palette is only partially programmed whilst the raster is visible then this becomes very noticeable (pixel colours will change depending on their position in a byte) hence attempting to do this inside the horizontal sync portion as much as possible. (See the CRTC screen format diagram from Part #1.)
+
+As long as all of the code within the loop totals 128 cycles then it will all add up and execution will stay in sync with the raster.  Here we have 69 + 26 + 26 + 2 + 2 + 3 = 128 cycles per loop. Do this 256 times and we have filled our screen.
+
+Note how much time is spent in NOP's here - we're spending a lot of time doing nothing. And note the BIT 0 trick which is an easy way to wait 3 cycles with limited consequence to status flags.
+
+Also note that the loop has to be constant time, so in this case it is simpler to do "redundant" work and set the palette to the same value rather than test and branch (because both code branches will need to take the same amount of time.)
+
+Confession time: when I looked at this code in GitHUb I found there was a bug and the loop only contained 127 cycles. It obviously didn't have a noticeable effect on the demo! (Probably because the palette is only changed every 20 lines or so in the end, even though it is set every raster line.)
+
+As you can see, this is not a precise art if counting by hand or using the emulator debugger to help with timings, which is what I did most of the time. I think there are definitely tools that could be built (perhaps directives for BeebAsm or cmorley's code scheduler from Bad Apple) to help remove the manual work of cycle counting and avoid errors.
+
+The palette tables themselves are all based on the "copper" colours, i.e. RGB arranged by hue so red -> magenta -> blue -> cyan -> green -> yellow -> red.
+
+One table is arranged so the copper colours blend into each other, as you can see if we swap to changing the background:
+
+[INSERT COPPER PICTURE]
+
+The second table is arranged by blending the copper colours with black and white stipple to tone down the standard garish 3-bit BBC RGB palette:
+
+[INSERT MUTED PICTURE]
+
+[i]FX Kill function[/i]
+For the text FX module we're in MODE 1 so the kill function needs to reset to MODE 2 as per the rules of the FX system. From a CRTC perspective there is no difference between MODEs 0,1,2 so we only really need to set the ULA Control Register to &F4.
+
+By not messing with CRTC registers we are not risking the possibility of creating a malformed frame (i.e. not 312 total lines or vsync not at line 280) that might end up resyncing the TV or throwing out our Timer 1 synchronisation.
+
+
+[b]Part #4: A brief introduction to CRTC registers[/b]
+
+Before explaining any more about the effects in the demo, it is worth briefly covering the CRTC registers. Reference this table in p190 of the NAUG:
+
+[INSERT CRTC REGISTERS]
+
+As noted before, there is no difference between MODES 0,1,2 as far as the CRTC is concerned - they all have 80 byte columns across the screen. How screen byte values are interpreted as colour pixels is all down to the ULA.
+
+There are many useful references to the CRTC registers, so I'll only give an overview, but check out these links if you want to learn more:
+
+[INSERT MANY LINKS]
+
+The best picture I've found explaining the CRTC comes from an Amstrad page:
+
+[FIND NICE AMSTRAD PICTURE]
+
+Most important things to note about how the CRTC works:
+
+[list][*]The smallest unit is a [i]CRTC character[/i] which is one byte wide - [i]note this may be 2,4 or 8 pixels on the screen depending on the ULA Control Register[/i]
+[*]The display is made up of a number of [i]character rows[/i], typically 39
+[*]Not all of those character rows are displayed, typically 32 are visible
+[*]Each character row has a number of [i]scanlines[/i], typically 8
+[*]The values of the vertical registers must total 312 raster lines for a good (non-interlaced) PAL signal
+[list](Scanlines per character x (Vertical total+1)) + Vertical adjust = 312
+E.g. MODE 0,1,2: (8 * (38 + 1)) + 0 = 312
+E.g. MODE 3,6: (10 * (30 + 1)) + 2 = 312[/list]
+[*]Screen addresses are specified in [i]characters[/i] i.e. multiples of 8 bytes
+[*]For each scanline in a character the screen address is offset by 1 byte
+[*]For each character in a row the memory address is effectively incremented by 8 bytes (one CRTC character)
+[*]The CRTC has internal counters for the current character column, character row and scanline etc.
+[*]The CRTC compares the counters for [i]equality[/i] against the register values for its interal logic
+[*]Most of the registers values are read when the counter comparison takes place, but some registers are latched at the start of the display[/list]
+
+So you can see it is difficult to change one register without changing the others!
+
+[i]Screen Start Address (R12,R13)[/i]
+This allows us to specify which memory address is taken as the top left [i]character[/i] of the display (= memory address / 8).
+
+In standard BBC MODE 0,1,2 screen configuration we have &5000 bytes available = &5000/8 = &A00 (2560) CRTC characters. A screen 80 CRTC characters wide is therefore 32 rows deep: 80 x 32 = 2560. Any memory address above &8000 is wrapped around to lower memory. I won't go into that here but you can find out more on page 386 of the NAUG.
+
+Note that the R12 & R13 registers are latched (remembered) at the start of the display cycle generated by the CRTC. This means changing the R12 & R13 register values has no immediate effect. Normally there will be one display (CRTC) cycle per frame but we will break this in the next part with "vertical rupture".
+
+You may well be familiar with the hardware scrolling technique used in many games, which is achieved by changing the Screen Start Address to move the display left, right, up or down one character at a time with careful consideration as to what happens at the memory wrap around at &8000 (which will quickly end up in the middle of the screen!)
+
+[i]Vertical Total R4[/i]
+The Vertical Total Register is the total number of character rows in the display. Once the character row counter in the CRTC reaches the value in the register then... all the counters are zeroed and it just starts again!
+
+[i]Vertical Displayed R6[/i]
+The Vertical Displayed Register specifies how many character rows are displayed on the screen before the display is "turned off" (i.e. no further bytes are sent to the screen.)
+
+[i]Vertical Sync Position R7[/i]
+When the character row counter in the CRTC reaches the value in the Vertical Sync Position register then it issues a vertical sync pulse to the TV. This tells the raster beam to return from its current position to the top of the TV screen.
+
+If this value is [i]increased[/i] then there will be [i]fewer[/i] character rows left before the end of the display cycle, so the display will appear to be [i]higher up[/i] on the TV screen.
+
+If this value is [i]decreased[/i] then there will be [i]more[/i] character rows before the end of the display cycle, so the display will appear to be [i]lower down[/i] on the TV screen.
+
+You can try this easily by going into MODE 0 and typing:
+[code]VDU 23,0,7,36,0,0,0,0,0,0
+VDU 23,0,7,33,0,0,0,0,0,0[/code]
+
+[i]Scanlines per character R9[/i]
+In default configuration there are 8 scanlines per character row.
+
+Because of the way the memory offset works, increasing this number beyond 8 results in no bytes being available after scanline 8, so the screen is black for those raster lines. The Vertical total must be reduced by an appropriate amount to achieve 312 raster lines for our PAL signal. See register values for MODE 3,6.
+
+Decreasing this number below 8 results in "shorter" character rows but requires the total number of rows to be increased correspondingly somehow, otherwise we'll end up with a malformed frame with less than 312 raster lines.
+
+Note that using this arrangement means we "lose" RAM because CRTC addressing is in [i]characters[/i] (multiples of 8 bytes) plus an offset of the scanline counter. If the scanline counter is always less than 8 then those remaining bytes will be unreachable by the CRTC!
+
+The game Fortress uses this reduced scanline technique to achieve diagonal 4x4 pixel scrolling in MODE 1 but as this still covers all 32 character rows of screen RAM we get a letterbox sized screen! (32 x 4 = 128 pixels high, or thereabouts - I haven't checked the exact resolution.)
+
+I think that is enough to be getting on with for now. We will cover Vertical Total Adjust (R5) and some of the Horizontal registers in a later part.
+
+
+[b]Part 5: Vertical Rupture[/b]
+
+Vertical Rupture is the term coined by the CPC community for the technique of programming the CRTC so that it goes through more than one display cycle per PAL frame. This is a very powerful technique that allows us to effectively map the screen buffer to the screen display in a completely non-linear way but does require some careful timing depending on the complexity of the effect desired.
+
+RTW created several incredibly useful documents on vertical rupture that I referred to many times during the creation of Twisted Brain. However I will attempt to create some diagrams to help illustrate further:
+
+[LINK TO RTW ON RETROSOFTWARE]
+
+I liked the Amstrad CRTC diagram so much I decided to make my own in Excel. This is what a regular standard MODE 0,1,2 CRTC display cycle looks like:
+
+[INSERT REGULAR PIC]
+
+So we have 39 total character rows, of which 32 are visible, and vsync around row 35. The memory address from R12 & R13 is loaded at the start of the display in the top left and incremented by 1 [i]character[/i] (8 bytes) for each cell, moving from left-to-right, top-to-bottom.
+
+We know that there must only be 1 vsync pulse per PAL frame otherwise bad things may happen to your TV but what happens if we [i]don't[/i] have a vsync pulse? Say we set the Vertical Sync Position register to a value greater than the Vertical Total, e.g. &FF? The answer is that the CRTC just starts a new display cycle! This means all counters are reset to zero and, cruicially, it will reload the R12 & R13 register values for the Screen Start Address...
+
+We've got to have a vsync pulse at [i]some[/i] point, or we'll never get a picture, so there is [i]some[/i] timing required. Many existing examples use IRQV1 callbacks for Timer 1 and vsync interrupts, which is perfectly valid and useful, but for this demo we have our FX framework to allow quite carefully timed code against the raster.
+
+Here's a simple example I hacked up to display the Brain picture on screen in 4 non-contiguous sections; the top 8 character rows are at the bottom of the screen, the next 8 above that and so on:
+
+[INSERT BRAIN PICTURE]
+
+The Brain picture is still loaded into contiguous RAM at &3000 as normal but by using vertical rupture we can reprogram the CRTC to create 4x display cycles each pointing to a different memory address. Here is an illustration of what's going on:
+
+[INSERT VERTICAL RUPTURE PIC]
+
+The FX draw function for this is:
+
+[list][*]Set Vertical Total R8 = 7 (8 character rows)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertical Displayed R6 = 8 (8 character rows)
+[*]Set Screen Start Address R12 & R13 = &5800/8 (screen start address for display cycle #2)
+[*]Wait 64 raster lines (8 character rows) until display cycle #2 starts
+[*]Set Screen Start Address R12 & R13 = &4400/8 (screen start address for display cycle #3)
+[*]Wait 64 raster lines (8 character rows) until display cycle #3 starts
+[*]Set Screen Start Address R12 & R13 = &3000/8 (screen start address for display cycle #4)
+[*]Wait 64 raster lines (8 character rows) until display cycle #4 starts
+[*]Set Vertical Total R8 = 14 (15 character rows)
+[*]Set Vertical Sync Position R7 = 11 (VSync at raster line 280 = 35*8)
+[*]Set Screen Start Address R12 & R13 = &6C00/8 (screen start address for display cycle #4)[/list]
+
+Remember that the FX draw function is called on raster line 0 so we're [b]already in display cycle #1[/b]. This can get confusing and hard to debug sometimes! The CRTC register values will contain whatever they were set to in the previous cycle (#4).
+
+The R12 & R13 register values are latched at the start of a CRTC display cycle, which is why we need to set them [i]before[/i] the next cycle starts. They have no effect on the current display.
+
+Only the last display cycle (#4) must contain a vsync so it's important to reset that register at the start of the frame.
+
+Finally, also remember that the internal counters of the CRTC test for [i]equality[/i] against the register values so if you set a register to new value that is [i]less than[/i] the curent counter then it won't equate until the counter has wrapped around through zero.
+
+Hopefully this helps to demystify vertical rupture a little bit. Now we have the basics of CRTC registers and vertical rupture in place we can start to move on to some of the more advanced effects in the demo.
+
+Simple maths tells us that we cannot use the 6502 CPU @ 2MHz to fill a 20KB screen buffer in 20ms (50Hz.) However, if we can precalculate interesting patterns for the screen buffer, or create smaller screen buffers effects using the limited CPU time we do have, then vertical rupture gives us a way to display memory on the entire screen in a non-linear manner at 50Hz for effectivey zero cost...
+
+
+[b]Part #6: Copper Colours[/b]
+
+Hopefully now we have enough knowledge of the CRTC registers and vertical rupture technique to be able to explain how the copper colour effect was achieved.
+
+But first we need a small diversion on [i]dithering[/i]. We know the BBC colour palette is limited to 3-bit RGB so eight intense colours: black, red, green, yellow, blue, magenta, cyan and white. Fortunately the challenge of representing images from a limited colour palette is a well researched topic. I thoroughly recommend reading the Wikipedia article on the subject of dithering.
+
+[INSERT WIKIPEDIA LINK]
+
+There are many different approaches to dithering but for this demo we need something that is simple, can be precomputed and, most importantly, works well with movements and animation. [i]Ordered dithering[/i] fits these requirements as the dithering patterns used are fixed and predictable so we do not get scintillating pixels under motion.
+
+I won't go into masses of detail about ordered dithering but again recommend the Wikipedia article on the topic.
+
+[INSERT WIKIPEDIA LINK]
+
+For our purposes it is sufficient to know that we're using a 4x4 ordered dithering matrix that generates 17 fixed patterns to represent the gradient between two colours. The gradient looks like this:
+
+[INSERT GRADIENT PICTURE]
+
+Obviously the higher the pixel resolution, the more effective the dithering effect is, so the Copper Colour effect is actually in MODE 0!
+
+Here is the precomputed 4x4 ordered dither in MODE 0 with one pattern per character row (17 in total including pure white and pure black.) This is loaded into the screen buffer RAM by the FX init function:
+
+[INSERT MODE 0 PRE-COMPUTED PICTURE]
+
+With vertical rupture we can display any of these 17 dithering patterns on any character row of the screen. Even better, we can manipulate the CRTC registers so that a character row is just 4 scanlines high to match the size of our 4x4 dithering pattern.
+
+Ignoring motion and colour for the moment, we can generate a screen that blends from white to black to white to black etc. by setting up a screen configuration made of 64x CRTC display cycles, each with 1x character row of just 4x scanlines. 64 x 1 x 4 = 256 visible lines. Remember, we start already inside display cycle 1 and we must generate a vsync in the final (64th) display cycle.
+
+The FX draw function is then:
+
+[list][*]Set Scanlines per Row R9 = 3 (4 scanlines)
+[*]Set Vertical Total R4 = 0 (1 character row)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertica Displayed R6 = 1 (1 character row)
+[*]Set Screen Start Address R12 & R13 = from lookup table of addresses white -> black -> white etc.
+[*]Wait until we've covered exactly 4x raster lines = 512 cycles - however long the above code takes
+[*]Loop 62 times (62 more display cycles):
+[list][*]Calculate offset for next character row
+[*]Set Screen Start Address for next display cycle (character row)
+[*]Change ULA palette (see below)
+[*]Wait until we've covered exactly 4x raster lines = 512 cycles - however long the above code takes
+[/loop]
+[*]Scanlines per Row R9 unchanged = 3 (4 scanlines)
+[*]Set Vertical Total R4 = 14 (15 character rows)
+[*]Vertical Displayed R6 unchanged = 1 (1 character row)
+[*]Set Vertical Sync Position R7 = 7 (in 7 character rows time)
+[/list]
+
+The final (64th) display cycle must include a vsync. Up until this point we've had 63 cycles each of 4 scanlines, so covered 63 x 4 = 252 raster lines. We need 312 raster lines in total with vsync happening at line 280 ( = 35 * 8 ) so the register values are:
+
+[list][*]Vertical Total = (312 - 252) / 4 = 60 / 4 = 15 (character rows)
+[*]Vertical Sync Position = (280 - 252) / 4 = 28 / 4 = 7 (character rows)
+[/list]
+
+This gives us our nice black and white bars:
+
+[INSERT B&W PIC]
+
+[u][i]Adding Colour[/i][/u]
+To add colour we simply change the ULA palette at each point we're displaying either solid black or solid white in our copper hue: [b]red[/b] -> [b]magenta[/b] -> [b]blue[/b] -> [b]cyan[/b] -> [b]green[/b] -> [b]yellow[/b] -> [b]red[/b].
+
+Remember in MODE 0 we must program 8x ULA palette entries to modify one colour on the screen. This takes a reasonable amount of cycles so to avoid any pixels appearing with a partially programmed palette we only change the palette register when solid colour is on screen. I.e. when the pattern is all colour 0 then we can safely reprogram the palette for colour 1, and vice versa. We always display a minimum of 4x raster lines of solid colour so this is plenty of time.
+
+[INSERT COLOUR PIC]
+
+[u][i]Adding Animation[/i][/u]
+Firstly, the index into the screen address lookup table is scrolled (incremented) each frame, so the bars appear to move up the screen constantly.
+
+Next a simple accumulator is used to increment the index into the screen address lookup table for each new character row. This has the effect of stretching the bars by a constant amount. E.g. if the value added to the accumulator each row is large then the index will step through the table quickly (everything will be squashed together.) If the value added to the accumulator is small then the index will step through the table more slowly (everything will be stretched.)
+
+You can see the effect of accumulating by 32 effectively stretches the bars by a factor of 8 ( = 256 / 32 ). I.e. it takes 8 character rows before we increment the index into the lookup table.
+
+[INSERT B&W STRETCHED PIC]
+
+Finally, the "stretch factor" is animated on a sine curve each frame (there are a [b]*lot*[/b] of sine curves in this demo!) so the end result zooms in & out of the bars as they scroll.
+
+[INSERT COLOUR STRETCHED PIC]
+
+Part 7: Plasma
+
+Like the Copper Colours, the Plasma effect is also in MODE 0 and uses a prerendered screen buffer consisting of various 4x4 ordered dither patterns:
+
+[INSERT PLASMA PRERENDERED SCREEN]
+
+Although this looks a bit random, every two character rows consists of a gradient that goes from white -> black -> white an increasing number of times. So the top two character rows have 1 gradient, the next two rows 2x gradients and most clearly the bottom two character rows have 8x gradients (they start to look like 8x vertical bars.)
+
+Now we're starting to get a bit more comfortable with the idea of vertical rupture, we can think of taking any one of those prerendered character rows from the screen buffer RAM and displaying it on every row of the TV screen:
+
+[INSERT LARGE BARS]
+
+This is exactly the same 64 x 1 x 4 CRTC cycle configuration that we had in the Copper Colours effect but our starting point is to display [i]the same[/i] bit of RAM on every character row of the screen. (This idea of repeating the same area of memory is also very powerful as we'll find out in some of the other effects.)
+
+[INSERT SMALL BARS]
+
+[u][i]Adding Animation[/i][/u]
+If we offset the Screen Start Address for each character row, we can animate the bars in a number of ways (which all basically boil down to predefined sine tables :) ):
+
+[list][*]Scroll horizontally by offsetting all rows by the same amount
+[*]Apply a sine curve of given frequency and amplitude to "bend" the bars
+[*]Add another sine curve of different frequency and amplitude over the top
+[*]Update lookups into the tables by differing amounts per frames / character row
+[/list]
+
+Some examples:
+[INSERT SLIGHT]
+[INSERT MORE]
+
+Because there is a fixed amount of time to calculate the screen address for the next display cycles I wanted to avoid any multiplication so instead everything is made up of adding sine curves together. To be honest it is a bit of black art creating sine tables that result in pleasing visual results and there was a lot of trial and error here fiddling with parameters. Even trying to give parameters sensible names and understand the units of measurement can be tough!
+
+[INSERT DOUBLE]
+
+[u][i]Adding Colour[/i][/u]
+There are only two colours on screen for the plasma, so no fancy palette tricks are required. However the colour selections were deliberately chosen to be "close together" so that the dithered blending is more effective to the eye (particularly in MODE 0 high resolution.) Any colours that are neighbours in hue (e.g. red & magenta) look nice or colours that are similar brightness (e.g. white & yellow).
+
+[INSERT COLOUR PLASMA]
+
+Part #8: Parallax Bars
+
+The entirety of Twisted Brain was pretty much based on my desire to recreate the Parallax Bars and other effects from one of my all-time favourite demos of the Amiga era: Total Triple Trouble by Rebels. [INSERT YOUTUBE LINK.]
+
+It follows the same 64 x 1 x 4 CRTC cycle configuration as both the Copper & Plasma effects but utilises 40K of prerendered MODE 1 screen buffers stored in main and SHADOW RAM:
+
+[INSERT PARA1]
+
+[INSERT PARA2]
+
+The bars were created with a BASIC program that draws 7 layers of bars from back-to-front at a uniformly decreasing distance to the "camera". The numbers are arranged so that top set of bars (closest to the "camera") are 32 pixels wide and 32 pixels apart, giving 5x bars across a 320 pixel MODE 1 screen.
+
+We move the "camera" one pixel to the right and draw all of the bars again in a new character row. After this has been repeated 64 times the bars are all back in the same position as when we started (64 pixels between the left edge of each bar on the top layer.)
+
+The bars themselves are plotted using ordered dithering again to create a smooth gradient but using the pixel coordinates within the bar in the dither equation. This means that pixel pattern remains constant inside the bar on each frame, avoiding scintillating pixels.
+
+Because we can only have 32 x 80 byte rows in a 20K MODE 1 screen (2560 CRTC characters), a second 20K screen is created to be placed in SHADOW RAM, giving 64 character rows in total.
+
+Using vertical rupture we can display the same character row all the way down the screen, giving full screen vertical bars for "free". As we step through the 64 available character rows, the bars will move sideways by 1 pixel at a time in a perfect loop, giving the appearance of parallax scrolling.
+
+From here it's a matter of adding yet another animated sine wave offset for each character row and then fiddle with the parameters to control frequency & speed of animation etc. (AKA the black art of sine wave wibbling.)
+
+[INSERT PARALLAX PIC]
+
+[INSERT AMIGA PIC?]
+
+[u][i]SHADOW RAM[/i][/u]
+I've glossed over one aspect of the above - because we have 64x character rows we need to tell the CRTC whether to display from main or SHADOW RAM. The first 32x prerendered rows are in main RAM and the second 32x rows in SHADOW.
+
+This is done easily enough using the Access Control Register (ACCCON) located at address &FE34 in SHIELA. See page 161 - 163 in the NAUG for full details.
+
+Note that there is an annoying mistake in the diagram in the NAUG on page 162, although the text is all correct. Here is a [i]corrected[/i] version of the diagram:
+
+[INSERT CORRECT ACCCON]
+
+One gotcha is that changing the ACCCON register takes [i]immediate effect[/i] (whereas our CRTC Screen Start Address register is latched at the next display cycle.) This means if we are currently showing main RAM and want our [i]next[/i] display cycle to show from SHADOW we have to update ACCCON [i]immediately before[/i] it is needed.
+
+Thankfully the FX framework plus 6502 instruction cycle counting means we can put this code inside the horizontal blank period at the end of the 4th scanline of each display cycle.
+
+[code]
+	LDA #62
+	STA parallax_crtc_row
+
+	.loop
+	\\ Update our sine tables for next character row / cycle
+
+	TXA							; 2c
+	CLC							; 2c
+	ADC parallax_wavey			; 3c
+	TAX 						; 2c
+	LDA parallax_sine_table, X	; 4c
+	CLC							; 2c
+	ADC parallax_x				; 3c
+	AND #&3F					; 2c
+	TAY							; 2c
+
+	\\ Wait 49 cycles so we're towards horizontal sync
+
+	FOR n,1,23,1
+	NOP
+	NEXT
+	BIT 0
+
+	\\ Wait two more raster lines
+
+	JSR cycles_wait_128
+	JSR cycles_wait_128
+
+	\\ Update the Screen Start Address for next cycle
+
+	LDA #12: STA &FE00			; 2c + 4c
+	LDA parallax_vram_table_HI, Y		; 4c
+	STA &FE01					; 4c
+
+	LDA #13: STA &FE00			; 2c + 4c
+	LDA parallax_vram_table_LO, Y		; 4c
+	STA &FE01					; 4c
+
+	\\ Wait another raster line so were at the very end of 4th scanline
+
+	JSR cycles_wait_128
+
+	\\ Set correct video page
+
+	LDA &FE34					; 4c++
+	AND #&FE					; 2c
+	ORA parallax_vram_table_page, Y		; 4c
+	STA &FE34					; 4c++
+
+	\\ Next character row / cycle
+
+	DEC parallax_crtc_row		; 5c
+	BNE here		; 3c
+[/code]
+
+Now it becomes clear why this effect is one of the most timing sensitive. If Timer 1 reaches zero at a point other than the beginning of raster line 0 then the switch between main or SHADOW RAM will take place at the wrong time. We'll get on to the timing differences between the emulators and real hardware later on but this is why we get this result:
+
+[INSERT PARALLAX TIMING BUG]
+
+We're a raster line out when switching between main and SHADOW RAM so end up with single "glitch" lines at those boundaries.
+
+
+Part #9: Vertical Blinds
+
+The "Vertical Blinds" effect was one of the earliest that I prototyped whilst experimenting with vertical rupture to repeat a single character row over the entire screen for "free". The original code used IRQV1 callbacks before the FX framework existed. I wasn't going to include the effect in the demo but both simonm and sbadger quite liked it!
+
+The final implementation has a CRTC configuration of 2x scanlines per row, 1x character row per cycle and 128x display cycles per frame. This means our "frame buffer" is just 80 x 2 = 160 bytes in size - small enough to update completely every frame.
+
+However the effect is complicated enough that the mini frame buffer cannot be cleared and redrawn in the [i]FX update[/i] function. Instead a double-buffering approach is used and the work to draw the mini frame buffer is moved to the [i]FX draw[/i] function. Double buffering is cheap when your frame buffer is so small...
+
+[i]FX Update function[/i]
+Which buffer?
+[list][*]Set write ptr to character row 1 and CRTC Screen Start Address to character row 0
+or
+[*]Set write ptr to character row 0 and CRTC Screen Start Address to character row 1
+[/list]
+Then swap buffers.
+
+[i]FX Draw function[/i]
+[list][*]Set Scanlines per Row R9 = 1 (2 scanlines)
+[*]Set Vertical Total R4 = 0 (1 character row)
+[*]Set VSync Position R7 = &FF (never)
+[*]Set Vertical Displayed R6 = 1 (1 character row)
+[*]Loop to copy colour values from a linear line buffer into MODE 2 screen buffer pixels (~83 raster lines)
+[*]For 14x vertical blind "bars" (~78 raster lines):
+[list][*]Update horizontal position (from sine table)
+[*]Update width (from another sine table)
+[*]Draw bar into linear line buffer
+[/list]
+[*]Wait ~92 raster lines (until we reach display cycle #128)
+[*]Scanlines per Row R9 unchanged = 1 (2 scanlines)
+[*]Vertical Total R4 = ((312 - 254) / 2) - 1 = (58/2) - 1 = 29 - 1 = 28 (29 character rows)
+[*]Vertical Sync Position R7 = (280 - 254) / 2 = 26 / 2 = 13 (13 character rows time)
+[*]vertical Display R6 unchanged = 1 (1 character row)
+[/list]
+
+The linear line buffer is just an array of 256 bytes that represents the pixels along the top line of the screen. To keep things simple 1x byte represents 1x pixel with 15x values that are mapped to MODE 2 pixel pairs in the copy loop to give a simple stipple effect for the appearance of more colours.
+
+Keeping everything as a linear line buffer has a number of advantages:
+
+[list][*]It is simple to write into the line buffer -> we only need to worry about BBC screen byte arrangement once during the copy loop
+[*]Clipping at screen edges becomes trivial -> we just copy the middle 160 pixels from the line buffer to the MODE 2 screen
+[*]A single colour vaue in our line buffer can be turned into multiple screen bytes and the pixel values remapped if required -> stipple
+[*]Copying from the line buffer to the screen buffer is a constant time operation -> suited to our FX draw functions
+[/list]
+
+The only slight complication is making sure that writing into the line buffer is also a constant time operation for our FX draw function to remain predictable. This is done by having two loops of the same cycle length that always total the same number of iterations. The first loop writes the required number of colour values into the line buffer and the second loop writes the rest of the colour values into a sink.
+
+Here is a very early prototype of this effect dating from 2016:
+
+[INSERT VBLINDS 2016 PIC]
+
+[b]Part #10: Kefrens aka Alcatrax bars[/b]
+
+I have been on a quest to produce true single scanline Kefrens bars on the Beeb for quite a while. Here's a very early protoype of the effect from 2016 which is only achieving one bar every 8 scanlines for a massive total of 28x bars!
+
+[INSERT KEFRENS 2016 PIC]
+
+The crux of this effect is to display the [i]same[/i] scanline of memory on every raster line of the screen but update the scanline memory [i]just before the raster[/i] so that the pixels accumulate over every line.
+
+For those familiar with the Atari 2600 (VCS) this is a similar concept - that machine [i]has no frame buffer[/i] so the video chip must be programmed just as the raster passes the correct part of the screen. (Truly mind boggling that any games were ever made, but I digress.)
+
+The FX Update function simply clears the scanline buffer (80 bytes) and updates our sine table indices. The FX Draw function is a bit more complicated as we're now down to the smallest possible CRTC cycle configuration: 1x scanline per character row, 1 character row per display cycle repeated 256x times!
+
+[list][*]Screen Start Address never has to be reset as it's always the same
+[*]Set Scanlines per Row R9 = 0 (1 scanline)
+[*]Set Vertical Total R4 = 0 (1 character row)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertical Displayed R6 = 1 (1 character row)
+[*]Loop 254x times:
+[list][*]Update lookup into sine tables to get next X position for bar
+[*]Lookup write address for X position
+[*]Check if X is odd (right pixel aligned) or even (left pixel aligned)
+[*]Write 4x bytes for 7x pixels, masking in 8th (left or right) pixel from screen accordingly
+[/list]
+[*]Scanlines per Row R9 unchanged = 0 (1 scanline)
+[*]Vertical Total R4 = ((312 - 255) / 1) - 1 = 56 (57 character rows)
+[*]Vertical Sync Position R7 = (280 - 255) / 1 = 25 (25 character rows time)
+[*]Vertical Displayed R6 = 1 (1 character row)
+[/list]
+
+The pixel writing code looks like this:
+
+[code]
+	.write_pixels
+	LDA kefrens_addr_table_LO, Y	; 4c
+	STA writeptr					; 3c
+	LDA kefrens_addr_table_HI, Y	; 4c
+	STA writeptr+1					; 3c
+
+	TYA:LSR A
+	BCS right
+
+	;2c
+	\\ Left aligned
+	LDA # PIXEL_LEFT_7 OR PIXEL_RIGHT_3		; white/yellow
+	LDY #0:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_6 OR PIXEL_RIGHT_2		; cyan/green
+	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1		; magenta/red
+	LDY #16:STA (writeptr), Y
+	LDY #24:
+
+	\\ Mask in right most pixel from screen
+	LDA (writeptr),Y		; 6c
+	AND #&55				; 2c
+	ORA #PIXEL_LEFT_4		; 2c			; blue/screen
+	STA (writeptr), Y
+
+	BRA continue ;3c
+
+	.right	;3c
+	\\ Mask in first left pixel from screen
+	LDY #0
+	LDA (writeptr),Y		; 6c
+	AND #&AA				; 2c
+	ORA #PIXEL_RIGHT_7		; 2c				; screen/white
+	STA (writeptr), Y
+
+	LDA # PIXEL_LEFT_3 OR PIXEL_RIGHT_6			; yellow/cyan
+	LDY #8:STA (writeptr), Y
+	LDA # PIXEL_LEFT_2 OR PIXEL_RIGHT_5			; green/magenta
+	LDY #16:STA (writeptr), Y
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_4			; red/blue
+	LDY #24:STA (writeptr), Y
+	NOP
+	
+	.continue
+[/code]
+
+Both paths of the branch must take the same number of cycles, hence the additional NOP at the end of the right hand branch.
+
+[INSERT KEFRENS PIC]
+
+[b]Part #11: Checkerboard Zoom[/b]
+
