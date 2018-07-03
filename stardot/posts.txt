@@ -543,7 +543,7 @@ There are only two colours on screen for the plasma, so no fancy palette tricks 
 
 [INSERT COLOUR PLASMA]
 
-Part #8: Parallax Bars
+[b]Part #8: Parallax Bars[/b]
 
 The entirety of Twisted Brain was pretty much based on my desire to recreate the Parallax Bars and other effects from one of my all-time favourite demos of the Amiga era: Total Triple Trouble by Rebels. [INSERT YOUTUBE LINK.]
 
@@ -645,7 +645,7 @@ Now it becomes clear why this effect is one of the most timing sensitive. If Tim
 We're a raster line out when switching between main and SHADOW RAM so end up with single "glitch" lines at those boundaries.
 
 
-Part #9: Vertical Blinds
+[b]Part #9: Vertical Blinds[/b]
 
 The "Vertical Blinds" effect was one of the earliest that I prototyped whilst experimenting with vertical rupture to repeat a single character row over the entire screen for "free". The original code used IRQV1 callbacks before the FX framework existed. I wasn't going to include the effect in the demo but both simonm and sbadger quite liked it!
 
@@ -707,7 +707,7 @@ For those familiar with the Atari 2600 (VCS) this is a similar concept - that ma
 
 The FX Update function simply clears the scanline buffer (80 bytes) and updates our sine table indices. The FX Draw function is a bit more complicated as we're now down to the smallest possible CRTC cycle configuration: 1x scanline per character row, 1 character row per display cycle repeated 256x times!
 
-[list][*]Screen Start Address never has to be reset as it's always the same
+[list][*]Screen Start Address R12 & R13 = &3000 (constant - could be done in init)
 [*]Set Scanlines per Row R9 = 0 (1 scanline)
 [*]Set Vertical Total R4 = 0 (1 character row)
 [*]Set Vertical Sync Position R7 = &FF (never)
@@ -779,3 +779,217 @@ Both paths of the branch must take the same number of cycles, hence the addition
 
 [b]Part #11: Checkerboard Zoom[/b]
 
+The zooming checkerboard turned out to require more iterations than originally anticipated (for reasons that I will get onto shortly) and actually does the most work in the update function (during vblank) of all the effects.
+
+As with the Kefrens bars, the CRTC configuration is 1x scanline per row x 1 character row per display cycle x 256 cycles and we're displaying the same scanline of RAM on every raster line.
+
+The trick here is to use the flashing bit in the ULA Video Control Register (at SHEILA &FE20) to invert the colours 8-15 of our scanline pixels at close to zero cost. You can read about the Video Control Register on page 204 of the NAUG:
+
+[INSERT ULA VID CONTROL PIC]
+
+The FX Draw function is quite simple:
+
+[list][*]Set up our single scanline CRTC cycle (as before):
+[list][*]Screen Start Address R12 & R13 = &3000 (constant)
+[*]Set Scanlines per Row R9 = 0 (1 scanline)
+[*]Set Vertical Total R4 = 0 (1 character row)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertical Displayed R6 = 1 (1 character row)
+[/list]
+[*]Loop 254 times:
+[list][*]Wait 94 cycles until we're in hblank
+	[*]Mask parity bit of checkboard into ULA Video Control Register
+	[*]Increment Y coordinate of checkerboard
+	[*]Test whether Y coordinate > size of check (N) and invert parity if so
+[/list]
+[*]Set final CRTC cycle to form a complete PAL signal (as before):
+[list]
+[*]Scanlines per Row R9 unchanged = 0 (1 scanline)
+[*]Vertical Total R4 = ((312 - 255) / 1) - 1 = 56 (57 character rows)
+[*]Vertical Sync Position R7 = (280 - 255) / 1 = 25 (25 character rows time)
+[*]Vertical Displayed R6 = 1 (1 character row)
+[/list]
+[/list]
+
+Even though we only have a single scanline of pixels to draw, this must be completed during our update function before raster line 0 occurs. When the music player is at peak load this leaves a maximum of around 18 raster lines (18 * 128 = 2304 cycles.)
+
+Again, it sounds like plenty but if we want to have single pixel movement horizontally and scale the squares by single pixel increments, suddenly there is a heap of pixel masking to think about.
+
+Our checkerboard has x & y offset coordinates in pixels plus size of the check of N pixels. If we choose the top left of our checkerboard to be black, then by moving N pixels horizontally the top left of the screen will become white, ditto if we move N pixels vertically. If we move N pixels both horizontally & vertically then it will remain black. We can think about the parity of the check which is probably easier to explain in this diagram:
+
+[INSERT CHECKERBOARD PARITY PIC]
+
+So our single scanline frame buffer needs to start with an offset of (x MOD N) black pixels and continue drawing pixels until N pixels are drawn then invert the colour, repeat until we reach the end of the line. When we're in the FX draw loop we start assuming (y MOD N) lines of the board are off screen then invert the colour every time we reach N lines being "drawn".
+
+[u][i]Low Frequency Clock[/i][u]
+The original implementations were in MODE 4 which is only 40 CRTC characters wide and therefore relatively easy to write. One gotcha though is that MODE 4 is a [i]low frequency[/i] 6845 clock and therefore [b]not[/b] considered the same as MODEs 0,1,2 by the CRTC. Take a look back at [b]Part #4[/b] and the default values of the CRTC registers. Everything is roughly half for MODEs 4,5,6.
+
+Hmmm, we know the CRTC counters test for [i]equality[/i] against the register values and if we [i]reduce[/i] the register values below the counter values then overflow will occur (we have to wait for the counters to wrap around through 0.) Is it possible to change between a high frequency and low frequency clock rate MODE without causing the TV to resync and timing to be thrown out?
+
+The answer I think is [i]yes[/i] to avoid resync but [i]not sure[/i] when it comes to timing. Once the ULA has set the CRTC to low frequency clock rate we're then in a race against the [i]horizontal[/i] counters to set each of the CRTC registers to their new lower values without overflow occuring. It does start to matter which registers are set in which order - if you don't set the Horizontal Total in time then your raster line is too long, if you don't set your Horizontal Sync Position in time then the hblank is in the wrong place etc.
+
+I got this working just about but seemed brittle. Also I had no clue how this would affect the raster timing relative to Timer 1 on real hardware. Say we're at Horizontal Character 30 in high frequency clock then suddenly we switch to low frequency clock and reduce the Horizontal Total from 127 to 63. Our horizontal counter says we've only got 34 more characters to go but this feels like we've "lost" some characters. 34 low frequency characters = 68 high frequency ones so we'll only get 30 + 68 = 98 high frequency total characters this raster line, rather than 128. This certainly bent my brain and I decided that the emulators almost certainly weren't going to be accurate in that respect, so probaby best stick to the high frequency clock throughout.
+
+[u][i]Drawing 320 pixels in ~18 raster lines?[i/][/u]
+How hard can it be? Switching to MODE 1 turned out to be surprisingly challenging to squeeze the pixel draw into the time limits of the FX update function. I'd be delighted if someone points out a better way to do this!
+
+Rounding up to a generous 2400 cycles / 80 bytes in the scanline = 30 cycles / byte, should be easy? Except the pixel colour can be inverted at any X value. 2400 cycles / 320 pixels = 7.5 cycles / pixel, suddenly doesn't seem that generous.
+
+In the end I unrolled the following loop where X contains the number of pixels drawn so far and A contains the current byte to write to the screen. With Y as a temporary register store and some lookup tables for masking and subtraction.
+
+[code]
+\\ How many pixels to start with?
+SEC
+LDA checkzoom_N
+SBC checkzoom_XmodN
+TAX
+
+\\ Always start with black
+LDA #0
+
+\\ Unroll the loop
+FOR c,0,79,1
+{
+	CPX #4                      ; 2c
+	BCS write_byte              ; 3c
+	\\ Flip our bits
+	EOR #&FF                    ; 2c
+	TAY                         ; 2c
+	\\ Write partial byte
+	EOR checker_left_mask, X    ; 4c
+	STA &3000 + c * 8    ; 4c
+	; carry clear
+	LDA checkzoom_N             ; 3c
+	SBC checker_lazy_table, X   ; 4c
+	TAX                         ; 2c
+	.partial_byte
+	TYA                         ; 2c
+	BRA done                    ; 3c
+	.write_byte
+	STA &3000 + c * 8    ; 4c
+	.next_column
+	DEX:DEX:DEX:DEX             ; 8c
+	.done
+}
+NEXT
+\\ Long path = 30c Short path = 17c -> worst case = 80x30 = 2400c = 18 scanlines
+
+.checker_left_mask
+EQUB %00000000
+EQUB %10001000
+EQUB %11001100
+EQUB %11101110
+
+.checker_lazy_table
+EQUB 3,2,1,0
+[/code]
+
+Given that the vast majority of the FX draw function is spent in NOPs (94 cycles / raster line) I guess I could have used the double buffer technique from the Vertical Blinds effect and moved the work here. The challenge then becomes how to interleave work for the next frame whilst still inverting colour parity at the right time for the current frame.
+
+[b]Part #12: Bitshifters "MODE 7" logo[/b]
+
+You've probably guessed by now that the wibbling Bitshifters logo at the start of the demo isn't MODE 7 at all but MODE 1. :) I took a screen grab of Steve Horsley's original Acornsoft x Bitshifters Teletext logo that he made for Prince of Persia and passed it throug Image2BBC in MODE 1.
+
+[INSERT BS MODE 1 PIC]
+
+Fortunately, because the logo is 5x Teletext characters high, there are 15x MODE 7 "sixel" rows that make up the image. Each "sixel" will be 2 or 3 scanlines high, depending on whether it is in the middle of the character or not, but we know we can use vertical rupture to display duplicate scanlines "for free" so we only need to each store sixel row as one scanline in our screen buffer.
+
+As MODE 1 has 4x pixels per byte, for horizontal movement we'll need to preprocess pixel offsets, as we can't afford to do this at runtime. Our standard MODE 1 screen has 32x character rows so we can comfortably store 2x sets of 16x scanlines making up the logo image:
+
+[INSERT BS SHIFTED PIC]
+
+This means the scanlines can only be moved horizontally in 2x pixel increments. It would be nice to use SHADOW RAM for the other 2x sets to give all 4x pixel offsets for smooth single pixel horizontal movement but I'll save that for another time.
+
+The FX draw function sets up a 1x scanline per row, 1x character row per display cycle x 256x display cycles CRTC arrangement again. The 16x preprocessed scanlines are displayed as 64x rasterlines in the draw function from a table, including blank scanlines in the right places to achieve the Teletext separated graphics look.
+
+The ULA palette is changed every 64x raster lines so that the logo appears to be the classic red, green, yellow & blue combination.
+
+The animation is generated from, you guessed it, a couple of sine wave tables used to calculate a character offset for the Screen Start Address of every row.
+
+Ultimately the effect is quite simple but has taken us a while to get to the concept of single scanline CRTC cycles and prerendered screen buffers to be able to explain it!
+
+I had many ideas for things I wanted to do on this screen, including each one of the 4x logos have a different animation, but just ran out of time.
+
+[INSERT CRAZY PROTOTYPE?]
+
+[b]Part #13: Twister[/b]
+
+I've saved the Twister to (near) the end as it's probably the most technically complex effect but, given everything we've learnt about the CRTC by now, should be relatively easy to explain. The Twister is an iconic demoscene effect and witnessed on just about every platform. Like the Kefrens bars, I've been on a quest to achieve a single scanline Twister at "high" (MODE 1) resolution for a long time now.
+
+The effect itself is quite simple, as you can see from this BASIC program:
+
+[code]
+10 MODE 1
+20 FOR A%=0 TO 255
+40 angle=360 * A% / 256
+50 x1=40+38*SIN(RAD(angle))
+60 x2=40+38*SIN(RAD(angle + 90))
+70 x3=40+38*SIN(RAD(angle + 180))
+80 x4=40+38*SIN(RAD(angle + 270))
+90 IF x1 < x2 THEN PROCline(A%,120+x1,120+x2,0,1)
+100 IF x2 < x3 THEN PROCline(A%,120+x2,120+x3,0,2)
+110 IF x3 < x4 THEN PROCline(A%,120+x3,120+x4,0,3)
+120 IF x4 < x1 THEN PROCline(A%,120+x4,120+x1,32,1)
+140 NEXT
+150 END
+160
+170 DEF PROCline(y,xstart,xend,plot,colour)
+180 GCOL plot, colour
+190 MOVE xstart * 4, 1023 - y * 4
+200 DRAW xend * 4, 1023 - y * 4
+210 ENDPROC
+[/code]
+
+The challenge is how to do this in real time, of course. The answer, as ever, is to precalculate our screen buffer and use vertical rupture to display the scanline corresponding the desired rotation of the Twister at that point.
+
+Since we can only have 32x character rows in a standard MODE 1 screen, having just 32x rotation values wouldn't look that great. Instead we draw 128x rotation values and store them 4x to a scanline:
+
+[INSERT TWISTER PRECALC]
+
+Instead of having 32x rows each of 80x CRTC characters, we can think of this screen buffer as 128x rows each of 20x characters (128 x 20 = 2560 characters, as before.)
+
+By modifying the Characters per Line register (R1) to 20, the CRTC will only display 20 characters on a horiontal row, regardless of the Horizontal Total. So our raster lines will still be 128 characters wide, as we require for 64us horizontal timing, but we'll only see 20 of them.
+
+We can then use the Horizontal Sync Position register (R2) to move the narrow display so that it appears to be in the centre of the screen. Horizontal Sync (aka hblank) normally starts at character column 98. By [i]reducing[/i] this number there will be more columns [i]after[/i] hsync before the start of the next row from the CRTC's perspective, so the screen will shift [i]right[/i].
+
+The FX draw function is then quite straightforward from a CRTC perspective:
+
+[list][*]Set up our single scanline CRTC cycle (as before):
+[list][*]Set Scanlines per Row R9 = 0 (1 scanline)
+[*]Set Vertical Total R4 = 0 (1 character row)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertical Displayed R6 = 1 (1 character row)
+[/list]
+[*]Loop 254 times:
+[list][*]Calculate the new rotation value for the Twister on this raster line
+	[*]Set the Screen Start Address registers R12 & R13 for this rotation value
+[/list]
+[*]Set final CRTC cycle to form a complete PAL signal (as before):
+[list]
+[*]Scanlines per Row R9 unchanged = 0 (1 scanline)
+[*]Vertical Total R4 = ((312 - 255) / 1) - 1 = 56 (57 character rows)
+[*]Vertical Sync Position R7 = (280 - 255) / 1 = 25 (25 character rows time)
+[*]Vertical Displayed R6 = 1 (1 character row)
+[/list]
+[/list]
+
+The hard part becomes calculating the next rotation value and making nice twisting effects. Most of the Twisters I've come across online use sine lookups from a multiplication of time & y coordinate. E.g. here's a nice example I found on PICO-8:
+
+[code]
+	a = cos(t/300+y/2000)*1
+	xm = cos((t/80)-y+20*sin(t/20000+a/(120+20*sin(t/100+y/500))))*16
+[/code]
+
+Hmmm, we can't really do lots of multiplication and division on a 6502 (at least in the 64us we have in a raster line) so need to resort to something simpler. Here the dark art of sine table construction comes into play again, after many iterations I came up with something vaguely sane that I could tweak the parameters for.
+
+Assuming that the top line of the Twister has an angle of rotation, and every scanline below that is derived from the starting angle, we can define:
+
+[u][i]Spin[/i][/u]
+This is the amount by which we increment the top angle of rotation each frame. If the value is constant then the Twister will spin at a constant rotation speed. Of course we can then vary the spin speed over time using a sine table so it speeds up, slows down & reverses etc.
+
+The units of this value are in something a bit like [url=https://en.wikipedia.org/wiki/Binary_scaling#Binary_angles]brads[/url] / frame and are fixed point 8.8 to give enough precision for fine control.
+
+[u][i]Twist[/i][/u]
+This is the amount by which we increment the rotation of each scanline on the screen. If the value is constant then the amount of "twist" (the number of "turns" visible on screen) will be constant. The higher the value the greater the "twist" (so we see more "turns" in the Twister) and the lower the value the "straighter" the Twister is (so we see a fewer "turns".)
+
+[u][i]Knot[/i][/u]
