@@ -2,7 +2,9 @@
 \ *	Copper colours
 \ ******************************************************************
 
-_COPPER_SCROLL = TRUE
+_COPPER_SCROLL = FALSE
+_COPPER_STRETCH = FALSE
+_COPPER_COLOUR = TRUE
 
 copper_top_line = locals_start + 0
 copper_stretch_index = locals_start + 1
@@ -42,12 +44,6 @@ IF _COPPER_SCROLL
 	LDY #0
 	.ok
 	STY copper_top_line
-ELSE
-	INC copper_wibble_index
-	LDY copper_wibble_index
-	LDA copper_wibble, Y
-	STA copper_top_line
-	TAY
 ENDIF
 
 \\ Set the address & palette for first screen row
@@ -61,6 +57,10 @@ ENDIF
 	STY copper_stretch_index
 
 	LDA copper_stretch_table, Y
+
+	IF _COPPER_STRETCH=FALSE
+	LDA #32
+	ENDIF
 	STA copper_delta
     RTS
 }
@@ -294,6 +294,7 @@ INCBIN "data/dither.pu"
 \\ White = red, blue, green
 .copper_colour_white
 {
+IF _COPPER_COLOUR
 	FOR n,0,15,1
 	EQUB PAL_red
 	NEXT
@@ -306,11 +307,17 @@ INCBIN "data/dither.pu"
 	FOR n,0,15,1
 	EQUB PAL_red
 	NEXT
+ELSE
+	FOR n,0,95,1
+	EQUB PAL_white
+	NEXT
+ENDIF
 }
 
 \\ Black = magenta, cyan, yellow
 .copper_colour_black
 {
+IF _COPPER_COLOUR
 	FOR n,0,31,1
 	EQUB PAL_magenta
 	NEXT
@@ -320,6 +327,11 @@ INCBIN "data/dither.pu"
 	FOR n,0,31,1
 	EQUB PAL_yellow
 	NEXT
+ELSE
+	FOR n,0,95,1
+	EQUB PAL_black
+	NEXT
+ENDIF
 }
 
 PAGE_ALIGN
@@ -328,7 +340,7 @@ FOR n,0,255,1
 EQUB 128 + 127 * SIN(2 * PI * n / 256)
 NEXT
 
-IF _COPPER_SCROLL = FALSE	\\ doesn't quite do what I want it to yet!
+IF 0;_COPPER_SCROLL = FALSE	\\ doesn't quite do what I want it to yet!
 .copper_wibble
 FOR n,0,255,1
 EQUB 48 + (47 * SIN(PI * n / 256)) * SIN(2 * PI * n / 256)

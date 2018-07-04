@@ -336,13 +336,13 @@ SEQUENCE_SET_FX fx_Plasma
 \\ By Brightness black = magenta, black, cyan, white
 
 ; fat & slow
-MODE0_SET_COLOURS PAL_red, PAL_magenta
-SCRIPT_CALLV plasma_set_x16, 2
+;MODE0_SET_COLOURS PAL_red, PAL_magenta
+SCRIPT_CALLV plasma_set_x16, 20
 SCRIPT_CALLV plasma_set_inc_x, 0
-SCRIPT_CALLV plasma_set_wave_f, 1
-SCRIPT_CALLV plasma_set_wave_y, 1
-SCRIPT_CALLV plasma_set_wave_yf, &FF
-SCRIPT_CALLV plasma_set_wave_x, 1
+SCRIPT_CALLV plasma_set_wave_f, 0
+SCRIPT_CALLV plasma_set_wave_y, 2
+SCRIPT_CALLV plasma_set_wave_yf, 0
+SCRIPT_CALLV plasma_set_wave_x, 6
 
 SEQUENCE_WAIT_UNTIL_PATTERN 49
 

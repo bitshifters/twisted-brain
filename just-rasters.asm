@@ -14,7 +14,7 @@ INCLUDE "lib/bbc.h.asm"
 \ *	DEBUG defines
 \ ******************************************************************
 
-_DEBUG = FALSE
+_DEBUG = TRUE
 _HEARTBEAT_CHAR = FALSE
 
 \ ******************************************************************
@@ -649,7 +649,7 @@ INCLUDE "fx/sequence.asm"
 	EQUW plasma_init,     plasma_update,     plasma_draw,     plasma_kill
 	EQUW logo_init,       logo_update,       logo_draw,       logo_kill
 	EQUW text_init,       text_update,       text_draw,       text_kill
-	EQUW picture_init,    picture_update,    do_nothing,      do_nothing
+	EQUW picture_init,    picture_update,    picture_draw,      crtc_reset
 	EQUW smiley_init,     smiley_update,     smiley_draw,     crtc_reset
 }
 
@@ -926,12 +926,19 @@ IF _DEBUG
 ;PUTFILE "data/bsmode1.bin", "LOGO", &3000
 PUTBASIC "basic/twist.bas", "MTWIST"
 ;PUTFILE "data/nova-mode1.bin", "NOVA", &3000
-;PUTFILE "data/brain-mode2.bin", "BRAIN", &3000
+;PUTFILE "data/flash-mode2.bin", "PIC1", &3000
 ;PUTFILE "data/flash-mode2.bin", "FLASH", &3000
-;PUTFILE "data/twisted-brain-mode2.bin", "BRAIN", &3000
+;PUTFILE "data/brain-mask-mode2.bin", "PIC2", &3000
 ;PUTBASIC "basic/mask.bas", "MASK"
-PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
-PUTBASIC "basic/make_dither2.bas", "MAKDITH"
-PUTBASIC "basic/double-dith.bas", "DUBDITH"
+;PUTFILE "data/smiley-mode2.bin", "SMILEY", &3000
+;PUTBASIC "basic/make_dither2.bas", "MAKDITH"
+;PUTBASIC "basic/double-dith.bas", "DUBDITH"
 PUTFILE "data/hdither.bin", "HDITHER", &3000
+PUTFILE "data/dither.bin", "DITHER", &3000
+PUTFILE "data/parallax1-mode1.bin", "PARA1", &3000
+PUTFILE "data/parallax2-mode1.bin", "PARA2", &3000
+PUTFILE "data/shift.bin", "BS", &3000
+PUTFILE "data/twist2.bin", "TW2", &3000
+;PUTFILE "data/twist2.bin", "TW2", &3000
+
 ENDIF

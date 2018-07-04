@@ -2,7 +2,7 @@
 \ *	FX Helper functions
 \ ******************************************************************
 
-_DONT_HIDE_SCREEN = FALSE		; for debugging FX init
+_DONT_HIDE_SCREEN = TRUE		; for debugging FX init
 _REAL_HARDWARE = FALSE			; emu
 
 .helpers_start
@@ -107,7 +107,11 @@ ENDIF
 	EQUB 0				; R5  vertical total adjust
 	EQUB 32				; R6  vertical displayed
 	EQUB 35				; R7  vertical position; 35=top of screen
+IF _DONT_HIDE_SCREEN
+	EQUB 0
+ELSE
 	EQUB &30			; R8  interlace = HIDE SCREEN
+ENDIF
 	EQUB 7				; R9  scanlines per row
 	EQUB 32				; R10 cursor start
 	EQUB 8				; R11 cursor end

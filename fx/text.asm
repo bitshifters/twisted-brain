@@ -110,9 +110,10 @@ text_pattern_ptr = locals_start + 10
 
 	.text_draw_here
 
-	FOR n,1,34,1
+	FOR n,1,33,1
 	NOP
 	NEXT
+	BIT 0			; 3c
 
 .text_draw_fg_table_sm2
 	LDA text_fg_table_pastel, Y	; 4c
@@ -134,7 +135,6 @@ text_pattern_ptr = locals_start + 10
 	EOR #&10		; 2c
 	STA &FE21				; 4c
 
-;	BIT 0			; 3c
 	INY
 	INX				; 2c
 	BNE text_draw_here		; 3c
@@ -212,93 +212,111 @@ ENDIF
 {
 	EQUB &00 + PAL_black
 	EQUB &10 + PAL_black
-	EQUB &20 + PAL_black;PAL_red
-	EQUB &30 + PAL_black;PAL_red
+	EQUB &20 + PAL_black
+	EQUB &30 + PAL_black
 	EQUB &40 + PAL_black
 	EQUB &50 + PAL_black
-	EQUB &60 + PAL_black;PAL_red
-	EQUB &70 + PAL_black;PAL_red
+	EQUB &60 + PAL_black
+	EQUB &70 + PAL_black
 	EQUB &80 + PAL_black
 	EQUB &90 + PAL_black
-	EQUB &A0 + PAL_black;PAL_white
-	EQUB &B0 + PAL_black;PAL_white
+	EQUB &A0 + PAL_black
+	EQUB &B0 + PAL_black
 	EQUB &C0 + PAL_black
 	EQUB &D0 + PAL_black
-	EQUB &E0 + PAL_black;PAL_white
-	EQUB &F0 + PAL_black;PAL_white
+	EQUB &E0 + PAL_black
+	EQUB &F0 + PAL_black
 }
 
 PAGE_ALIGN
 .text_bg_table
 {
+	IF 0
+	FOR n,0,255,1
+	EQUB PAL_black
+	NEXT
+	ELSE
 	FOR n,1,43,1
-	EQUB MODE1_COL1 + PAL_red
+	EQUB MODE1_COL0 + PAL_red
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL1 + PAL_magenta
+	EQUB MODE1_COL0 + PAL_magenta
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL1 + PAL_blue
+	EQUB MODE1_COL0 + PAL_blue
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL1 + PAL_cyan
+	EQUB MODE1_COL0 + PAL_cyan
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL1 + PAL_green
+	EQUB MODE1_COL0 + PAL_green
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL1 + PAL_yellow
+	EQUB MODE1_COL0 + PAL_yellow
 	NEXT
+	ENDIF
 }
 
 .text_fg_table_pastel
 {
+	IF 0
+	FOR n,0,255,1
+	EQUB PAL_black
+	NEXT
+	ELSE
 	FOR n,1,21,1
-	EQUB MODE1_COL3 + PAL_white
+	EQUB MODE1_COL2 + PAL_white
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL3 + PAL_black
+	EQUB MODE1_COL2 + PAL_black
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_white
+	EQUB MODE1_COL2 + PAL_white
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_black
+	EQUB MODE1_COL2 + PAL_black
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_white
+	EQUB MODE1_COL2 + PAL_white
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL3 + PAL_black
+	EQUB MODE1_COL2 + PAL_black
 	NEXT
 	FOR n,1,22,1
-	EQUB MODE1_COL3 + PAL_white
+	EQUB MODE1_COL2 + PAL_white
 	NEXT
+	ENDIF
 }
 
 .text_fg_table_copper
 {
+	IF 0
+	FOR n,0,255,1
+	EQUB PAL_black
+	NEXT
+	ELSE
 	FOR n,1,21,1
-	EQUB MODE1_COL3 + PAL_red
+	EQUB MODE1_COL2 + PAL_red
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL3 + PAL_magenta
+	EQUB MODE1_COL2 + PAL_magenta
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_blue
+	EQUB MODE1_COL2 + PAL_blue
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_cyan
+	EQUB MODE1_COL2 + PAL_cyan
 	NEXT
 	FOR n,1,43,1
-	EQUB MODE1_COL3 + PAL_green
+	EQUB MODE1_COL2 + PAL_green
 	NEXT
 	FOR n,1,42,1
-	EQUB MODE1_COL3 + PAL_yellow
+	EQUB MODE1_COL2 + PAL_yellow
 	NEXT
 	FOR n,1,22,1
-	EQUB MODE1_COL3 + PAL_red
+	EQUB MODE1_COL2 + PAL_red
 	NEXT
+	ENDIF
 }
 
 .text_block_addr_LO

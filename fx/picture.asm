@@ -113,6 +113,7 @@ INCBIN "data/brain-mask.pu"
 
     JSR picture_advance_y
 
+IF 0
     LDX picture_y
     JSR picture_copy_line_X
 
@@ -122,6 +123,7 @@ INCBIN "data/brain-mask.pu"
     JSR picture_copy_line_X
 
     JSR picture_advance_y
+ENDIF
 
     .return
     RTS
@@ -159,6 +161,77 @@ ELSE
     STA picture_anim
 ENDIF
     .return
+    RTS
+}
+
+.picture_draw
+{
+	\\ R4=8 - CRTC cycle is 8 rows
+	LDA #4: STA &FE00
+	LDA #7: STA &FE01
+
+	\\ R7=&FF - no vsync
+	LDA #7:	STA &FE00
+	LDA #&FF: STA &FE01
+
+	\\ R6=8 - 8 rows displayed
+	LDA #6: STA &FE00
+	LDA #8: STA &FE01		; 8 * 6c = 48c
+
+    LDA #12: STA &FE00
+    LDA #HI((&3000 + 16*640)/8):STA &FE01
+
+    LDA #13: STA &FE00
+    LDA #LO((&3000 + 16*640)/8):STA &FE01
+
+    LDX #64
+    .loop1
+    JSR cycles_wait_128
+    DEX
+    BNE loop1
+
+    LDA #12: STA &FE00
+    LDA #HI((&3000 + 8*640)/8):STA &FE01
+
+    LDA #13: STA &FE00
+    LDA #LO((&3000 + 8*640)/8):STA &FE01
+
+    LDX #64
+    .loop2
+    JSR cycles_wait_128
+    DEX
+    BNE loop2
+
+    LDA #12: STA &FE00
+    LDA #HI((&3000 + 0*640)/8):STA &FE01
+
+    LDA #13: STA &FE00
+    LDA #LO((&3000 + 0*640)/8):STA &FE01
+
+    LDX #64
+    .loop3
+    JSR cycles_wait_128
+    DEX
+    BNE loop3
+
+    LDA #12: STA &FE00
+    LDA #HI((&3000 + 24*640)/8):STA &FE01
+
+    LDA #13: STA &FE00
+    LDA #LO((&3000 + 24*640)/8):STA &FE01
+
+	\\ R4=8 - CRTC cycle is 8 rows
+	LDA #4: STA &FE00
+	LDA #14: STA &FE01
+
+	\\ R7=&FF - no vsync
+	LDA #7:	STA &FE00
+	LDA #11: STA &FE01
+
+	\\ R6=8 - 8 rows displayed
+	LDA #6: STA &FE00
+	LDA #8: STA &FE01		; 8 * 6c = 48c
+
     RTS
 }
 
