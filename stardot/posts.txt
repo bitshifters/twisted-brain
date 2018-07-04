@@ -914,7 +914,7 @@ I had many ideas for things I wanted to do on this screen, including each one of
 
 [b]Part #13: Twister[/b]
 
-I've saved the Twister to (near) the end as it's probably the most technically complex effect but, given everything we've learnt about the CRTC by now, should be relatively easy to explain. The Twister is an iconic demoscene effect and witnessed on just about every platform. Like the Kefrens bars, I've been on a quest to achieve a single scanline Twister at "high" (MODE 1) resolution for a long time now.
+I've saved the Twister to (near) the end as it's probably the most technically complex effect using 40K of prerendered single scanline screen buffers. But, given everything we've learnt about the CRTC by now, should be relatively easy to explain. The Twister is an iconic demoscene effect and witnessed on just about every platform. Like the Kefrens bars, I've been on a quest to achieve a single scanline Twister at "high" (MODE 1) resolution for a long time now.
 
 The effect itself is quite simple, as you can see from this BASIC program:
 
@@ -962,7 +962,7 @@ The FX draw function is then quite straightforward from a CRTC perspective:
 [/list]
 [*]Loop 254 times:
 [list][*]Calculate the new rotation value for the Twister on this raster line
-	[*]Set the Screen Start Address registers R12 & R13 for this rotation value
+[*]Set the Screen Start Address registers R12 & R13 for this rotation value
 [/list]
 [*]Set final CRTC cycle to form a complete PAL signal (as before):
 [list]
@@ -973,14 +973,14 @@ The FX draw function is then quite straightforward from a CRTC perspective:
 [/list]
 [/list]
 
-The hard part becomes calculating the next rotation value and making nice twisting effects. Most of the Twisters I've come across online use sine lookups from a multiplication of time & y coordinate. E.g. here's a nice example I found on PICO-8:
+The hard part becomes calculating the next rotation value and making nice twisting effects. Most of the Twister code I've come across uses sine lookups from a multiplication of time & y coordinate. E.g. here's a nice example I found on PICO-8: [INSERT PICO-8 LINK]
 
 [code]
 	a = cos(t/300+y/2000)*1
 	xm = cos((t/80)-y+20*sin(t/20000+a/(120+20*sin(t/100+y/500))))*16
 [/code]
 
-Hmmm, we can't really do lots of multiplication and division on a 6502 (at least in the 64us we have in a raster line) so need to resort to something simpler. Here the dark art of sine table construction comes into play again, after many iterations I came up with something vaguely sane that I could tweak the parameters for.
+Hmmm, we can't really do lots of multiplication and division on a 6502 (at least in the 64us we have in a raster line) so need to come up with something simpler. Here the dark art of sine table construction comes into play again; after many iterations I came up with something vaguely sane that I could tweak the parameters for.
 
 Assuming that the top line of the Twister has an angle of rotation, and every scanline below that is derived from the starting angle, we can define:
 
@@ -992,4 +992,92 @@ The units of this value are in something a bit like [url=https://en.wikipedia.or
 [u][i]Twist[/i][/u]
 This is the amount by which we increment the rotation of each scanline on the screen. If the value is constant then the amount of "twist" (the number of "turns" visible on screen) will be constant. The higher the value the greater the "twist" (so we see more "turns" in the Twister) and the lower the value the "straighter" the Twister is (so we see a fewer "turns".)
 
+To animate, again, the amount of "twist" is varied according to a sine table so that the Twister will twist up in one direction before unwinding, to release and twist in the other direction.
+
 [u][i]Knot[/i][/u]
+This is an additional amount by which we can increase the rotation of each scanline on the screen. When applied, this maps to a lookup containing high rotational values as a "spike" (f(y^2)) in the middle of the table. This makes the Twister "knot" in the centre, which can then be animated by offsetting the table index.
+
+The final results were achieved By fiddling with the various parameters available until something attractive came out. The pink "flump" effect was a happy accident but it turns out to be surprisingly easy to generate static waves that don't look very good. :)
+
+[u][i]Multple Twisters[/i][/u]
+This is just a by-product of having our prerendered narrow Twister scanlines in the same screen buffer memory. If we change the Characters per Line register R1 to 40 then we get two Twister columns side by side (one 1/128 rotation offset from each other but you can't tell) and setting R1 back to 80 gives us all four Twister columns together (each offset by 1/128 rotation.)
+
+[u][i]Fourth Colour Stipple[/i][/u]
+At the last moment I realised that the fourth colour made up of colours 1 & 2 combined could be fully stippled by alternating the pixel pattern used on odd and even scanlines. To do this the prerendered screen buffer is replicated entirely in SHADOW RAM but with the pixel pattern for scanline 1 duplicated on scanline 0. The FX draw function was updated to always switch between main and SHADOW RAM between even and odd raster lines.
+
+[INSERT TWISTER PRERENDERED 2]
+
+
+[b]Part #14: Smiley Drop[/b]
+
+Towards the end of the project, I asked Dethmunk if he was inspired to draw any more artwork for the demo and he replied with the Smiley picture as he said this was a trippy acid demo! I've been wanting to mess around with the smooth (single scanline) vertical scrolling technique as seen in Firetrack etc. and thought it would be a nice bonus to have the Smiley drop onto the screen as if a large sprite.
+
+[u][i]Smooth Vertical Scrolling[/i][/u]
+Thanks again to RTW for his previous write up of the smooth scrolling technique created by vertical rupture and careful massaging of the Vertical Total Adjust CRTC register. I referenced this many times as I got my head around how to translate the IRQV1 callback approach into raster line cycle counting. [INSERT RTW LINK]
+
+I still don't think my FX code is quite correct, as it was put together by trial and error quite quickly at the end of the project, but hopefully this diagram will help illustrate how smooth scrolling works:
+
+[INSERT SMOOTH SCROLL DIAGRAM]
+
+The definitions I have used are:
+
+[list][*][i]Raster lines[/i] are the lines on the TV running from top to bottom (0 - 311) to form our PAL signal
+[*][i]Scanlines[/i] as the lines of the screen buffer (0 - 255) that we wish to display
+[*][i]yoffset[/i] is the number of scanlines (0 - 7) we wish to scroll the display upwards by
+[/list]
+
+The smooth scrolling technique relies on vertical rupture to create 2x separate CRTC display cycles:
+
+[list][*]Display cycle #1 is the scrolling window at the top of the screen
+[*]Display cycle #2 is the fixed window at the bottom of the screen and contains the vsync
+[/list]
+
+We can use the Vertical Total Adjust (aka VADJ) register R5 to shift the position of a CRTC display by [i]single scanlines[/i] rather than whole character rows. But:
+
+[list][*]We know that our 2x display cycles must total 312 raster lines for a stable TV signal, so any use of Vertical Total Adjust R5 for one display cycle [i]must be cancelled out in the other display cycle[/i]
+[*]We therefore chose to [i]always have 8x scanlines of Vertical Total Adjust[/i] split between the 2x display cycles
+[*]This means the maximum we can display is 248 total scanlines with 8x scanlines blank (to cover the scroll)
+[/list]
+
+The display cycles are set up like this:
+
+[list][*]Display cycle #1 has Vertical Total Adjust R5 = [i]yoffset[/i]
+[*]Display cycle #2 therefore has Vertical Total Adjust R5 = [i](8 - yoffset)[/i]
+[*]We always turn off the display for the top 8 raster lines using CRTC R8
+
+Because the Vertical Total Adjust scanlines are added [i]at the end[/i] of a CRTC cycle we can think of display cycle #1 being "sandwiched" between 8x scanlines of VADJ that are changing.
+
+Importantly, [i]display cycle #2 is fixed in position[/i] because it always starts at raster line = yoffset + Vertical Total for display cycle #1 + (8 - yoffset) = Vertical Total for display cycle #1 + 8 scanlines. This means we can ensure that vsync stays in the same position regardless of the yoffset scroll.
+
+Let's take a look at the specific example in the diagram:
+
+[list][*]The top window has [b]28 character rows = 224 scanlines[/b]
+[list][*]Vertical Total R4 = 27 (28 character rows)
+[*]Vertical Displayed R6 = 29 (29 character rows)
+[*]Vertical Sync Position R7 = &FF (never)
+[/list]
+[*]The bottom window has [b]3 character rows = 24 scanlines[/b]
+[list][*]Vertical Total R4 = 2 (3 character rows)
+[*]Vertical Displayed R6 = 3 (3 character rows)
+[*]Vertical Sync Position R7 = 6 (6 character rows time)
+[/list]
+[*]Total scanlines = 224 (#1) + 24 (#2) + 8 (vadj) = 256
+
+We're scrolling upwards by [b]3 scanlines[/b] so [b]yoffset = 3[/b]
+this is split:
+[list][*]Display cycle #1 has Vertical Total Adjust R5 = [i]yoffset[/i] = 3 scanlines
+[*]Display cycle #2 therefore has Vertical Total Adjust R5 = [i](8 - yoffset)[/i] = 5 scanlines
+[/list]
+
+Compare the raster line count in the left-hand column with the scanline count in the right-hand column:
+
+[list][*]We get 5 scanlines of VADJ starting at raster line 0
+[*]Display cycle #1 starts at raster line 5 reading scanline 0 of our screen buffer
+[*]The display isn't turned on until raster line 8 so we don't see the top 3 scanlines of our screen buffer -> scrolling window!
+[*]28 character rows (224 raster lines) later we get 3 additional scanlines of VADJ added to display cycle #1
+[*]This explains why we need to set Vertical Displayed to be [larger] than Vertical Total in display cycle #1 - we want the extra scanlines to be visible!
+[*]Display cycle #2 therefore starts at raster line 3 + 224 + (8 - 3) = 224 + 8 = 232
+[*]Display cycle #2 has its own Screen Start Address so displays a fixed window, in this case starting at scanline 232 for 24 scanlines (bottom 3 character rows)
+[*]Vertical Sync Position R7 = (280 - 224 - 8) / 8 = 48 / 8 = 6
+[*]At the end of display cycle #2 we get 5 scanlines of VADJ starting at raster line 0...
+[/list]
