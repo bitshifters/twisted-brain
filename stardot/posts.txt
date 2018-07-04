@@ -21,9 +21,14 @@ POSTS
   14. Smiley
 
 15. Misc
-  - Scripting system
-  - Music player
-  - Helpers
+  x Scripting system
+  x Music player
+  x Helpers
+  - Let Simon cover music conversion from Atari ST
+  - Some code / memory stats
+  - Debug version of the build
+  - Stripped back version of the FX framework for prototyping
+
 
 How Twisted Brain was created
 
@@ -950,7 +955,7 @@ Instead of having 32x rows each of 80x CRTC characters, we can think of this scr
 
 By modifying the Characters per Line register (R1) to 20, the CRTC will only display 20 characters on a horiontal row, regardless of the Horizontal Total. So our raster lines will still be 128 characters wide, as we require for 64us horizontal timing, but we'll only see 20 of them.
 
-We can then use the Horizontal Sync Position register (R2) to move the narrow display so that it appears to be in the centre of the screen. Horizontal Sync (aka hblank) normally starts at character column 98. By [i]reducing[/i] this number there will be more columns [i]after[/i] hsync before the start of the next row from the CRTC's perspective, so the screen will shift [i]right[/i].
+We can then use the Horizontal Sync Position register (R2) to move the narrow display so that it appears to be in the centre of the screen. Horizontal Sync (aka hblank) normally starts at character column 98. By [i]reducing[/i] this number there will be [i]more[/i] columns [i]after[/i] hsync before the start of the next row from the CRTC's perspective, so the screen will shift [i]right[/i].
 
 The FX draw function is then quite straightforward from a CRTC perspective:
 
@@ -1010,14 +1015,20 @@ At the last moment I realised that the fourth colour made up of colours 1 & 2 co
 
 [b]Part #14: Smiley Drop[/b]
 
-Towards the end of the project, I asked Dethmunk if he was inspired to draw any more artwork for the demo and he replied with the Smiley picture as he said this was a trippy acid demo! I've been wanting to mess around with the smooth (single scanline) vertical scrolling technique as seen in Firetrack etc. and thought it would be a nice bonus to have the Smiley drop onto the screen as if a large sprite.
+Towards the end of the project, I asked Dethmunk if he was inspired to draw any more artwork for the demo and he replied with the Smiley picture as he said this was a trippy acid demo! I've been wanting to mess around with the smooth (single scanline) vertical scrolling technique as seen in Firetrack etc. and thought it would be a nice bonus to have the Smiley drop onto the screen as if it was a large sprite.
+
+[INSERT DA SMILEY PIC]
 
 [u][i]Smooth Vertical Scrolling[/i][/u]
 Thanks again to RTW for his previous write up of the smooth scrolling technique created by vertical rupture and careful massaging of the Vertical Total Adjust CRTC register. I referenced this many times as I got my head around how to translate the IRQV1 callback approach into raster line cycle counting. [INSERT RTW LINK]
 
+[/i](Note: after making this write up I simplified the Smiley code somewhat, which is what's described here.)[/i]
+
 I still don't think my FX code is quite correct, as it was put together by trial and error quite quickly at the end of the project, but hopefully this diagram will help illustrate how smooth scrolling works:
 
+
 [INSERT SMOOTH SCROLL DIAGRAM]
+
 
 The definitions I have used are:
 
@@ -1026,7 +1037,7 @@ The definitions I have used are:
 [*][i]yoffset[/i] is the number of scanlines (0 - 7) we wish to scroll the display upwards by
 [/list]
 
-The smooth scrolling technique relies on vertical rupture to create 2x separate CRTC display cycles:
+Scrolling by full character rows is achieved by setting the Screen Start Address as previously. The smooth scrolling technique relies on vertical rupture to create 2x separate CRTC display cycles:
 
 [list][*]Display cycle #1 is the scrolling window at the top of the screen
 [*]Display cycle #2 is the fixed window at the bottom of the screen and contains the vsync
@@ -1047,13 +1058,13 @@ The display cycles are set up like this:
 
 Because the Vertical Total Adjust scanlines are added [i]at the end[/i] of a CRTC cycle we can think of display cycle #1 being "sandwiched" between 8x scanlines of VADJ that are changing.
 
-Importantly, [i]display cycle #2 is fixed in position[/i] because it always starts at raster line = yoffset + Vertical Total for display cycle #1 + (8 - yoffset) = Vertical Total for display cycle #1 + 8 scanlines. This means we can ensure that vsync stays in the same position regardless of the yoffset scroll.
+Importantly, [i]display cycle #2 is fixed in position[/i] because it always starts at raster line = yoffset + (Vertical Total for display cycle #1) + (8 - yoffset) = (Vertical Total for display cycle #1) + 8 scanlines. This means we can ensure that vsync stays in the same position regardless of the yoffset scroll.
 
 Let's take a look at the specific example in the diagram:
 
 [list][*]The top window has [b]28 character rows = 224 scanlines[/b]
 [list][*]Vertical Total R4 = 27 (28 character rows)
-[*]Vertical Displayed R6 = 29 (29 character rows)
+[*]Vertical Displayed R6 = 29 ([u]29 character rows[/u])
 [*]Vertical Sync Position R7 = &FF (never)
 [/list]
 [*]The bottom window has [b]3 character rows = 24 scanlines[/b]
@@ -1063,8 +1074,7 @@ Let's take a look at the specific example in the diagram:
 [/list]
 [*]Total scanlines = 224 (#1) + 24 (#2) + 8 (vadj) = 256
 
-We're scrolling upwards by [b]3 scanlines[/b] so [b]yoffset = 3[/b]
-this is split:
+We're scrolling upwards by [b]3 scanlines[/b] so [b]yoffset = 3[/b] and VADJ becomes:
 [list][*]Display cycle #1 has Vertical Total Adjust R5 = [i]yoffset[/i] = 3 scanlines
 [*]Display cycle #2 therefore has Vertical Total Adjust R5 = [i](8 - yoffset)[/i] = 5 scanlines
 [/list]
@@ -1072,7 +1082,7 @@ this is split:
 Compare the raster line count in the left-hand column with the scanline count in the right-hand column:
 
 [list][*]We get 5 scanlines of VADJ starting at raster line 0
-[*]Display cycle #1 starts at raster line 5 reading scanline 0 of our screen buffer
+[*]Display cycle #1 starts at raster line 5 reading scanline 0 of our Screen Start Address in R12 & R13
 [*]The display isn't turned on until raster line 8 so we don't see the top 3 scanlines of our screen buffer -> scrolling window!
 [*]28 character rows (224 raster lines) later we get 3 additional scanlines of VADJ added to display cycle #1
 [*]This explains why we need to set Vertical Displayed to be [larger] than Vertical Total in display cycle #1 - we want the extra scanlines to be visible!
@@ -1081,3 +1091,135 @@ Compare the raster line count in the left-hand column with the scanline count in
 [*]Vertical Sync Position R7 = (280 - 224 - 8) / 8 = 48 / 8 = 6
 [*]At the end of display cycle #2 we get 5 scanlines of VADJ starting at raster line 0...
 [/list]
+
+[u][i]FX Draw function[/i][/u]
+
+[list][*]Wait 8 raster lines
+[*]Set Interlace register R8 = 0 (display screen)
+[*]Set Vertical Displayed R6 = 29* (29 character rows)
+[*]Set Vertical Sync Position R7 = &FF (never)
+[*]Set Vertical Total Adjust R5 = yoffset (0 - 7 scanlines)
+[*]Set Screen Start Address R12 & R13 for display cycle #2 = &7880 (= &3000 + 232 * 80)
+[*]Wait 29 character rows until we're in display cycle #2
+[*]Set Vertical Total R4 = 9 (10 character rows)
+[*]Set Vertical Sync Position R7 = 6 (6 character rows time)
+[*]Set Vertical Displayed R6 = 3 (3 character rows)
+[*]Wait 4 character rows so we're beyond the end of the visible display
+[*]Set Interlace register R8 = &30 (hide screen)
+[/list]
+
+[u][i]FX Update function[/i][/u]
+[list][*]Update y position of our bouncing Smiley
+[*]Set Screen Start Address R12 & R13 for display cycle #1 based on (y position DIV 8)
+[*]Update yoffset = (y position MOD 8)
+[*]Set Vertical Total Adjust R5 for display cycle #2 = 8 - yoffset
+[/list]
+
+Note that unlike previous examples, although the draw function is called at raster line 0, the CRTC is [i]still in display cycle #2[/i] because of the extra Vertical Total Adjust scanlines. We still have 312 total raster lines but the starting position of display cycle #1 is shifted by our yoffset.
+
+In order for this to remain correct the from [i]first[/i] time the FX module is called, the Vertical Total Adjust register must be set in our [i]update[/i] function, i.e. during the vblank, before the next CRTC display cycle begins.
+
+[u][i]Scrolling to Sprite[/i][/u]
+*There is a small lie in the FX draw function. The smooth scrolling technique will show the [i]entire[/i] screen buffer in the scrolling window (wrapped around after address &8000, as discussed previously.) So how do we only show the Smiley "sprite" at the top of the screen? The solution is to calculate the number of visible character rows based on the y position of our Smiley and set the Vertical Displayed register accordingly in the scrolling window display cycle.
+
+The following screens illustrates this by displaying all 29 character rows but setting the background palette colour to indicate different sections of the display. The red background colour shows what is hidden when the character rows are not displayed in cycle #1. The blue background is where we start to configure display cycle #2, sometime around raster line 232, for our fixed window.
+
+[INSERT DEBUG PIC START]
+[INSERT DEBUG PIC MID]
+[INSERT DEBUG PIC END]
+
+There are other ways we could make the Smiley look like a sprite, perhaps putting colour rasters on the screen at a fixed position so there is some sort of background, but I ran out of time and needed to get a clean video capture of the demo for the competition!
+
+
+[b]Part 15: Miscellaneous Debris[/b]
+
+[i][u]Memory usage[/i][/u]
+Here are some memory stats from the assembler output:
+
+[code]
+------ 
+INFO (MAIN RAM)
+------ 
+MAIN size = &1C5 
+VGM PLAYER size = &B4 
+EXOMISER size = &134 
+DISKSYS size = &8E 
+PUCRUNCH size = &18C 
+SWR size = &6 
+PRINT size = &14 
+SCRIPT size = &146 
+------ 
+HELPERS size = &2F9 
+FONT size = &180 
+SEQUENCE size = &381 
+DATA size = &11F 
+TEXT BLOCKS size = &5F6 
+------ 
+HIGH WATERMARK = &2F86 
+FREE = &7A 
+------ 
+------ 
+BANK 0 
+------ 
+CHECKER ZOOM size = &C34 
+PICTURE size = &3100 
+------ 
+HIGH WATERMARK = &BE00 
+FREE = &200 
+------ 
+------ 
+BANK 1 
+------ 
+TWISTER size = &11AB 
+PARALLAX size = &19CE 
+COPPER size = &500 
+KEFRENS size = &E10 
+------ 
+HIGH WATERMARK = &BF10 
+FREE = &F0 
+------ 
+------ 
+BANK 2 
+------ 
+LOGO size = &D08 
+TEXT size = &11F9 
+SMILEY size = &900 
+VERTICAL BLINDS size = &81E 
+PLASMA size = &AAD 
+------ 
+HIGH WATERMARK = &BCAD 
+FREE = &353 
+------ 
+------ 
+MUSIC BANK 
+------ 
+MUSIC SIZE =  &59C7 
+------ 
+HIGH WATERMARK = &D9C7 
+FREE = &639 
+------ 
+[/code]
+
+Some random notes about RAM usage:
+
+[list][*]The main code loads & executes at &1900 because I learned after POP that some Master owners are still using ancient hacked DFS ROM's which keep PAGE at &1900 for fast storage / MMC solutions (more MAMMFS evangelism required I think)
+[*]The music was nearly 24K in size - the first 16K is loaded into SWRAM slot 7 and then the rest just spills into HAZEL located at &C000. This is fine as the music bank is the last thing loaded and DFS is never called again. :) The music plays knows nothing and just runs off the end of SWRAM bank 7 into HAZEL when consuming the byte stream.
+[*]Very little of lower RAM is used apart from a 2K scratch buffer for Exomiser running from &300 - &C00
+[/list]
+
+To be honest, after POP it all seemed quite luxurious... :)
+
+[u][i]Debug Build[/i][/u]
+To help illustrate some of the concepts in this write up, attached should be a debug build of the demo which has a number of differences:
+
+[list][*]The screen display is not turned off during initialisation of FX modules, so you can see the prerendered buffers being unpacked
+[*]Press N to skip to the next command in the sequence script
+[*]The Text module has the colour changes on the background not foreground
+[*]The Brain picture contains the 4x vertical rupture example
+[*]The Checkerboard pattern no longer zooms or change colour
+[*]The Copper colours don't zoom in
+[*]The Plasma has a B&W variation as just vertical bars
+[*]The Smiley drop shows entire screen with debug rasters
+[/list]
+
+I think that's plenty of information to be getting on with. Please do ask any questions!
