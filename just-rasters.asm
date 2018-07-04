@@ -881,11 +881,11 @@ GUARD HAZEL_TOP
 
 PAGE_ALIGN
 .music_data
-INCBIN "audio\music\mongolia.bin.exo"
+INCBIN "audio/music/mongolia.bin.exo"
 
 PAGE_ALIGN
 .smiley_music
-INCBIN "audio\music\dropsmiley-timed.raw.exo"
+INCBIN "audio/music/dropsmiley-timed.raw.exo"
 
 .music_end
 
