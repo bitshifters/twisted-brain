@@ -338,11 +338,11 @@ SEQUENCE_SET_FX fx_Plasma
 ; fat & slow
 ;MODE0_SET_COLOURS PAL_red, PAL_magenta
 SCRIPT_CALLV plasma_set_x16, 20
-SCRIPT_CALLV plasma_set_inc_x, 0
+SCRIPT_CALLV plasma_set_inc_x, &FF
 SCRIPT_CALLV plasma_set_wave_f, 0
-SCRIPT_CALLV plasma_set_wave_y, 2
+SCRIPT_CALLV plasma_set_wave_y, 0
 SCRIPT_CALLV plasma_set_wave_yf, 0
-SCRIPT_CALLV plasma_set_wave_x, 6
+SCRIPT_CALLV plasma_set_wave_x, 0
 
 SEQUENCE_WAIT_UNTIL_PATTERN 49
 

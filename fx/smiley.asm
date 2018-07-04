@@ -21,7 +21,7 @@ SMILEY_SPEED = 1
 
 SMILEY_STATUS_ADDR = screen_base_addr + 29 * 640
 
-SMILEY_DEBUG_RASTERS = FALSE
+SMILEY_DEBUG_RASTERS = TRUE
 SMILEY_SFX_DELAY = 0
 
 .smiley_start
@@ -275,8 +275,8 @@ INCBIN "data/smiley.pu"
     LDA #27:STA &FE01           ; 28 rows
 
     LDA #6:STA &FE00
-    LDA smiley_visible:STA &FE01   ; calc'd visible rows
-;    LDA #29:STA &FE01   ; fixed visible rows
+;    LDA smiley_visible:STA &FE01   ; calc'd visible rows
+    LDA #29:STA &FE01   ; fixed visible rows
 
     LDA #7:STA &FE00
     LDA #&FF:STA &FE01          ; no vsync
@@ -295,8 +295,8 @@ INCBIN "data/smiley.pu"
     \\ Now wait 28 rows...
 
     SEC
-    LDA #224            ; 29*8
-    SBC smiley_line
+    LDA #224+1            ; 29*8
+    SBC #0  ;smiley_line
     TAX
     .loop_display
 
@@ -306,7 +306,7 @@ INCBIN "data/smiley.pu"
     \\ Turn display off
 ;	LDA #8:STA &FE00    ; 6c
 ;	LDA #&30:STA &FE01  ; 6c
-    LDA #PAL_black
+    LDA #PAL_red
     STA &FE21
 IF SMILEY_DEBUG_RASTERS
     LDA #PAL_red
@@ -335,11 +335,7 @@ ENDIF
 
     \\ Wait at least 8 more scanlines so we're in status portion
 
-IF SMILEY_DEBUG_RASTERS
-    LDA #PAL_blue
-    STA &FE21
-ENDIF
-
+IF 0
     LDX #8
     .extra_loop
     BEQ extra_done
@@ -347,9 +343,10 @@ ENDIF
     DEX
     BRA extra_loop
     .extra_done
+ENDIF
 
 IF SMILEY_DEBUG_RASTERS
-    LDA #PAL_green
+    LDA #PAL_blue
     STA &FE21
 ENDIF
 
@@ -364,11 +361,6 @@ ENDIF
     LDA #6: STA &FE00
     LDA #3: STA &FE01               ; display 3 rows
 
-IF SMILEY_DEBUG_RASTERS
-    LDA #PAL_black
-    STA &FE21
-ENDIF
-
     \\ Wait until we're deffo beyond the end of the visible screen
 
     LDX #32
@@ -380,6 +372,11 @@ ENDIF
     .hide_done
 
     \\ Turn display off
+
+IF SMILEY_DEBUG_RASTERS
+    LDA #PAL_black
+    STA &FE21
+ENDIF
 
 	LDA #8:STA &FE00
 	LDA #&30:STA &FE01

@@ -2,7 +2,7 @@
 \ *	Copper colours
 \ ******************************************************************
 
-_COPPER_SCROLL = FALSE
+_COPPER_SCROLL = TRUE
 _COPPER_STRETCH = FALSE
 _COPPER_COLOUR = TRUE
 
@@ -59,7 +59,7 @@ ENDIF
 	LDA copper_stretch_table, Y
 
 	IF _COPPER_STRETCH=FALSE
-	LDA #32
+	LDA #255
 	ENDIF
 	STA copper_delta
     RTS

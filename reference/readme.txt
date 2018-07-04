@@ -2,6 +2,18 @@
 ~ TWiSTeD bRaIn ~
 ~~~~~~~~~~~~~~~~~
 
+
+~~ DEBUG BUILD ~~
+CREATED FOR THE STARDOT
+TECHNICAL "MAKING OF"
+THREAD.
+
+READ MORE AT:
+https://stardot.org.uk/forums/viewtopic.php?f=53&t=15300
+
+!!THIS IS NOT THE FINAL RELESE!!
+
+
 aka #noteletext #justrasters
 ~~~
 
