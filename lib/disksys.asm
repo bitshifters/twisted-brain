@@ -6,6 +6,7 @@
 _USE_HAZEL_CATALOG = FALSE           ; this might not hold true for DataCentre and/or Turbo MMC etc.
 _USE_OSFILE_LOAD = TRUE
 _INCLUDE_DIRECT_LOAD = FALSE
+_IGNORE_DIRECTORY = TRUE
 
 .beeb_disksys_start
 
@@ -555,7 +556,11 @@ disksys_loadto_addr = screen_base_addr
 \*-------------------------------
 
 .osfile_filename
+IF _IGNORE_DIRECTORY
+EQUS "ABCDEFG", 13
+ELSE
 EQUS "$.ABCDEFG", 13
+ENDIF
 
 .osfile_params
 .osfile_nameaddr
@@ -605,12 +610,18 @@ ENDIF
 
     LDY #7
     LDA (readptr), Y
+IF _IGNORE_DIRECTORY=FALSE
     STA osfile_filename
+ENDIF
 
     DEY
     .loop
     LDA (readptr), Y
+IF _IGNORE_DIRECTORY
+    STA osfile_filename, Y
+ELSE
     STA osfile_filename+2, Y
+ENDIF
     DEY
     BPL loop
 
