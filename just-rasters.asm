@@ -97,7 +97,7 @@ SCREEN_SIZE_BYTES = &8000 - screen_base_addr
 FramePeriod = 312*64-2
 
 ; Calculate here the timer value to interrupt at the desired line
-TimerValue = 32*64 - 2*64 - 2 - 22
+TimerValue = 32*64 - 2*64 - 2 - 22 - 7
 
 \\ 40 lines for vblank
 \\ 32 lines for vsync (vertical position = 35 / 39)
@@ -499,38 +499,31 @@ ENDIF
 		.waitTimer1
 		BIT &FE4D				; 4c + 1/2c
 		BEQ waitTimer1         	; poll timer1 flag
-		STA &FE4D             		; clear timer1 flag ; 4c +1/2c
 	}
 
-	\\ We could stabilise the raster here with a NOP slide
-	\\ But it is much harder than it looks! Can't use Timer 1 to
-	\\ allow us to complete arbitrary amounts of work total cycle count
-	\\ will be different on each loop due to cycle stretching.
-	\\ To do this properly need to guarantee the cycle count for a loop
-	\\ is exactly the same each frame - a massive ball ache TBH.
+	\\ Reading the T1 low order counter also resets the T1 interrupt flag in IFR
 
-IF 0
 	LDA &FE44					; 4c + 1c - will be even already?
 
-	\\ NOP slide for stable raster fun
+	\\ New stable raster NOP slide thanks to VectorEyes 8)
 
-	SEC							; 2c
-	LDA #&F7					; 2c largest observed
-	SBC &FE44					; 4c + 1/2c
-	; larger number = less time passed -> more NOPs -> nearer branch
-	; smaller number = more time passed -> fewer NOPs -> longer branch
-	STA branch+1				; 4c
+	\\ Observed values $FA (early) - $F7 (late) so map these from 7 - 0
+	\\ then branch into NOPs to even this out.
+
+	AND #15
+	SEC
+	SBC #7
+	EOR #7
+	STA branch+1
 	.branch
-	BNE branch					; 3c
-
+	BRA branch
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
-ENDIF
-
+	NOP
 	.stable
 
 	\\ Check if our FX has changed?
