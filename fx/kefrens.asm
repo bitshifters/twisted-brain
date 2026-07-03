@@ -88,57 +88,75 @@ kefrens_add_anim = locals_start + 6
 \ A FULL AND VALID 312 line PAL signal before exiting!
 \ ******************************************************************
 
-.kefrens_draw
+.kefrens_draw		\\ [vert] enter PAL line 0
 {
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture -- 1 scanlines/row x 254 rows (254 lines); PAL 312, vsync PAL 280; no per-scanline CRTC writes
+	\\ SETUP  : ~0.8 lines -- rupture CRTC regs R4/R6/R7/R9/R12/R13 set, padded to the scanline boundary
+	\\ LOOP   : 254x @ 128c (1 line/iter) -- straight-line
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : balanced branch (52c/path)
+	\\          (zp),Y read in the loop may cross a page (+1c); fine for a soft-window rupture, not for cycle-exact RVI
+	\\ [/effect-summary]
 	\\ We're only ever going to display this one scanline
-	LDA #12: STA &FE00
-	LDA #HI(screen_base_addr/8): STA &FE01
+	LDA #12: STA &FE00		; 8c
+	LDA #HI(screen_base_addr/8): STA &FE01		; 8c
+	\\ <== 16c
 
-	LDA #13: STA &FE00
-	LDA #LO(screen_base_addr/8): STA &FE01
+	LDA #13: STA &FE00		; 8c
+	LDA #LO(screen_base_addr/8): STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R9=0 - character row = 1 scanline
-	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #0:	STA &FE01		; 8c
+	\\ <== 48c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 64c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 80c
 
 	\\ R6=1 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 96c
 
 ;	FOR n,1,14,1
 ;	NOP
 ;	NEXT
 
-	LDA #254
-	STA kefrens_crtc_row
+	LDA #254		; 2c
+	STA kefrens_crtc_row		; 3c
 ;	STZ kefrens_add_index
-	BIT 0
-	BIT 0
+	BIT 0		; 3c
+	BIT 0		; 3c
 }
-.kefrens_draw_here
+.kefrens_draw_here		\\ [vert] loop x254: PAL lines 1..254
+	\\ <== 107c
 
-	LDY kefrens_row_angle	; actually our angle
+	LDY kefrens_row_angle	; 3c actually our angle
 .kefrens_draw_sine_table_sm
-	LDA kefrens_speed_table_1, y		; SIN(y)
+	LDA kefrens_speed_table_1, y		; 4c SIN(y)
 ;	CLC
 ;	ADC kefrens_cos_table, Y	; COS(y)
-	TAY
+	TAY		; 2c
 .kefrens_draw_width_table_sm
-	LDA kefrens_width_table_1, Y
+	LDA kefrens_width_table_1, Y		; 4c
+	\\ <== 120c
 
-	CLC
-	LDY kefrens_add_index
+	CLC		; 2c
+	LDY kefrens_add_index		; 3c
 .kefrens_draw_add_table_sm
-	ADC kefrens_add_table_1, Y
-	TAY
+	ADC kefrens_add_table_1, Y		; 4c
+	\\ <== 128c/0c
+	TAY		; 2c
+	\\ <== 3c
 
 \	CPY #40							; 2c
 \	BCC left_side_nop_later
@@ -154,75 +172,88 @@ kefrens_add_anim = locals_start + 6
 	STA writeptr					; 3c
 	LDA kefrens_addr_table_HI, Y	; 4c
 	STA writeptr+1					; 3c
+	\\ <== 17c
 
-	TYA:LSR A
+	TYA:LSR A		; 4c
 	BCS right
+	\\ <== 23c
 
 	;2c
 	\\ Left
-	LDA # PIXEL_LEFT_7 OR PIXEL_RIGHT_3
+	LDA # PIXEL_LEFT_7 OR PIXEL_RIGHT_3		; 2c
 	LDY #0:STA (writeptr), Y		; 8c
-	LDA # PIXEL_LEFT_6 OR PIXEL_RIGHT_2
-	LDY #8:STA (writeptr), Y
-	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1
-	LDY #16:STA (writeptr), Y
-	LDY #24:
+	LDA # PIXEL_LEFT_6 OR PIXEL_RIGHT_2		; 2c
+	LDY #8:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_5 OR PIXEL_RIGHT_1		; 2c
+	LDY #16:STA (writeptr), Y		; 8c
+	LDY #24:		; 2c
+	\\ <== 55c
 
-	LDA (writeptr),Y		; 6c
+	LDA (writeptr),Y		; 5c  [xpage] may cross page +1c
 	AND #&55				; 2c
 	ORA #PIXEL_LEFT_4		; 2c
-	STA (writeptr), Y
+	STA (writeptr), Y		; 6c
+	\\ <== 70c
 
-	BRA continue ;3c
+	BRA continue ; 3c
 
 	.right	;3c
 	\\ Left
-	LDY #0
-	LDA (writeptr),Y		; 6c
+	LDY #0		; 2c
+	LDA (writeptr),Y		; 5c  [xpage] may cross page +1c
 	AND #&AA				; 2c
 	ORA #PIXEL_RIGHT_7		; 2c
-	STA (writeptr), Y
+	STA (writeptr), Y		; 6c
+	\\ <== 41c
 
-	LDA # PIXEL_LEFT_3 OR PIXEL_RIGHT_6			; yellow/cyan
-	LDY #8:STA (writeptr), Y
-	LDA # PIXEL_LEFT_2 OR PIXEL_RIGHT_5			; green/magenta
-	LDY #16:STA (writeptr), Y
-	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_4			; red/blue
-	LDY #24:STA (writeptr), Y
-	NOP
+	LDA # PIXEL_LEFT_3 OR PIXEL_RIGHT_6			; 2c yellow/cyan
+	LDY #8:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_2 OR PIXEL_RIGHT_5			; 2c green/magenta
+	LDY #16:STA (writeptr), Y		; 8c
+	LDA # PIXEL_LEFT_1 OR PIXEL_RIGHT_4			; 2c red/blue
+	LDY #24:STA (writeptr), Y		; 8c
+	NOP		; 2c
+	\\ <== 73c
 	
 	.continue
-	INC kefrens_row_angle
-	INC kefrens_add_index ;-5c
+	INC kefrens_row_angle		; 5c
+	INC kefrens_add_index ; 5c -5c
 	\\ 8*10c = 80c
 
 	FOR n,1,7,1
-	NOP
+	NOP		; 14c
 	NEXT
 
 	INX								; 2c
+	\\ <== 99c
 
-	DEC kefrens_crtc_row
+	DEC kefrens_crtc_row		; 5c
 	}
-	BNE kefrens_draw_here
+	BNE kefrens_draw_here		; 3c
+	\\ <== 107c
 
 	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
+	LDA #9: STA &FE00		; 8c
+	LDA #1-1:	STA &FE01		; 8c 1 scanline
+	\\ <== 122c
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #4: STA &FE00		; 8c
+	\\ <== 128c/0c
+	LDA #56-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines
+	\\ <== 10c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #7:	STA &FE00		; 8c
+	LDA #24+1: STA &FE01			; 8c 280 - 256 = 24 scanlines
+	\\ <== 26c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 42c
 
-    RTS
+    RTS		; 6c
 \}
 
 .kefrens_kill

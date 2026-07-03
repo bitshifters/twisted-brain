@@ -222,193 +222,237 @@ ENDIF
     RTS
 }
 
-.twister_draw
+.twister_draw		\\ [vert] enter PAL line 0
 {
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture -- 1 scanlines/row x 254 rows (254 lines), 2 rows/iter (unrolled); PAL 312, vsync PAL 280; no per-scanline CRTC writes
+	\\ SETUP  : ~1.0 lines -- rupture CRTC regs R4/R6/R7/R9/R12/R13 set, padded to the scanline boundary
+	\\ LOOP   : 127x @ 256c (2 line/iter) -- straight-line
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : none -- timing is robust (stretch re-sync absorbs +/-1c)
+	\\ [/effect-summary]
 	\\ R9=0 - character row = 1 scanline
-	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #0:	STA &FE01		; 8c
+	\\ <== 16c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 48c
 
 	\\ R6=1 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 64c
 
 	\\ Calculate rotation of next line by indexing twist table
 
-	LDA twister_twist_brot+1
-	AND #&7F
-	TAY
+	LDA twister_twist_brot+1		; 3c
+	AND #&7F		; 2c
+	TAY		; 2c
+	\\ <== 71c
 
 	\\ R12,13 - frame buffer address
-	LDA #12: STA &FE00			; 2c + 4c++
+	LDA #12: STA &FE00			; 7c (odd stretch +1) + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 88c
 
-	LDA #13: STA &FE00			; 2c + 4c++
+	LDA #13: STA &FE00			; 8c + 4c++
 	LDA twister_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 106c
 
 	FOR n,1,3,1
-	NOP
+	NOP		; 6c
 	NEXT
 
 	\\ View shadow RAM
 
 	LDA &FE34					; 4c
-	ORA #1
+	ORA #1		; 2c
 	STA &FE34					; 4c
+	\\ <== 122c
 
 	\\ Should be exactly on next scanline
 
 	LDA #254					; 2c
-	STA twister_crtc_row
+	STA twister_crtc_row		; 3c
+	\\ <== 127c
 
-	.here
+	.here		\\ [vert] loop x127: PAL lines 1..254
+	\\ <== 127c
 
 	\\ Apply the (global) twist value to the row first
 
-	CLC
-	LDA twister_twist_brot
-	LDY twister_twist_index+1
-	ADC twister_twist_table_LO, Y
-	STA twister_twist_brot
+	CLC		; 2c
+	\\ <== 128c/0c
+	LDA twister_twist_brot		; 3c
+	LDY twister_twist_index+1		; 3c
+	ADC twister_twist_table_LO, Y		; 4c
+	STA twister_twist_brot		; 3c
+	\\ <== 14c
 
-	LDA twister_twist_brot+1
-	ADC twister_twist_table_HI, Y
-	STA twister_twist_brot+1
+	LDA twister_twist_brot+1		; 3c
+	ADC twister_twist_table_HI, Y		; 4c
+	STA twister_twist_brot+1		; 3c
+	\\ <== 24c
 
 	\\ Update local twist index value by incrementing by step
 
-	CLC
-	LDA twister_knot_i
-	ADC twister_knot_y
-	STA twister_knot_i
-	LDA twister_knot_i+1
-	ADC twister_knot_y+1
-	STA twister_knot_i+1
-	TAY
+	CLC		; 2c
+	LDA twister_knot_i		; 3c
+	ADC twister_knot_y		; 3c
+	STA twister_knot_i		; 3c
+	LDA twister_knot_i+1		; 3c
+	ADC twister_knot_y+1		; 3c
+	STA twister_knot_i+1		; 3c
+	TAY		; 2c
+	\\ <== 46c
 
 	\\ Use the local twist index to calculate additional rotation value 'knot'
 
-	CLC
-	LDA twister_twist_brot
-	ADC twister_knot_table_LO, Y
-	STA twister_twist_brot
+	CLC		; 2c
+	LDA twister_twist_brot		; 3c
+	ADC twister_knot_table_LO, Y		; 4c
+	STA twister_twist_brot		; 3c
+	\\ <== 58c
 
-	LDA twister_twist_brot+1
-	ADC twister_knot_table_HI, Y
-	STA twister_twist_brot+1
+	LDA twister_twist_brot+1		; 3c
+	ADC twister_knot_table_HI, Y		; 4c
+	STA twister_twist_brot+1		; 3c
+	\\ <== 68c
 	
-	AND #&7F
-	TAY
+	AND #&7F		; 2c
+	TAY		; 2c
+	\\ <== 72c
 
-	LDA #12: STA &FE00			; 2c + 4c++
+	LDA #12: STA &FE00			; 8c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 90c
 
-	LDA #13: STA &FE00			; 2c + 4c++
+	LDA #13: STA &FE00			; 8c + 4c++
 	LDA twister_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 108c
 	
 	\\ View main RAM
 
 	LDA &FE34					; 4c
-	AND #&FE
+	AND #&FE		; 2c
 	STA &FE34					; 4c
+	\\ <== 118c
 
 ;	FOR n,1,1,1
 ;	NOP
 ;	NEXT
 	
-	DEC twister_crtc_row
+	DEC twister_crtc_row		; 5c
 ;	BIT 0
 
 	\\ Apply the (global) twist value to the row first
 
-	CLC
-	LDA twister_twist_brot
-	LDY twister_twist_index+1
-	ADC twister_twist_table_LO, Y
-	STA twister_twist_brot
+	CLC		; 2c
+	LDA twister_twist_brot		; 3c
+	\\ <== 128c/0c
+	LDY twister_twist_index+1		; 3c
+	ADC twister_twist_table_LO, Y		; 4c
+	STA twister_twist_brot		; 3c
+	\\ <== 10c
 
-	LDA twister_twist_brot+1
-	ADC twister_twist_table_HI, Y
-	STA twister_twist_brot+1
+	LDA twister_twist_brot+1		; 3c
+	ADC twister_twist_table_HI, Y		; 4c
+	STA twister_twist_brot+1		; 3c
+	\\ <== 20c
 
 	\\ Update local twist index value by incrementing by step
 
-	CLC
-	LDA twister_knot_i
-	ADC twister_knot_y
-	STA twister_knot_i
-	LDA twister_knot_i+1
-	ADC twister_knot_y+1
-	STA twister_knot_i+1
-	TAY
+	CLC		; 2c
+	LDA twister_knot_i		; 3c
+	ADC twister_knot_y		; 3c
+	STA twister_knot_i		; 3c
+	LDA twister_knot_i+1		; 3c
+	ADC twister_knot_y+1		; 3c
+	STA twister_knot_i+1		; 3c
+	TAY		; 2c
+	\\ <== 42c
 
 	\\ Use the local twist index to calculate additional rotation value 'knot'
 
-	CLC
-	LDA twister_twist_brot
-	ADC twister_knot_table_LO, Y
-	STA twister_twist_brot
+	CLC		; 2c
+	LDA twister_twist_brot		; 3c
+	ADC twister_knot_table_LO, Y		; 4c
+	STA twister_twist_brot		; 3c
+	\\ <== 54c
 
-	LDA twister_twist_brot+1
-	ADC twister_knot_table_HI, Y
-	STA twister_twist_brot+1
+	LDA twister_twist_brot+1		; 3c
+	ADC twister_knot_table_HI, Y		; 4c
+	STA twister_twist_brot+1		; 3c
+	\\ <== 64c
 	
-	AND #&7F
-	TAY
+	AND #&7F		; 2c
+	TAY		; 2c
+	\\ <== 68c
 
-	LDA #12: STA &FE00			; 2c + 4c++
+	LDA #12: STA &FE00			; 8c + 4c++
 	LDA twister_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 86c
 
-	LDA #13: STA &FE00			; 2c + 4c++
+	LDA #13: STA &FE00			; 8c + 4c++
 	LDA twister_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 104c
 
 	\\ View shadow RAM
 
 	LDA &FE34					; 4c
-	ORA #1
+	ORA #1		; 2c
 	STA &FE34					; 4c
+	\\ <== 114c
 	
 ;	FOR n,1,1,1
 ;	NOP
 ;	NEXT
-	BIT 0
+	BIT 0		; 3c
+	\\ <== 117c
 		
-	DEC twister_crtc_row
+	DEC twister_crtc_row		; 5c
 	BEQ done
 	JMP here
+	\\ <== 127c
 	
 	.done		; 3c
 
 	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
+	LDA #9: STA &FE00		; 7c (odd stretch +1)
+	\\ <== 128c/0c
+	LDA #1-1:	STA &FE01		; 8c 1 scanline
+	\\ <== 12c
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #4: STA &FE00		; 8c
+	LDA #56-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines
+	\\ <== 28c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #7:	STA &FE00		; 8c
+	LDA #24+1: STA &FE01			; 8c 280 - 256 = 24 scanlines
+	\\ <== 44c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 60c
 
-    RTS
+    RTS		; 6c
 }
 
 .twister_kill

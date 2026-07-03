@@ -422,52 +422,70 @@ ENDIF
     RTS
 }
 
-.checkzoom_draw
+.checkzoom_draw		\\ [vert] enter PAL line 0
 {
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture -- 1 scanlines/row x 254 rows (254 lines); PAL 312, vsync PAL 280; no per-scanline CRTC writes
+	\\ SETUP  : ~1.0 lines -- rupture CRTC regs R4/R6/R7/R9/R12/R13 set, padded to the scanline boundary
+	\\ LOOP   : 254x @ 128c (1 line/iter) -- straight-line
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : balanced branch (15c/path)
+	\\ [/effect-summary]
 	\\ We're only ever going to display this one scanline
-	LDA #12: STA &FE00
-	LDA #HI(screen_base_addr/8): STA &FE01
+	LDA #12: STA &FE00		; 8c
+	LDA #HI(screen_base_addr/8): STA &FE01		; 8c
+	\\ <== 16c
 
-	LDA #13: STA &FE00
-	LDA #LO(screen_base_addr/8): STA &FE01
+	LDA #13: STA &FE00		; 8c
+	LDA #LO(screen_base_addr/8): STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R9=0 - character row = 1 scanline
-	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #0:	STA &FE01		; 8c
+	\\ <== 48c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 64c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 80c
 
 	\\ R6=1 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 96c
 
 	FOR n,1,14,1
-	NOP
+	NOP		; 28c
 	NEXT
 
 	LDX #2			; 2c
     LDY checkzoom_YmodN  ; 3c
+	\\ <== 128c/0c  [vert] PAL line 1
 
-    .here
+    .here		\\ [vert] loop x254: PAL lines 1..254
+	\\ <== 1c
 
-    FOR n,1,47,1    ; 98c
-    NOP
+    FOR n,1,47,1    ; 94c
+    NOP		; 94c
     NEXT
 
     LDA checkzoom_parity ; 3c
     ORA #ULA_Mode1          ; 2c
     STA &FE20               ; 4c
+	\\ <== 104c
 
     INY                     ; 2c
     CPY checkzoom_N      ; 3c
+	\\ <== 109c
 
     BCC no_wrap             ; 2c/3c
+	\\ <== 111c
 
     LDA checkzoom_parity ; 3c
     EOR #1                  ; 2c
@@ -478,28 +496,34 @@ ENDIF
 
     .no_wrap
     NOP:NOP:NOP:NOP:NOP:NOP ; 12c + BCC taken = 15c
+	\\ <== 124c
 
     .next_line
 	INX				; 2c
 	BNE here		; 3c
+	\\ <== 128c/0c  [vert] PAL line 255
 
-	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
+	\\ R9=0 - character row = 1 scanline
+	LDA #9: STA &FE00		; 8c
+	LDA #1-1:	STA &FE01		; 8c 1 scanline
+	\\ <== 16c
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #4: STA &FE00		; 8c
+	LDA #56-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines
+	\\ <== 32c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01			; 280 - 256 = 24 scanlines
+	LDA #7:	STA &FE00		; 8c
+	LDA #24+1: STA &FE01			; 8c 280 - 256 = 24 scanlines
+	\\ <== 48c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 64c
 
-    RTS        
+    RTS		; 6c
 }
 
 .checkzoom_kill

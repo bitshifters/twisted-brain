@@ -257,47 +257,58 @@ INCBIN "data/smiley.pu"
 
 .smiley_draw
 {
+    \\ [cycle-note] Smooth-scrolling status split, NOT a per-scanline rupture loop.
+    \\ Builds a custom PAL frame from a display cycle (R4=27/28 rows, R6=smiley_visible,
+    \\ R5=smiley_line vertical-adjust for smooth scroll) + a vsync cycle, with
+    \\ DATA-DEPENDENT register values and a data-dependent display-loop trip count
+    \\ (224 - smiley_line).  The frame stays 312 by design (R5 vadj compensates the
+    \\ trip count), but that invariant isn't modelled here, and there are 3 wait
+    \\ loops (init x8, extra x8, hide x32) -- so only per-instruction cycle costs
+    \\ are annotated (no running totals / PAL-frame summary).  What IS checked and
+    \\ matters: the loop_display balanced diamond (black-out row vs NOP row) -- both
+    \\ paths are 17c so the raster stays stable whichever rows are blacked out.
+    \\ (Display loop is 127c: -1c short of a 128c scanline, a small soft drift.)
     \\ Wait until scanlne 8
     FOR n,1,8,1
-    JSR cycles_wait_128
+    JSR cycles_wait_128		; 1024c
     NEXT
 
     \\ First scanline of displayed cycle
     .here_display
 
     \\ Display screen
-	LDA #8:STA &FE00
-    LDA #0:STA &FE01
+	LDA #8:STA &FE00		; 8c
+    LDA #0:STA &FE01		; 8c
 
     \\ Configure display cycle
 
-    LDA #4:STA &FE00
-    LDA #27:STA &FE01           ; 28 rows
+    LDA #4:STA &FE00		; 8c
+    LDA #27:STA &FE01           ; 8c 28 rows
 
-    LDA #6:STA &FE00
-    LDA smiley_visible:STA &FE01   ; calc'd visible rows
+    LDA #6:STA &FE00		; 8c
+    LDA smiley_visible:STA &FE01   ; 8c (odd stretch +1) calc'd visible rows
 ;    LDA #29:STA &FE01   ; fixed visible rows
 
-    LDA #7:STA &FE00
-    LDA #&FF:STA &FE01          ; no vsync
+    LDA #7:STA &FE00		; 8c
+    LDA #&FF:STA &FE01          ; 8c no vsync
 
-    LDA #5:STA &FE00
-    LDA smiley_line:STA &FE01   ; yoff rows of vadj
+    LDA #5:STA &FE00		; 8c
+    LDA smiley_line:STA &FE01   ; 8c (odd stretch +1) yoff rows of vadj
 
     \\ Set address of vsync cycle buffer
 
-    LDA #13:STA &FE00
-    LDA #LO(SMILEY_STATUS_ADDR/8):STA &FE01
+    LDA #13:STA &FE00		; 8c
+    LDA #LO(SMILEY_STATUS_ADDR/8):STA &FE01		; 8c
 
-    LDA #12:STA &FE00
-    LDA #HI(SMILEY_STATUS_ADDR/8):STA &FE01
+    LDA #12:STA &FE00		; 8c
+    LDA #HI(SMILEY_STATUS_ADDR/8):STA &FE01		; 8c
 
     \\ Now wait 28 rows...
 
-    SEC
-    LDA #224            ; 29*8
-    SBC smiley_line
-    TAX
+    SEC		; 2c
+    LDA #224            ; 2c 28*8 scanlines
+    SBC smiley_line		; 3c
+    TAX		; 2c
     .loop_display
 
     CPX smiley_yoff     ; 3c
@@ -306,14 +317,14 @@ INCBIN "data/smiley.pu"
     \\ Turn display off
 ;	LDA #8:STA &FE00    ; 6c
 ;	LDA #&30:STA &FE01  ; 6c
-    LDA #PAL_black
-    STA &FE21
+    LDA #PAL_black		; 2c
+    STA &FE21		; 4c
 IF SMILEY_DEBUG_RASTERS
     LDA #PAL_red
 ELSE
-    LDA #PAL_black
+    LDA #PAL_black		; 2c
 ENDIF
-    STA &FE21
+    STA &FE21		; 4c
 
     BRA cont            ; 3c = 17c
 
@@ -324,7 +335,7 @@ ENDIF
 
     .cont
     FOR n,1,51,1
-    NOP
+    NOP		; 102c
     NEXT
 ;    BIT 0
 
@@ -340,12 +351,12 @@ IF SMILEY_DEBUG_RASTERS
     STA &FE21
 ENDIF
 
-    LDX #8
+    LDX #8		; 2c
     .extra_loop
-    BEQ extra_done
-    JSR cycles_wait_128
-    DEX
-    BRA extra_loop
+    BEQ extra_done		; 3c
+    JSR cycles_wait_128		; 128c
+    DEX		; 2c
+    BRA extra_loop		; 3c
     .extra_done
 
 IF SMILEY_DEBUG_RASTERS
@@ -355,14 +366,14 @@ ENDIF
 
     \\ Configure vsync cycle
 
-    LDA #4: STA &FE00
-    LDA #39 - 28 - 1 - 1: STA &FE01     ; 39 rows - 29 we've had
+    LDA #4: STA &FE00		; 8c
+    LDA #39 - 28 - 1 - 1: STA &FE01     ; 8c 39 rows - 29 we've had
 
-    LDA #7: STA &FE00
-    LDA #35 - 29: STA &FE01         ; row 35 - 29 we've had
+    LDA #7: STA &FE00		; 8c
+    LDA #35 - 29: STA &FE01         ; 8c row 35 - 29 we've had
 
-    LDA #6: STA &FE00
-    LDA #3: STA &FE01               ; display 3 rows
+    LDA #6: STA &FE00		; 8c
+    LDA #3: STA &FE01               ; 8c display 3 rows
 
 IF SMILEY_DEBUG_RASTERS
     LDA #PAL_black
@@ -371,20 +382,20 @@ ENDIF
 
     \\ Wait until we're deffo beyond the end of the visible screen
 
-    LDX #32
+    LDX #32		; 2c
     .hide_loop
-    BEQ hide_done
-    JSR cycles_wait_128
-    DEX
-    BRA hide_loop
+    BEQ hide_done		; 3c
+    JSR cycles_wait_128		; 128c
+    DEX		; 2c
+    BRA hide_loop		; 3c
     .hide_done
 
     \\ Turn display off
 
-	LDA #8:STA &FE00
-	LDA #&30:STA &FE01
+	LDA #8:STA &FE00		; 7c (odd stretch +1)
+	LDA #&30:STA &FE01		; 8c
 
-    RTS
+    RTS		; 6c
 }
 
 ALIGN 64

@@ -65,86 +65,110 @@ ENDIF
     RTS
 }
 
-.copper_draw
+.copper_draw		\\ [vert] enter PAL line 0
 {
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture + per-row ULA palette (16x &FE2x copper) -- 4 scanlines/row x 62 rows (248 lines); PAL 312, vsync PAL 280; no per-scanline CRTC writes
+	\\ SETUP  : ~4.0 lines -- rupture CRTC regs R4/R6/R7/R9 set, padded to the scanline boundary
+	\\ LOOP   : 62x @ 513c (4 line/iter) -- calls 2x JSR cycles_wait_128, JSR copper_accumulate, JSR copper_set_charrow
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : loop 513c = 4 scanlines +1c -> CRTC address writes drift each row (soft window, tolerable)
+	\\ [/effect-summary]
 	\\ R9=3 - character row = 4 scanlines
-	LDA #9: STA &FE00
-	LDA #3:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #3:	STA &FE01		; 8c
+	\\ <== 16c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 48c
 
 	\\ R6=0 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01		; 8 * 6c = 48c
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c 8 * 6c = 48c
+	\\ <== 64c
 
 	LDA copper_delta		; 3c
 	STA copper_accum		; 3c
+	\\ <== 70c
 
 	\\ Set up second charrow
 
 	LDY copper_top_line			; 3c
-	JSR copper_accumulate	; 36c
-	JSR copper_set_charrow	; 172c
+	JSR copper_accumulate	; 38c
+	JSR copper_set_charrow	; 179c
+	\\ <== 128c/0c  [vert] PAL line 2
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
 	FOR n,1,46,1
-	NOP
+	NOP		; 92c
 	NEXT
 
-	JSR cycles_wait_128
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c  [vert] PAL line 3
 
 	.start_of_charrow_1
 
 	LDX #62					; 2c
+	\\ <== 128c/0c  [vert] PAL line 4
 
-	.here
+	.here		\\ [vert] loop x62: PAL lines 4..251
+	\\ <== 128c/0c
 
 	\\ Moving wait here so R12/R13 not being set on scanline 0 fixes glitch on real HW
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
 	
-	JSR copper_accumulate	; 36c
-	JSR copper_set_charrow	; 172c
+	JSR copper_accumulate	; 38c
+	JSR copper_set_charrow	; 180c
+	\\ <== 128c/0c
 
 	\\ Cycle count to end of charrow (4 scanlines)
 
 	FOR n,1,17,1
-	NOP
+	NOP		; 34c
 	NEXT
 
 	DEX							; 2c
-	BNE here
+	BNE here		; 3c
+	\\ <== 128c/0c  [vert] PAL line 252
 
 	\\ Should arrive here on scanline 255 = last row but scanline 3
 	.start_of_charrow_63
 
 	\\ R9=0 - character row = 2 scanlines
-	LDA #9: STA &FE00
-	LDA #3:	STA &FE01			; 4 scanlines
+	LDA #9: STA &FE00		; 8c
+	LDA #3:	STA &FE01			; 8c 4 scanlines
+	\\ <== 16c
 
 	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #14-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 14 rows + the one we're on
+	LDA #4: STA &FE00		; 8c
+	LDA #14-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines = 14 rows + the one we're on
+	\\ <== 32c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #6+1: STA &FE01			; 280 - 256 = 24 scanlines = 6 rows
+	LDA #7:	STA &FE00		; 8c
+	LDA #6+1: STA &FE01			; 8c 280 - 256 = 24 scanlines = 6 rows
+	\\ <== 48c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 64c
 
 	\\ Don't set anything else here - will happen in update for charrow 0
 
-    RTS
+    RTS		; 6c
 }
 
 .copper_kill
@@ -158,13 +182,13 @@ ENDIF
 .copper_set_charrow
 {
 	\\ Set screen row to this
-   	LDA #12: STA &FE00				; 6c
+   	LDA #12: STA &FE00				; 7c (odd stretch +1)
     LDA copper_lookup_HI, Y			; 4c
-	STA &FE01						; 4c
+	STA &FE01						; 6c
 
-	LDA #13: STA &FE00				; 6c
+	LDA #13: STA &FE00				; 8c
     LDA copper_lookup_LO, Y			; 4c
-	STA &FE01						; 4c
+	STA &FE01						; 6c
 
 	\\ Set black to this
 	LDA copper_colour_black, Y		; 4c
@@ -188,8 +212,8 @@ ENDIF
 	AND #&F:ORA #&E0:STA &FE21		; 8c
 	AND #&F:ORA #&F0:STA &FE21		; 8c
 
-	RTS
-}	\\ Total time = 28 + 64 + 64 + 4 + 6 + 6 = 172c
+	RTS		; 6c
+}	\\ total = 173c body + 6c JSR = 179c
 
 .copper_accumulate
 {
@@ -208,19 +232,19 @@ ENDIF
 	
 	\\ Wrap our index
 
-	CPY #COPPER_MAX_INDEX
-	BCC path2
+	CPY #COPPER_MAX_INDEX		; 2c
+	BCC path2		; 2c
 
 	\\ path1 = 2+2+3=7c
-	LDY #0
-	BEQ return
+	LDY #0		; 2c
+	BEQ return		; 3c
 
 	.path2	\\ 3+2+2=7c
-	NOP:NOP
+	NOP:NOP		; 4c
 
 	.return
-	RTS
-}	\\ 12 + 17 + 7 = 36c
+	RTS		; 6c
+}	\\ total = 32c body + 6c JSR = 38c
 
 .copper_screen_data
 INCBIN "data/dither.pu"

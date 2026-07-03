@@ -90,29 +90,41 @@ logo_speed = locals_start + 3
     RTS
 }
 
-.logo_draw
+.logo_draw		\\ [vert] enter PAL line 0
 {
-	\\ R9=3 - character row = 1 scanline
-	LDA #9: STA &FE00
-	LDA #0:	STA &FE01
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture + per-row ULA palette (4x &FE2x copper) -- 1 scanlines/row x 254 rows (254 lines); PAL 312, vsync PAL 280; per-row R12/R13 address rewrite (soft window)
+	\\ SETUP  : ~1.0 lines -- rupture CRTC regs R4/R6/R7/R9 set, padded to the scanline boundary
+	\\ LOOP   : 254x @ 129c (1 line/iter) -- calls JSR logo_set_white
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : loop 129c = 1 scanlines +1c -> CRTC address writes drift each row (soft window, tolerable)
+	\\ [/effect-summary]
+	\\ R9=0 - character row = 1 scanline
+	LDA #9: STA &FE00		; 8c
+	LDA #0:	STA &FE01		; 8c
+	\\ <== 16c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 48c
 
-	\\ R6=0 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01		; 8 * 6c = 48c
+	\\ R6=1 - one row displayed
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c (8 setup writes = 64c)
+	\\ <== 64c
 
 	\\ Set up second charrow
 
-	LDX #1
+	LDX #1		; 2c
 	INC logo_charrow		; 5c
-	JSR logo_set_charrow	; 46c
+	JSR logo_set_charrow	; 61c
+	\\ <== 128c/0c  [vert] PAL line 1
 
 	\\ Cycle count to end of charrow
 
@@ -122,10 +134,12 @@ logo_speed = locals_start + 3
 
 	.start_of_charrow_1
 
-	.here
+	.here		\\ [vert] loop x254: PAL lines 1..254
+	\\ <== 4c
 
 	INC logo_charrow		; 5c
-	JSR logo_set_white		; 46c
+	JSR logo_set_white		; 117c
+	\\ <== 126c
 
 	\\ Cycle count to end of charrow
 
@@ -134,31 +148,37 @@ logo_speed = locals_start + 3
 ;	NEXT
 	
 	INX							; 2c
+	\\ <== 128c/0c
 	CPX #255					; 2c
 	BNE here					; 3c
+	\\ <== 5c
 
 	\\ Should arrive here on scanline 255 = last row but scanline 3
 	.start_of_charrow_255
 
 	\\ R9=7 - character row = 8 scanlines
-	LDA #9: STA &FE00
-	LDA #1-1:	STA &FE01		; 1 scanline
+	LDA #9: STA &FE00		; 8c
+	LDA #1-1:	STA &FE01		; 8c 1 scanline
+	\\ <== 20c
 
 	\\ R4=6 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #56-1+1: STA &FE01		; 312 - 256 = 56 scanlines
+	LDA #4: STA &FE00		; 8c
+	LDA #56-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines
+	\\ <== 36c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #24+1: STA &FE01		; 280 - 256 = 24 scanlines
+	LDA #7:	STA &FE00		; 8c
+	LDA #24+1: STA &FE01		; 8c 280 - 256 = 24 scanlines
+	\\ <== 52c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 68c
 
 	\\ Don't set anything else here - will happen in update for charrow 0
 
-    RTS
+    RTS		; 6c
 }
 
 .logo_kill
@@ -172,7 +192,7 @@ logo_speed = locals_start + 3
 .logo_set_white
 {
 	TXA								; 2c
-	LSR A:LSR A:LSR A:LSR A:LSR A:LSR A	; 10c
+	LSR A:LSR A:LSR A:LSR A:LSR A:LSR A	; 12c
 	TAY								; 2c
 	LDA logo_colour, Y				; 4c
 	ORA #&A0:STA &FE21				; 6c
@@ -183,7 +203,7 @@ logo_speed = locals_start + 3
 	LDA logo_colour, Y				; 4c
 	ORA #&F0:STA &FE21				; 6c
 
-}	\\ Total time = 12c + 14c + 40c = 66c
+}	\\ Total time = 2c + 12c + 2c + 40c = 56c body (falls through to logo_set_charrow)
 \\ Fall through!
 .logo_set_charrow
 {
@@ -191,20 +211,20 @@ logo_speed = locals_start + 3
 
 	CLC							; 2c
 
-	LDA #13: STA &FE00				; 6c
+	LDA #13: STA &FE00				; 8c
     LDA logo_default_LO, X			; 4c
 	ADC logo_scanline_offset_LO, Y				; 4c
-	STA &FE01						; 4c
+	STA &FE01						; 6c
 
 	\\ Set screen row to this
-   	LDA #12: STA &FE00				; 6c
+   	LDA #12: STA &FE00				; 8c
     LDA logo_default_HI, X			; 4c
 	ADC logo_scanline_offset_HI, Y				; 4c
-	STA &FE01						; 4c
+	STA &FE01						; 6c
 
-	RTS
-	\\ Total time = 12c + 6c + 14c + 14c = 46c
-}
+	RTS		; 6c
+	\\ Total time = 5c + 22c + 22c + 6c = 55c body (&FE00/&FE01 are 1MHz-stretched)
+}	\\ total = 111c body + 6c JSR = 117c
 
 .logo_set_anim
 {

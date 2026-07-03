@@ -139,30 +139,39 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 .vblinds_draw
 {
+	\\ [cycle-note] Fixed-duration buffer-fill effect, NOT a per-scanline rupture
+	\\ loop: linear_to_screen_loop (x80 over the 160-byte buffer) + JSR draw_row
+	\\ (14x constant-time draw_bar, bar_max=40 from vblinds_init => 674c/call) + a
+	\\ .here timing loop (x93).  Only per-instruction cycle costs are annotated --
+	\\ no running totals or PAL-frame summary, because the two big loops run many
+	\\ times each and this checker only multiplies ONE rupture loop by its trip
+	\\ count.  Costs of individual instructions are exact; the setup CRTC writes
+	\\ are phase-exact (entry phase 0), but the first tail-frame write after .here
+	\\ is phase-approximate (+/-1c) since the loop trips aren't accumulated.
 	\\ R9=1 - character row = 2 scanlines
-	LDA #9: STA &FE00
-	LDA #1:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #1:	STA &FE01		; 8c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
 
 	\\ R6=0 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
 
 	FOR n,1,20,1
-	NOP
+	NOP		; 40c
 	NEXT
-	BIT 0
+	BIT 0		; 3c
 
 	.start_of_scanline1
 
-	LDX #LINEAR_BUFFER_start		
+	LDX #LINEAR_BUFFER_start		; 2c
 
 	.linear_to_screen_loop
 	STX vblinds_bar_xpos					; 3c
@@ -205,7 +214,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	\\ This time mask in right pixel
 	AND #MODE2_RIGHT_MASK					; 2c
 	LDY #0									; 2c
-	ORA (vblinds_scr_ptr), Y				; 6c
+	ORA (vblinds_scr_ptr), Y				; 5c  [xpage] may cross page +1c
 	STA (vblinds_scr_ptr), Y				; 6c
 
 	\\ Look up pixel pair for odd line
@@ -214,7 +223,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	\\ This time mask in right pixel
 	AND #MODE2_RIGHT_MASK					; 2c
 	INY										; 2c
-	ORA (vblinds_scr_ptr), Y				; 6c
+	ORA (vblinds_scr_ptr), Y				; 5c  [xpage] may cross page +1c
 	STA (vblinds_scr_ptr), Y				; 6c
 
 	\\ Increment screen point in constant time
@@ -238,7 +247,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 	\\ Total 10640c = 83 scanlines + 16c
 
-	JSR vblinds_draw_row		; 78 scanlies
+	JSR vblinds_draw_row		; 9829c 78 scanlies
 
 	\\ How much time left?
 
@@ -248,33 +257,33 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 	\\ Literally do nothing
 	FOR n,1,61,1
-	NOP
+	NOP		; 122c
 	NEXT
 	
 	INX				; 2c
 	BNE here		; 3c
-	NOP
+	NOP		; 2c
 
 	\\ Should arrive here on scanline 255 = last row but scanline 1
 	.start_of_scanline_255
 
-	\\ R9=0 - character row = 2 scanlines
-	LDA #9: STA &FE00
-	LDA #2-1:	STA &FE01		; 2 scanline
+	\\ R9=1 - character row = 2 scanlines
+	LDA #9: STA &FE00		; 8c
+	LDA #2-1:	STA &FE01		; 8c 2 scanline
 
-	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #28-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 28 rows
+	\\ R4=28 - tail frame = 29 rows x 2 scanlines = 58 scanlines (254 + 58 = 312)
+	LDA #4: STA &FE00		; 8c
+	LDA #28-1+1: STA &FE01		; 8c
 
-	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #12+1: STA &FE01			; 280 - 256 = 24 scanlines = 12 rows
+	\\ R7=13 - vsync at tail row 13 = 26 scanlines (254 + 26 = 280)
+	LDA #7:	STA &FE00		; 8c
+	LDA #12+1: STA &FE01			; 8c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
 	
-    RTS
+    RTS		; 6c
 }
 
 .vblinds_temp EQUB 0
@@ -288,8 +297,8 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	LDY #0								; 2c
 	.loop1
 	CPY vblinds_bar_width				; 3c
-	BEQ loop2							; 2/3c
-	STA vblinds_linear_buffer, X		; 4c
+	BEQ loop2							; 3c 2/3c
+	STA vblinds_linear_buffer, X		; 5c
 	INX									; 2c
 	INY									; 2c
 	BNE loop1							; 3c
@@ -297,7 +306,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	\\ Must be constant time fn
 	.loop2
 	CPY vblinds_bar_max					; 3c
-	BEQ return							; 2/3c
+	BEQ return							; 3c 2/3c
 	STA vblinds_temp					; 4c
 	INX									; 2c
 	INY									; 2c
@@ -305,7 +314,7 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 
 	.return
 	RTS								    ; 6c
-}	\\ total time = 16c per loop = 16 * 40c + 3c + 6c + 6c +2c (branches) = 657c inc JSR
+}	\\ total = 668c body + 6c JSR = 674c
 
 .vblinds_draw_row
 {
@@ -315,141 +324,141 @@ VBLINDS_ROW1_ADDR = screen_base_addr + 640
 	LDA vblinds_wibble,X				; 4c
 	TAX									; 2c
 	LDA #1								; 2c
-	JSR vblinds_draw_bar				; 657c = 674c
+	JSR vblinds_draw_bar				; 674c = 674c
 
-	LDX vblinds_bar_index1
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #2
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index1		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #2		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #3
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #3		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #4
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #4		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #5
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #5		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #6
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #6		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #7
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #7		; 2c
+	JSR vblinds_draw_bar		; 674c
 
 IF 1
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #8
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #8		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #9
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #9		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #10
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #10		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #11
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #11		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #12
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #12		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #13
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #13		; 2c
+	JSR vblinds_draw_bar		; 674c
 
-	LDX vblinds_bar_index2
-	INX:INX:INX:INX
-	STX vblinds_bar_index2
-	LDA vblinds_wib2,X
-	TAY
-	LDA vblinds_wibble,X
-	TAX
-	LDA #14
-	JSR vblinds_draw_bar
+	LDX vblinds_bar_index2		; 3c
+	INX:INX:INX:INX		; 8c
+	STX vblinds_bar_index2		; 3c
+	LDA vblinds_wib2,X		; 4c
+	TAY		; 2c
+	LDA vblinds_wibble,X		; 4c
+	TAX		; 2c
+	LDA #14		; 2c
+	JSR vblinds_draw_bar		; 674c
 ENDIF
-	RTS
-}
+	RTS		; 6c
+}	\\ total = 9823c body + 6c JSR = 9829c
 
 .vblinds_erase_line
 {

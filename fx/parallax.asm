@@ -95,31 +95,44 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
     RTS
 }
 
-.parallax_draw
+.parallax_draw		\\ [vert] enter PAL line 0
 {
+	\\ [effect-summary]
+	\\ EFFECT : Vertical Rupture -- 4 scanlines/row x 62 rows (248 lines); PAL 312, vsync PAL 280; no per-scanline CRTC writes
+	\\ SETUP  : ~4.0 lines -- rupture CRTC regs R4/R6/R7/R9/R12/R13 set, padded to the scanline boundary
+	\\ LOOP   : 62x @ 513c (4 line/iter) -- calls 3x JSR cycles_wait_128
+	\\ FIXUP  : ~0.5 lines -- tail CRTC frame R4/R6/R7/R9 restored, RTS; free-runs to the frame boundary
+	\\ GOTCHA : loop 513c = 4 scanlines +1c -> CRTC address writes drift each row (soft window, tolerable)
+	\\ [/effect-summary]
 	\\ R9=0 - character row = 4 scanlines
-	LDA #9: STA &FE00
-	LDA #3:	STA &FE01
+	LDA #9: STA &FE00		; 8c
+	LDA #3:	STA &FE01		; 8c
+	\\ <== 16c
 
 	\\ R4=0 - CRTC cycle is one row
-	LDA #4: STA &FE00
-	LDA #0: STA &FE01
+	LDA #4: STA &FE00		; 8c
+	LDA #0: STA &FE01		; 8c
+	\\ <== 32c
 
 	\\ R7=&FF - no vsync
-	LDA #7:	STA &FE00
-	LDA #&FF: STA &FE01
+	LDA #7:	STA &FE00		; 8c
+	LDA #&FF: STA &FE01		; 8c
+	\\ <== 48c
 
 	\\ R6=1 - one row displayed
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 64c
 
 	FOR n,1,55,1
-	NOP
+	NOP		; 110c
 	NEXT
 
 	\\ Should be exactly on next scanline
-	JSR cycles_wait_128
-	JSR cycles_wait_128
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
 
 	LDA parallax_top_idx			; 3c
 	CLC							; 2c
@@ -130,15 +143,18 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 	ADC parallax_x				; 3c
 	AND #&3F					; 2c
 	TAY							; 2c
+	\\ <== 69c
 
 	\\ R12,13 - frame buffer address
-	LDA #12: STA &FE00			; 2c + 4c++
+	LDA #12: STA &FE00			; 7c (odd stretch +1) + 4c++
 	LDA parallax_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 86c
 
-	LDA #13: STA &FE00			; 2c + 4c++
+	LDA #13: STA &FE00			; 8c + 4c++
 	LDA parallax_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 104c
 
 	\\ Set correct video page
 
@@ -146,41 +162,52 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 	AND #&FE					; 2c
 	ORA parallax_vram_table_page, Y		; 4c
 	STA &FE34					; 4c++
+	\\ <== 118c
 
-	LDA #62
-	STA parallax_crtc_row
+	LDA #62		; 2c
+	STA parallax_crtc_row		; 3c
+	\\ <== 123c
 
-	.here
+	.here		\\ [vert] loop x62: PAL lines 4..251
+	\\ <== 123c
 
 	TXA							; 2c
 	CLC							; 2c
 	ADC parallax_wavey			; 3c
+	\\ <== 128c/0c
 	TAX 						; 2c
 	LDA parallax_sine_table, X	; 4c
 	CLC							; 2c
 	ADC parallax_x				; 3c
 	AND #&3F					; 2c
 	TAY							; 2c
+	\\ <== 17c
 
 	FOR n,1,23,1
-	NOP
+	NOP		; 46c
 	NEXT
-	BIT 0
+	BIT 0		; 3c
+	\\ <== 66c
 
-	JSR cycles_wait_128
-	JSR cycles_wait_128
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
 
-	LDA #12: STA &FE00			; 2c + 4c++
+	LDA #12: STA &FE00			; 8c + 4c++
 	LDA parallax_vram_table_HI, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 84c
 
-	LDA #13: STA &FE00			; 2c + 4c++
+	LDA #13: STA &FE00			; 8c + 4c++
 	LDA parallax_vram_table_LO, Y		; 4c
-	STA &FE01					; 4c++
+	STA &FE01					; 6c++
+	\\ <== 102c
 	
 	\\ 30c min + 10c loop, need 88c NOPs
 
-	JSR cycles_wait_128
+	JSR cycles_wait_128		; 128c
+	\\ <== 128c/0c
 
 	\\ Set correct video page
 
@@ -188,27 +215,34 @@ parallax_incx = locals_start + 5	; how much x is incremented by each frame
 	AND #&FE					; 2c
 	ORA parallax_vram_table_page, Y		; 4c
 	STA &FE34					; 4c++
+	\\ <== 116c
 
 	DEC parallax_crtc_row		; 5c
 	BNE here		; 3c
+	\\ <== 124c
 
 	\\ R9=0 - character row = 2 scanlines
-	LDA #9: STA &FE00
-	LDA #3:	STA &FE01			; 4 scanlines
+	LDA #9: STA &FE00		; 7c (odd stretch +1)
+	\\ <== 128c/0c
+	LDA #3:	STA &FE01			; 8c 4 scanlines
+	\\ <== 10c
 
 	\\ R4=56 - CRTC cycle is 32 + 7 more rows = 312 scanlines
-	LDA #4: STA &FE00
-	LDA #14-1+1: STA &FE01		; 312 - 256 = 56 scanlines = 14 rows + the one we're on
+	LDA #4: STA &FE00		; 8c
+	LDA #14-1+1: STA &FE01		; 8c 312 - 256 = 56 scanlines = 14 rows + the one we're on
+	\\ <== 26c
 
 	\\ R7=3 - vsync is at row 35 = 280 scanlines
-	LDA #7:	STA &FE00
-	LDA #6+1: STA &FE01			; 280 - 256 = 24 scanlines = 6 rows
+	LDA #7:	STA &FE00		; 8c
+	LDA #6+1: STA &FE01			; 8c 280 - 256 = 24 scanlines = 6 rows
+	\\ <== 42c
 
 	\\ R6=1 - got to display just one row
-	LDA #6: STA &FE00
-	LDA #1: STA &FE01
+	LDA #6: STA &FE00		; 8c
+	LDA #1: STA &FE01		; 8c
+	\\ <== 58c
 
-    RTS
+    RTS		; 6c
 }
 
 \ ******************************************************************
