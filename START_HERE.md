@@ -5,7 +5,7 @@ TWiSTeD bRaIn (#noteletext #justrasters), a Bitshifters BBC Master demo that twi
 | | |
 |---|---|
 | GitHub | https://github.com/bitshifters/twisted-brain (public; local folder is still called just-rasters) |
-| Local path | D:\beeb\mine\just-rasters (moved from OneDrive\BEEB\Repos\just-rasters on 2026-11-22) |
+| Local path | D:\bitshifters\just-rasters (moved from OneDrive\BEEB\Repos\just-rasters on 2026-11-22) |
 | Branch | wip/claude-counts-cycles (checked out); master, stable-raster, stardot-debug, test-rasters, twister-manual, fx-horizontal-twister, fx-logo-rotate, fx-plasma-shelf, fx-texture-rot |
 | Last commit | 2026-07-03: Ran Claude RVI skill over the FX files (master: 2018-07-04, release merge) |
 
@@ -18,8 +18,8 @@ TWiSTeD bRaIn (#noteletext #justrasters), a Bitshifters BBC Master demo that twi
 - `reference/`, `stardot/`, `basic/`: notes, forum debug material, BASIC experiments.
 
 ## Build and run
-- `make`: runs `make.bat`, which assembles `just-rasters.asm` with `..\..\Bin\beebasm.exe` into `twisted.ssd` (listing in `compile.txt`, ignored). `make help` lists targets.
-- Tools: beebasm in D:\beeb\Bin (reached as `..\..\Bin`).
+- `make`: runs `make.bat`, which assembles `just-rasters.asm` with `..\Bin\beebasm.exe` into `twisted.ssd` (listing in `compile.txt`, ignored). `make help` lists targets.
+- Tools: beebasm in D:\beeb\Bin (reached as `..\Bin`).
 - Output: `twisted.ssd` (tracked, so a rebuild shows as modified if the bytes change). `run.bat` opens it in `..\..\bin\B-em\B-em.exe`.
 
 ## Local changes

@@ -1,6 +1,6 @@
 # Wrapper so that `make` works from PowerShell / Windows Terminal.
 # GNU make runs recipes with cmd.exe here (no sh on PATH).
-# make.bat assembles with ..\..\Bin\beebasm.exe; run.bat launches the emulator.
+# make.bat assembles with ..\Bin\beebasm.exe; run.bat launches the emulator.
 .PHONY: all build help
 all: build
 
